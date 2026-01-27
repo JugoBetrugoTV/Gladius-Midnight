@@ -1,673 +1,324 @@
--- Gladius Midnight - Core Addon Logic
--- Arena Unit Frames for WoW Midnight 12.0
--- Uses Secret Values API (Curves) for health/power display
+--[[
+    Gladius Midnight - Arena Unit Frames
+    Compatible with WoW Midnight 12.0
+]]
 
-local addonName, GladiusMidnight = ...
-GladiusMidnight.frames = {}
-GladiusMidnight.arenaUnits = { "arena1", "arena2", "arena3" }
+local addonName, addon = ...
 
--- Default settings
-GladiusMidnight.defaults = {
-    -- General
-    enabled = true,
-    locked = false,
-    showOutOfArena = false,
-    currentProfile = "Default",
+-- Create addon using Ace3
+local GladiusMidnight = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0", "AceEvent-3.0")
+addon.core = GladiusMidnight
 
-    -- Position & Layout
-    growDirection = "DOWN",
-    spacing = 5,
-    posX = 300,
-    posY = 100,
-
-    -- Frame Size
-    scale = 1.0,
-    frameWidth = 200,
-    frameHeight = 50,
-
-    -- Background
-    showBackground = true,
-    backgroundAlpha = 0.8,
-    backgroundColor = { r = 0.1, g = 0.1, b = 0.1 },
-
-    -- Border
-    showBorder = true,
-    borderSize = 1,
-    borderColor = { r = 0.3, g = 0.3, b = 0.3 },
-
-    -- Health Bar Display
-    showHealthBar = true,
-    showHealthText = true,
-    healthShowPercent = true,
-    healthShowCurrentMax = false,
-
-    -- Health Bar Size
-    healthBarHeight = 22,
-    healthBarOffsetX = 0,
-    healthBarOffsetY = 0,
-
-    -- Health Bar Appearance
-    healthBarTexture = "Blizzard",
-    healthUseClassColor = true,
-    healthColorByPercent = false,
-    healthBarColor = { r = 0.0, g = 1.0, b = 0.0 },
-
-    -- Health Text
-    healthTextSize = 12,
-    healthTextColor = { r = 1.0, g = 1.0, b = 1.0 },
-    healthTextShadow = true,
-
-    -- Resource Bar Display
-    showResourceBar = true,
-    showResourceText = true,
-    resourceShowPercent = true,
-
-    -- Resource Bar Size
-    resourceBarHeight = 12,
-    resourceBarOffsetX = 0,
-    resourceBarOffsetY = 0,
-
-    -- Resource Bar Appearance
-    resourceBarTexture = "Blizzard",
-    resourceUseDefaultColor = true,
-    resourceBarColor = { r = 0.0, g = 0.0, b = 1.0 },
-
-    -- Resource Text
-    resourceTextSize = 10,
-    resourceTextColor = { r = 1.0, g = 1.0, b = 1.0 },
-
-    -- Class Icon
-    showClassIcon = true,
-    useSpecIcon = false,
-    classIconSize = 44,
-    classIconOffsetX = 0,
-    classIconOffsetY = 0,
-    classIconRound = false,
-    classIconBorder = true,
-    classIconBorderSize = 1,
-    classIconBorderColor = { r = 0.0, g = 0.0, b = 0.0 },
-
-    -- Trinket
-    showTrinket = true,
-    trinketShowCooldown = true,
-    trinketShowCooldownText = false,
-    trinketSize = 24,
-    trinketOffsetX = 4,
-    trinketOffsetY = 8,
-    trinketDesaturateOnCD = true,
-    trinketColorCode = false,
-    trinketReadyColor = { r = 0.0, g = 1.0, b = 0.0 },
-    trinketCDColor = { r = 1.0, g = 0.0, b = 0.0 },
-    trinketPlaySound = false,
-    trinketGlowOnReady = false,
-
-    -- Racial
-    showRacial = true,
-    racialShowCooldown = true,
-    racialShowCooldownText = false,
-    racialSize = 24,
-    racialOffsetX = 0,
-    racialOffsetY = -2,
-    racialDesaturateOnCD = true,
-    racialColorCode = false,
-    racialReadyColor = { r = 0.0, g = 1.0, b = 0.0 },
-    racialCDColor = { r = 1.0, g = 0.0, b = 0.0 },
+-- Defaults for AceDB
+local defaults = {
+    profile = {
+        enabled = true,
+        locked = true,
+        scale = 1.0,
+        frameWidth = 180,
+        frameHeight = 45,
+        spacing = 2,
+        posX = 300,
+        posY = 200,
+        growDirection = "DOWN",
+        showHealthText = true,
+        showPowerBar = true,
+        showTrinket = true,
+        showRacial = true,
+        classIconSize = 40,
+        trinketSize = 22,
+    }
 }
 
--- Initialize addon
-local function InitializeAddon()
-    -- Load saved settings or use defaults
-    if not GladiusMidnightDB then
-        GladiusMidnightDB = {}
-    end
+-- Class colors
+local classColors = {
+    ["WARRIOR"] = { r = 0.78, g = 0.61, b = 0.43 },
+    ["PALADIN"] = { r = 0.96, g = 0.55, b = 0.73 },
+    ["HUNTER"] = { r = 0.67, g = 0.83, b = 0.45 },
+    ["ROGUE"] = { r = 1.0, g = 0.96, b = 0.41 },
+    ["PRIEST"] = { r = 1.0, g = 1.0, b = 1.0 },
+    ["DEATHKNIGHT"] = { r = 0.77, g = 0.12, b = 0.23 },
+    ["SHAMAN"] = { r = 0.0, g = 0.44, b = 0.87 },
+    ["MAGE"] = { r = 0.41, g = 0.8, b = 0.94 },
+    ["WARLOCK"] = { r = 0.58, g = 0.51, b = 0.79 },
+    ["MONK"] = { r = 0.0, g = 1.0, b = 0.59 },
+    ["DRUID"] = { r = 1.0, g = 0.49, b = 0.04 },
+    ["DEMONHUNTER"] = { r = 0.64, g = 0.19, b = 0.79 },
+    ["EVOKER"] = { r = 0.2, g = 0.58, b = 0.5 },
+}
 
-    for key, value in pairs(GladiusMidnight.defaults) do
-        if GladiusMidnightDB[key] == nil then
-            GladiusMidnightDB[key] = value
-        end
-    end
+-- Class icon texture coords
+local classIconCoords = {
+    ["WARRIOR"] = { 0, 0.25, 0, 0.25 },
+    ["MAGE"] = { 0.25, 0.5, 0, 0.25 },
+    ["ROGUE"] = { 0.5, 0.75, 0, 0.25 },
+    ["DRUID"] = { 0.75, 1, 0, 0.25 },
+    ["HUNTER"] = { 0, 0.25, 0.25, 0.5 },
+    ["SHAMAN"] = { 0.25, 0.5, 0.25, 0.5 },
+    ["PRIEST"] = { 0.5, 0.75, 0.25, 0.5 },
+    ["WARLOCK"] = { 0.75, 1, 0.25, 0.5 },
+    ["PALADIN"] = { 0, 0.25, 0.5, 0.75 },
+    ["DEATHKNIGHT"] = { 0.25, 0.5, 0.5, 0.75 },
+    ["MONK"] = { 0.5, 0.75, 0.5, 0.75 },
+    ["DEMONHUNTER"] = { 0.75, 1, 0.5, 0.75 },
+    ["EVOKER"] = { 0, 0.25, 0.75, 1 },
+}
 
-    GladiusMidnight.db = GladiusMidnightDB
-end
+-- Store frames
+GladiusMidnight.frames = {}
+GladiusMidnight.testMode = false
 
--- Create health color curve for 12.0 secret values
--- Curves allow us to display secret values without accessing them directly
-local function CreateHealthColorCurve()
-    -- Health curve: Green (100%) -> Yellow (50%) -> Red (0%)
-    local curve = C_CurveUtil.CreateColorCurve()
-    if curve then
-        curve:AddPoint(0.0, CreateColor(1.0, 0.0, 0.0, 1.0)) -- Red at 0%
-        curve:AddPoint(0.5, CreateColor(1.0, 1.0, 0.0, 1.0)) -- Yellow at 50%
-        curve:AddPoint(1.0, CreateColor(0.0, 1.0, 0.0, 1.0)) -- Green at 100%
-        return curve
-    end
-    return nil
-end
+-- ============================================================================
+-- Arena Frame Creation
+-- ============================================================================
+local function CreateArenaFrame(index)
+    local unit = "arena" .. index
 
--- Create a value curve for health percentage
-local function CreateHealthValueCurve()
-    local curve = C_CurveUtil.CreateCurve()
-    if curve then
-        curve:AddPoint(0.0, 0)
-        curve:AddPoint(1.0, 100)
-        return curve
-    end
-    return nil
-end
-
-GladiusMidnight.healthColorCurve = nil
-GladiusMidnight.healthValueCurve = nil
-
--- Initialize frame for a specific arena unit
-local function InitializeArenaFrame(frame, unitIndex)
-    local unit = "arena" .. unitIndex
+    local frame = CreateFrame("Button", "GladiusMidnightFrame" .. index, UIParent, "BackdropTemplate")
+    frame:SetSize(180, 45)
+    frame:EnableMouse(true)
+    frame:SetMovable(true)
+    frame:RegisterForDrag("LeftButton")
+    frame:SetClampedToScreen(true)
     frame.unit = unit
-    frame.unitIndex = unitIndex
+    frame.index = index
 
-    -- Store reference
-    GladiusMidnight.frames[unit] = frame
+    -- Backdrop
+    frame:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    frame:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    frame:SetBackdropBorderColor(0, 0, 0, 1)
 
-    -- Initialize sub-elements
-    frame.HealthBar:SetMinMaxValues(0, 100)
-    frame.ResourceBar:SetMinMaxValues(0, 100)
+    -- Class Icon
+    frame.classIcon = frame:CreateTexture(nil, "ARTWORK")
+    frame.classIcon:SetSize(40, 40)
+    frame.classIcon:SetPoint("LEFT", frame, "LEFT", 2, 0)
+    frame.classIcon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
+    frame.classIcon:SetTexCoord(0, 0.25, 0, 0.25) -- Default warrior
 
-    -- Set up class icon with mask
-    frame.ClassIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- Health Bar
+    frame.healthBar = CreateFrame("StatusBar", nil, frame)
+    frame.healthBar:SetSize(100, 22)
+    frame.healthBar:SetPoint("TOPLEFT", frame.classIcon, "TOPRIGHT", 2, -1)
+    frame.healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    frame.healthBar:SetStatusBarColor(0, 1, 0)
+    frame.healthBar:SetMinMaxValues(0, 100)
+    frame.healthBar:SetValue(100)
 
-    -- Initialize trinket/racial frames
-    if frame.Trinket then
-        frame.Trinket.unit = unit
-        frame.Trinket.Icon:SetTexture("Interface\\Icons\\INV_Jewelry_TrinketPVP_01")
-    end
+    -- Health Bar Background
+    frame.healthBar.bg = frame.healthBar:CreateTexture(nil, "BACKGROUND")
+    frame.healthBar.bg:SetAllPoints()
+    frame.healthBar.bg:SetColorTexture(0.15, 0.15, 0.15, 1)
 
-    if frame.Racial then
-        frame.Racial.unit = unit
-        frame.Racial.Icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-    end
+    -- Health Text
+    frame.healthBar.text = frame.healthBar:CreateFontString(nil, "OVERLAY")
+    frame.healthBar.text:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+    frame.healthBar.text:SetPoint("CENTER", frame.healthBar, "CENTER", 0, 0)
+    frame.healthBar.text:SetText("100%")
 
-    -- Register unit-specific events
-    frame:RegisterUnitEvent("UNIT_HEALTH", unit)
-    frame:RegisterUnitEvent("UNIT_MAXHEALTH", unit)
-    frame:RegisterUnitEvent("UNIT_POWER_UPDATE", unit)
-    frame:RegisterUnitEvent("UNIT_MAXPOWER", unit)
-    frame:RegisterUnitEvent("UNIT_AURA", unit)
+    -- Power Bar
+    frame.powerBar = CreateFrame("StatusBar", nil, frame)
+    frame.powerBar:SetSize(100, 10)
+    frame.powerBar:SetPoint("TOPLEFT", frame.healthBar, "BOTTOMLEFT", 0, -1)
+    frame.powerBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    frame.powerBar:SetStatusBarColor(0, 0, 1)
+    frame.powerBar:SetMinMaxValues(0, 100)
+    frame.powerBar:SetValue(100)
 
-    -- Set up frame scripts
-    frame:SetScript("OnEvent", GladiusMidnight.OnFrameEvent)
+    -- Power Bar Background
+    frame.powerBar.bg = frame.powerBar:CreateTexture(nil, "BACKGROUND")
+    frame.powerBar.bg:SetAllPoints()
+    frame.powerBar.bg:SetColorTexture(0.1, 0.1, 0.1, 1)
 
-    -- Make frame draggable when unlocked
-    frame:SetScript("OnMouseDown", function(self, button)
-        if button == "LeftButton" and not GladiusMidnight.db.locked then
+    -- Trinket Icon
+    frame.trinket = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    frame.trinket:SetSize(22, 22)
+    frame.trinket:SetPoint("LEFT", frame.healthBar, "RIGHT", 4, 0)
+    frame.trinket:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    frame.trinket:SetBackdropColor(0, 0, 0, 1)
+    frame.trinket:SetBackdropBorderColor(0, 0, 0, 1)
+
+    frame.trinket.icon = frame.trinket:CreateTexture(nil, "ARTWORK")
+    frame.trinket.icon:SetAllPoints()
+    frame.trinket.icon:SetTexture("Interface\\Icons\\INV_Jewelry_TrinketPVP_01")
+    frame.trinket.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    frame.trinket.cooldown = CreateFrame("Cooldown", nil, frame.trinket, "CooldownFrameTemplate")
+    frame.trinket.cooldown:SetAllPoints()
+
+    -- Racial Icon
+    frame.racial = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    frame.racial:SetSize(22, 22)
+    frame.racial:SetPoint("TOP", frame.trinket, "BOTTOM", 0, -2)
+    frame.racial:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    frame.racial:SetBackdropColor(0, 0, 0, 1)
+    frame.racial:SetBackdropBorderColor(0, 0, 0, 1)
+
+    frame.racial.icon = frame.racial:CreateTexture(nil, "ARTWORK")
+    frame.racial.icon:SetAllPoints()
+    frame.racial.icon:SetTexture("Interface\\Icons\\Ability_Rogue_Sprint")
+    frame.racial.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    frame.racial.cooldown = CreateFrame("Cooldown", nil, frame.racial, "CooldownFrameTemplate")
+    frame.racial.cooldown:SetAllPoints()
+
+    -- Drag handlers
+    frame:SetScript("OnDragStart", function(self)
+        if not GladiusMidnight.db.profile.locked then
             self:StartMoving()
         end
     end)
 
-    frame:SetScript("OnMouseUp", function(self, button)
+    frame:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
-        -- Save position
-        local point, _, relativePoint, xOfs, yOfs = self:GetPoint()
-        GladiusMidnight.db["frame" .. unitIndex .. "Point"] = point
-        GladiusMidnight.db["frame" .. unitIndex .. "RelPoint"] = relativePoint
-        GladiusMidnight.db["frame" .. unitIndex .. "X"] = xOfs
-        GladiusMidnight.db["frame" .. unitIndex .. "Y"] = yOfs
+        local point, _, relPoint, x, y = self:GetPoint()
+        GladiusMidnight.db.profile.posX = x
+        GladiusMidnight.db.profile.posY = y
     end)
 
     frame:Hide()
+    return frame
 end
 
--- Update health bar using 12.0 secret values API
-function GladiusMidnight:UpdateHealth(frame)
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        return
-    end
-
-    local healthBar = frame.HealthBar
-
-    -- In 12.0, UnitHealth returns secret values when called from tainted code
-    -- We use UnitHealthPercent which returns a secret that can be passed to StatusBar:SetValue
-    local healthPercent = UnitHealthPercent(unit)
-
-    -- SetValue accepts secret values in 12.0
-    if healthPercent then
-        healthBar:SetValue(healthPercent)
-    end
-
-    -- Update health text if enabled
-    -- Note: In 12.0, we can use string.format with secrets
-    if self.db.showHealthText and healthBar.Text then
-        -- UnitHealthPercent returns 0-100 range as secret
-        -- We can format it directly since string.format accepts secrets
-        local textValue = string.format("%.0f%%", healthPercent or 0)
-        healthBar.Text:SetText(textValue)
-    end
-
-    -- Update health bar color based on class
-    local _, class = UnitClass(unit)
-    if class then
-        local color = self.ClassResources:GetClassColor(class)
-        healthBar:SetStatusBarColor(color.r, color.g, color.b)
-    end
-end
-
--- Update resource/power bar
-function GladiusMidnight:UpdatePower(frame)
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        return
-    end
-
-    local resourceBar = frame.ResourceBar
-    local _, class = UnitClass(unit)
-
-    -- Get spec-specific power type if available
-    local specID = nil
-    if GetArenaOpponentSpec then
-        specID = GetArenaOpponentSpec(frame.unitIndex)
-    end
-
-    local powerType = self.ClassResources:GetPowerType(class, specID)
-
-    -- In 12.0, secondary resources (combo points, holy power, etc.) are NOT secrets
-    -- Primary resources may be secrets, so we use UnitPowerPercent
-    local powerPercent = UnitPowerPercent(unit, powerType)
-
-    if powerPercent then
-        resourceBar:SetValue(powerPercent)
-    end
-
-    -- Update power bar color
-    local color = self.ClassResources:GetPowerColor(powerType)
-    resourceBar:SetStatusBarColor(color.r, color.g, color.b)
-
-    -- Update text
-    if self.db.showResourceText and resourceBar.Text then
-        local textValue = string.format("%.0f%%", powerPercent or 0)
-        resourceBar.Text:SetText(textValue)
-    end
-end
-
--- Update class icon
-function GladiusMidnight:UpdateClassIcon(frame)
-    local unit = frame.unit
-    if not UnitExists(unit) then
-        return
-    end
-
-    local _, class = UnitClass(unit)
-    if class then
-        -- Use atlas for class icons (modern approach)
-        local atlasName = self.ClassResources.ClassIcons[class]
-        if atlasName then
-            frame.ClassIcon:SetAtlas(atlasName)
-        else
-            -- Fallback to texture file
-            local coords = CLASS_ICON_TCOORDS[class]
-            if coords then
-                frame.ClassIcon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
-                frame.ClassIcon:SetTexCoord(unpack(coords))
-            end
-        end
-    end
-end
-
--- Update entire frame for a unit
-function GladiusMidnight:UpdateFrame(frame)
-    if not frame or not frame.unit then
-        return
-    end
+-- ============================================================================
+-- Update Functions
+-- ============================================================================
+function GladiusMidnight:UpdateFrame(frame, testData)
+    if not frame then return end
 
     local unit = frame.unit
-    if not UnitExists(unit) then
-        frame:Hide()
-        return
-    end
+    local db = self.db.profile
 
-    self:UpdateHealth(frame)
-    self:UpdatePower(frame)
-    self:UpdateClassIcon(frame)
+    -- Update size
+    frame:SetSize(db.frameWidth, db.frameHeight)
+    frame.classIcon:SetSize(db.classIconSize, db.classIconSize)
+    frame.healthBar:SetWidth(db.frameWidth - db.classIconSize - db.trinketSize - 12)
+    frame.powerBar:SetWidth(db.frameWidth - db.classIconSize - db.trinketSize - 12)
+    frame.trinket:SetSize(db.trinketSize, db.trinketSize)
+    frame.racial:SetSize(db.trinketSize, db.trinketSize)
 
-    -- Update trinket module
-    if self.Trinkets and self.db.showTrinket then
-        self.Trinkets:UpdateTrinket(frame)
-    end
+    if testData then
+        -- Use test data
+        local color = classColors[testData.class] or classColors["WARRIOR"]
+        frame.healthBar:SetStatusBarColor(color.r, color.g, color.b)
+        frame.healthBar:SetValue(testData.health)
+        frame.healthBar.text:SetText(testData.health .. "%")
+        frame.powerBar:SetValue(testData.power)
 
-    -- Update racial module
-    if self.Racials and self.db.showRacial then
-        self.Racials:UpdateRacial(frame)
-    end
+        local coords = classIconCoords[testData.class] or classIconCoords["WARRIOR"]
+        frame.classIcon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+    elseif UnitExists(unit) then
+        -- Use real unit data
+        local _, class = UnitClass(unit)
+        if class then
+            local color = classColors[class] or classColors["WARRIOR"]
+            frame.healthBar:SetStatusBarColor(color.r, color.g, color.b)
 
-    frame:Show()
-end
-
--- Frame event handler
-function GladiusMidnight.OnFrameEvent(frame, event, ...)
-    local unit = ...
-
-    if event == "UNIT_HEALTH" or event == "UNIT_MAXHEALTH" then
-        GladiusMidnight:UpdateHealth(frame)
-    elseif event == "UNIT_POWER_UPDATE" or event == "UNIT_MAXPOWER" then
-        GladiusMidnight:UpdatePower(frame)
-    elseif event == "UNIT_AURA" then
-        -- Aura updates can affect trinket/racial tracking
-        if GladiusMidnight.Trinkets then
-            GladiusMidnight.Trinkets:UpdateTrinket(frame)
-        end
-    end
-end
-
--- Main event handler
-local mainFrame = CreateFrame("Frame")
-mainFrame:RegisterEvent("ADDON_LOADED")
-mainFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-mainFrame:RegisterEvent("ARENA_OPPONENT_UPDATE")
-mainFrame:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
-mainFrame:RegisterEvent("PLAYER_ENTERING_BATTLEGROUND")
-mainFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-mainFrame:RegisterEvent("ARENA_COOLDOWNS_UPDATE") -- 12.0 API for trinket/cooldown tracking
-mainFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED") -- For tracking spell casts
-
--- Timer for polling trinket status (12.0 compatible approach)
-local updateTimer = nil
-local UPDATE_INTERVAL = 0.1 -- Update every 100ms
-
-local function StartUpdateTimer()
-    if updateTimer then return end
-    updateTimer = C_Timer.NewTicker(UPDATE_INTERVAL, function()
-        if not GladiusMidnight.db.enabled then return end
-
-        local _, instanceType = IsInInstance()
-        if instanceType ~= "arena" then
-            if updateTimer then
-                updateTimer:Cancel()
-                updateTimer = nil
-            end
-            return
+            local coords = classIconCoords[class] or classIconCoords["WARRIOR"]
+            frame.classIcon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
         end
 
-        -- Poll trinket status using C_PvP API (12.0 safe)
-        for _, unit in ipairs(GladiusMidnight.arenaUnits) do
-            local frame = GladiusMidnight.frames[unit]
-            if frame and UnitExists(unit) then
-                if GladiusMidnight.Trinkets then
-                    GladiusMidnight.Trinkets:UpdateTrinket(frame)
-                end
-            end
-        end
-    end)
-end
+        -- Health (using 12.0 API)
+        local healthPercent = UnitHealth(unit) / math.max(UnitHealthMax(unit), 1) * 100
+        frame.healthBar:SetValue(healthPercent)
+        frame.healthBar.text:SetText(math.floor(healthPercent) .. "%")
 
-local function StopUpdateTimer()
-    if updateTimer then
-        updateTimer:Cancel()
-        updateTimer = nil
+        -- Power
+        local powerPercent = UnitPower(unit) / math.max(UnitPowerMax(unit), 1) * 100
+        frame.powerBar:SetValue(powerPercent)
     end
+
+    -- Show/hide elements
+    frame.trinket:SetShown(db.showTrinket)
+    frame.racial:SetShown(db.showRacial)
+    frame.powerBar:SetShown(db.showPowerBar)
+    frame.healthBar.text:SetShown(db.showHealthText)
 end
 
-mainFrame:SetScript("OnEvent", function(self, event, ...)
-    if event == "ADDON_LOADED" then
-        local loadedAddon = ...
-        if loadedAddon == addonName then
-            InitializeAddon()
+function GladiusMidnight:UpdateAllFrames()
+    local db = self.db.profile
 
-            -- Initialize curves for 12.0 secret values (if available)
-            if C_CurveUtil and C_CurveUtil.CreateColorCurve then
-                GladiusMidnight.healthColorCurve = CreateHealthColorCurve()
-                GladiusMidnight.healthValueCurve = CreateHealthValueCurve()
-            end
-
-            -- Initialize arena frames
-            for i = 1, 3 do
-                local frame = _G["GladiusMidnightArena" .. i]
-                if frame then
-                    InitializeArenaFrame(frame, i)
-                end
-            end
-
-            print("|cFF00FF00Gladius Midnight|r loaded. Type /gladius for options.")
-        end
-
-    elseif event == "PLAYER_ENTERING_WORLD" then
-        GladiusMidnight:CheckArenaStatus()
-
-    elseif event == "ARENA_OPPONENT_UPDATE" then
-        local unit, updateType = ...
-        local frame = GladiusMidnight.frames[unit]
+    for i = 1, 3 do
+        local frame = self.frames[i]
         if frame then
-            if updateType == "seen" or updateType == "cleared" then
-                GladiusMidnight:UpdateFrame(frame)
-                StartUpdateTimer()
-            elseif updateType == "destroyed" then
-                frame:Hide()
-            end
-        end
-
-    elseif event == "ARENA_PREP_OPPONENT_SPECIALIZATIONS" then
-        -- Update all frames when spec info becomes available
-        for _, unit in ipairs(GladiusMidnight.arenaUnits) do
-            local frame = GladiusMidnight.frames[unit]
-            if frame then
-                GladiusMidnight:UpdateFrame(frame)
-            end
-        end
-
-    elseif event == "ARENA_COOLDOWNS_UPDATE" then
-        -- 12.0 event for arena cooldown updates
-        for _, unit in ipairs(GladiusMidnight.arenaUnits) do
-            local frame = GladiusMidnight.frames[unit]
-            if frame and UnitExists(unit) then
-                if GladiusMidnight.Trinkets then
-                    GladiusMidnight.Trinkets:UpdateTrinket(frame)
-                end
-            end
-        end
-
-    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-        local unit, _, spellID = ...
-        -- Check if this is an arena unit
-        for _, arenaUnit in ipairs(GladiusMidnight.arenaUnits) do
-            if unit == arenaUnit then
-                local frame = GladiusMidnight.frames[unit]
-                if frame then
-                    -- Let modules handle specific abilities
-                    if GladiusMidnight.Trinkets then
-                        GladiusMidnight.Trinkets:OnSpellCast(frame, spellID)
-                    end
-                    if GladiusMidnight.Racials then
-                        GladiusMidnight.Racials:OnSpellCast(frame, spellID)
-                    end
-                end
-                break
-            end
-        end
-
-    elseif event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_BATTLEGROUND" then
-        GladiusMidnight:CheckArenaStatus()
-        local _, instanceType = IsInInstance()
-        if instanceType == "arena" then
-            StartUpdateTimer()
-        else
-            StopUpdateTimer()
+            self:UpdateFrame(frame)
         end
     end
-end)
 
--- Check if we're in an arena and show/hide frames accordingly
-function GladiusMidnight:CheckArenaStatus()
-    local _, instanceType = IsInInstance()
-    local inArena = (instanceType == "arena")
+    self:PositionFrames()
+end
 
-    if inArena and self.db.enabled then
-        GladiusMidnightFrame:Show()
-        -- Update all arena frames
-        for _, unit in ipairs(self.arenaUnits) do
-            local frame = self.frames[unit]
-            if frame and UnitExists(unit) then
-                self:UpdateFrame(frame)
+function GladiusMidnight:PositionFrames()
+    local db = self.db.profile
+    local prevFrame = nil
+
+    for i = 1, 3 do
+        local frame = self.frames[i]
+        if frame then
+            frame:ClearAllPoints()
+
+            if i == 1 then
+                frame:SetPoint("CENTER", UIParent, "CENTER", db.posX, db.posY)
+            else
+                if db.growDirection == "DOWN" then
+                    frame:SetPoint("TOP", prevFrame, "BOTTOM", 0, -db.spacing)
+                elseif db.growDirection == "UP" then
+                    frame:SetPoint("BOTTOM", prevFrame, "TOP", 0, db.spacing)
+                elseif db.growDirection == "LEFT" then
+                    frame:SetPoint("RIGHT", prevFrame, "LEFT", -db.spacing, 0)
+                else -- RIGHT
+                    frame:SetPoint("LEFT", prevFrame, "RIGHT", db.spacing, 0)
+                end
             end
-        end
-    else
-        GladiusMidnightFrame:Hide()
-        for _, unit in ipairs(self.arenaUnits) do
-            local frame = self.frames[unit]
-            if frame then
-                frame:Hide()
-            end
+
+            frame:SetScale(db.scale)
+            prevFrame = frame
         end
     end
 end
 
--- Note: In WoW 12.0 Midnight, COMBAT_LOG_EVENT_UNFILTERED is restricted for arena
--- We use UNIT_SPELLCAST_SUCCEEDED and C_PvP.GetArenaCrowdControlInfo() instead
--- for tracking trinket and racial usage in a 12.0-compliant way
-
--- Slash command handler
-SLASH_GLADIUSMIDNIGHT1 = "/gladius"
-SLASH_GLADIUSMIDNIGHT2 = "/gm"
-SlashCmdList["GLADIUSMIDNIGHT"] = function(msg)
-    msg = msg:lower():trim()
-
-    if msg == "" or msg == "options" or msg == "config" then
-        if GladiusMidnight.OpenConfig then
-            GladiusMidnight:OpenConfig()
-        else
-            print("|cFF00FF00Gladius Midnight|r: Configuration UI not yet loaded.")
-        end
-    elseif msg == "test" then
-        -- Toggle test mode
-        GladiusMidnight:ToggleTestMode()
-    elseif msg == "lock" then
-        GladiusMidnight.db.locked = true
-        print("|cFF00FF00Gladius Midnight|r: Frames locked.")
-    elseif msg == "unlock" then
-        GladiusMidnight.db.locked = false
-        print("|cFF00FF00Gladius Midnight|r: Frames unlocked. Drag to reposition.")
-    elseif msg == "reset" then
-        GladiusMidnightDB = nil
-        ReloadUI()
-    else
-        print("|cFF00FF00Gladius Midnight|r commands:")
-        print("  /gladius - Open configuration")
-        print("  /gladius test - Toggle test mode")
-        print("  /gladius lock - Lock frame positions")
-        print("  /gladius unlock - Unlock frame positions")
-        print("  /gladius reset - Reset all settings")
-    end
-end
-
--- Test mode for development/positioning
-function GladiusMidnight:ToggleTestMode()
+-- ============================================================================
+-- Test Mode
+-- ============================================================================
+function GladiusMidnight:ToggleTest()
     self.testMode = not self.testMode
 
     if self.testMode then
-        print("|cFF00FF00Gladius Midnight|r: Test mode enabled.")
-
-        -- Make sure parent frame is visible and positioned
-        if GladiusMidnightFrame then
-            GladiusMidnightFrame:ClearAllPoints()
-            GladiusMidnightFrame:SetPoint("CENTER", UIParent, "CENTER", self.db.posX or 200, self.db.posY or 100)
-            GladiusMidnightFrame:Show()
-        else
-            print("|cFFFF0000Gladius Midnight|r: Main frame not found!")
-            return
-        end
-
-        -- Class icons using WoW's texture coordinates
-        local classIcons = {
-            ["WARRIOR"] = { 0, 0.25, 0, 0.25 },
-            ["MAGE"] = { 0.25, 0.5, 0, 0.25 },
-            ["ROGUE"] = { 0.5, 0.75, 0, 0.25 },
-            ["DRUID"] = { 0.75, 1, 0, 0.25 },
-            ["HUNTER"] = { 0, 0.25, 0.25, 0.5 },
-            ["SHAMAN"] = { 0.25, 0.5, 0.25, 0.5 },
-            ["PRIEST"] = { 0.5, 0.75, 0.25, 0.5 },
-            ["WARLOCK"] = { 0.75, 1, 0.25, 0.5 },
-            ["PALADIN"] = { 0, 0.25, 0.5, 0.75 },
-            ["DEATHKNIGHT"] = { 0.25, 0.5, 0.5, 0.75 },
-            ["MONK"] = { 0.5, 0.75, 0.5, 0.75 },
-            ["DEMONHUNTER"] = { 0.75, 1, 0.5, 0.75 },
-            ["EVOKER"] = { 0, 0.25, 0.75, 1 },
-        }
+        self:Print("Test mode |cFF00FF00enabled|r")
 
         local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
                           "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
                           "DRUID", "DEMONHUNTER", "EVOKER" }
 
-        -- Show test frames with mock data
         for i = 1, 3 do
-            local frame = _G["GladiusMidnightArena" .. i]
+            local frame = self.frames[i]
             if frame then
-                -- Store reference if not already stored
-                local unit = "arena" .. i
-                if not self.frames[unit] then
-                    self.frames[unit] = frame
-                    frame.unit = unit
-                    frame.unitIndex = i
-                end
-
-                -- Set mock health data
-                local healthVal = math.random(20, 100)
-                local resourceVal = math.random(0, 100)
-
-                if frame.HealthBar then
-                    frame.HealthBar:SetMinMaxValues(0, 100)
-                    frame.HealthBar:SetValue(healthVal)
-                    if frame.HealthBar.Text then
-                        frame.HealthBar.Text:SetText(healthVal .. "%")
-                    end
-                end
-
-                if frame.ResourceBar then
-                    frame.ResourceBar:SetMinMaxValues(0, 100)
-                    frame.ResourceBar:SetValue(resourceVal)
-                    if frame.ResourceBar.Text then
-                        frame.ResourceBar.Text:SetText(resourceVal .. "%")
-                    end
-                end
-
-                -- Random class
-                local testClass = classes[math.random(1, #classes)]
-                local color = self.ClassResources:GetClassColor(testClass)
-
-                if frame.HealthBar then
-                    frame.HealthBar:SetStatusBarColor(color.r, color.g, color.b)
-                end
-
-                -- Set class icon using texture coordinates
-                if frame.ClassIcon then
-                    frame.ClassIcon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
-                    local coords = classIcons[testClass]
-                    if coords then
-                        frame.ClassIcon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
-                    end
-                end
-
-                -- Set trinket icon
-                if frame.Trinket and frame.Trinket.Icon then
-                    frame.Trinket.Icon:SetTexture("Interface\\Icons\\INV_Jewelry_TrinketPVP_01")
-                    frame.Trinket:Show()
-                end
-
-                -- Set racial icon
-                if frame.Racial and frame.Racial.Icon then
-                    frame.Racial.Icon:SetTexture("Interface\\Icons\\Ability_Rogue_Sprint")
-                    frame.Racial:Show()
-                end
-
+                local testData = {
+                    class = classes[math.random(1, #classes)],
+                    health = math.random(20, 100),
+                    power = math.random(0, 100),
+                }
+                self:UpdateFrame(frame, testData)
                 frame:Show()
-                print("|cFF00FF00Gladius Midnight|r: Showing test frame " .. i)
-            else
-                print("|cFFFF0000Gladius Midnight|r: Frame " .. i .. " not found!")
             end
         end
+
+        self:PositionFrames()
     else
-        print("|cFF00FF00Gladius Midnight|r: Test mode disabled.")
-        -- Hide frames when not in arena
-        if GladiusMidnightFrame then
-            GladiusMidnightFrame:Hide()
-        end
+        self:Print("Test mode |cFFFF0000disabled|r")
         for i = 1, 3 do
-            local frame = _G["GladiusMidnightArena" .. i]
+            local frame = self.frames[i]
             if frame then
                 frame:Hide()
             end
@@ -675,5 +326,143 @@ function GladiusMidnight:ToggleTestMode()
     end
 end
 
--- Export addon table for modules
+-- ============================================================================
+-- Initialization
+-- ============================================================================
+function GladiusMidnight:OnInitialize()
+    -- Initialize database
+    self.db = LibStub("AceDB-3.0"):New("GladiusMidnightDB", defaults, true)
+
+    -- Create frames
+    for i = 1, 3 do
+        self.frames[i] = CreateArenaFrame(i)
+    end
+
+    -- Register chat commands
+    self:RegisterChatCommand("gladius", "SlashCommand")
+    self:RegisterChatCommand("gm", "SlashCommand")
+
+    self:Print("Loaded. Type |cFF00FF00/gladius|r for options or |cFF00FF00/gladius test|r to test.")
+end
+
+function GladiusMidnight:OnEnable()
+    -- Register events
+    self:RegisterEvent("ARENA_OPPONENT_UPDATE")
+    self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self:RegisterEvent("UNIT_HEALTH")
+    self:RegisterEvent("UNIT_POWER_UPDATE")
+    self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+
+    self:UpdateAllFrames()
+end
+
+-- ============================================================================
+-- Event Handlers
+-- ============================================================================
+function GladiusMidnight:PLAYER_ENTERING_WORLD()
+    self:CheckArenaStatus()
+end
+
+function GladiusMidnight:ZONE_CHANGED_NEW_AREA()
+    self:CheckArenaStatus()
+end
+
+function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
+    if not self.db.profile.enabled then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index then return end
+
+    local frame = self.frames[index]
+    if not frame then return end
+
+    if updateType == "seen" or updateType == "cleared" then
+        self:UpdateFrame(frame)
+        frame:Show()
+    elseif updateType == "destroyed" then
+        frame:Hide()
+    end
+end
+
+function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
+    if not self.db.profile.enabled then return end
+
+    for i = 1, 3 do
+        local frame = self.frames[i]
+        if frame and UnitExists("arena" .. i) then
+            self:UpdateFrame(frame)
+            frame:Show()
+        end
+    end
+end
+
+function GladiusMidnight:UNIT_HEALTH(_, unit)
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index then return end
+
+    local frame = self.frames[index]
+    if frame and frame:IsShown() then
+        self:UpdateFrame(frame)
+    end
+end
+
+function GladiusMidnight:UNIT_POWER_UPDATE(_, unit)
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index then return end
+
+    local frame = self.frames[index]
+    if frame and frame:IsShown() then
+        self:UpdateFrame(frame)
+    end
+end
+
+function GladiusMidnight:CheckArenaStatus()
+    if self.testMode then return end
+
+    local _, instanceType = IsInInstance()
+    local inArena = (instanceType == "arena")
+
+    if not inArena or not self.db.profile.enabled then
+        for i = 1, 3 do
+            local frame = self.frames[i]
+            if frame then
+                frame:Hide()
+            end
+        end
+    end
+end
+
+-- ============================================================================
+-- Slash Commands
+-- ============================================================================
+function GladiusMidnight:SlashCommand(input)
+    input = input:trim():lower()
+
+    if input == "test" then
+        self:ToggleTest()
+    elseif input == "lock" then
+        self.db.profile.locked = true
+        self:Print("Frames |cFF00FF00locked|r")
+    elseif input == "unlock" then
+        self.db.profile.locked = false
+        self:Print("Frames |cFFFF0000unlocked|r - drag to move")
+    elseif input == "reset" then
+        self.db:ResetProfile()
+        self:UpdateAllFrames()
+        self:Print("Settings reset to defaults")
+    elseif input == "" or input == "config" or input == "options" then
+        -- Open options
+        Settings.OpenToCategory("Gladius Midnight")
+    else
+        self:Print("Commands:")
+        self:Print("  |cFF00FF00/gladius|r - Open options")
+        self:Print("  |cFF00FF00/gladius test|r - Toggle test mode")
+        self:Print("  |cFF00FF00/gladius lock|r - Lock frames")
+        self:Print("  |cFF00FF00/gladius unlock|r - Unlock frames")
+        self:Print("  |cFF00FF00/gladius reset|r - Reset settings")
+    end
+end
+
+-- Export for other modules
 _G.GladiusMidnight = GladiusMidnight
