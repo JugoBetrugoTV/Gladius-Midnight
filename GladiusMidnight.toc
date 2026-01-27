@@ -1,0 +1,11 @@
+## Interface: 120000
+## Title: Gladius Midnight
+## Notes: Arena unit frames for WoW Midnight (12.0)
+## Notes-deDE: Arena Einheiten-Frames für WoW Midnight (12.0)
+## Author: Gladius-Midnight Team
+## Version: 1.0.0
+## SavedVariables: GladiusMidnightDB
+## IconTexture: Interface\Icons\Achievement_Arena_2v2_7
+
+# Load order matters - XML first, then Lua files
+GladiusMidnight.xml
