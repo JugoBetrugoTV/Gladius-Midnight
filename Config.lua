@@ -573,8 +573,8 @@ local function CreateConfigPanel()
         return configFrame
     end
 
-    -- Main frame
-    local frame = CreateFrame("Frame", "GladiusMidnightConfigFrame", UIParent, "PortraitFrameTemplate")
+    -- Main frame - use BasicFrameTemplateWithInset for 12.0 compatibility
+    local frame = CreateFrame("Frame", "GladiusMidnightConfigFrame", UIParent, "BasicFrameTemplateWithInset")
     frame:SetSize(550, 600)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
@@ -586,15 +586,18 @@ local function CreateConfigPanel()
     frame:Hide()
 
     -- Set title
-    frame:SetTitle("Gladius Midnight - Einstellungen")
+    frame.TitleText:SetText("Gladius Midnight - Einstellungen")
 
-    -- Set portrait icon
-    SetPortraitToTexture(frame.PortraitContainer.portrait, "Interface\\Icons\\Achievement_Arena_2v2_7")
+    -- Add icon next to title
+    local titleIcon = frame:CreateTexture(nil, "ARTWORK")
+    titleIcon:SetSize(24, 24)
+    titleIcon:SetPoint("RIGHT", frame.TitleText, "LEFT", -5, 0)
+    titleIcon:SetTexture("Interface\\Icons\\Achievement_Arena_2v2_7")
 
     -- Tab container
     local tabContainer = CreateFrame("Frame", nil, frame)
-    tabContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 5, -60)
-    tabContainer:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 5, 10)
+    tabContainer:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", 5, -5)
+    tabContainer:SetPoint("BOTTOMLEFT", frame.Inset, "BOTTOMLEFT", 5, 5)
     tabContainer:SetWidth(120)
 
     -- Tab background
@@ -605,7 +608,7 @@ local function CreateConfigPanel()
     -- Content container
     local contentContainer = CreateFrame("Frame", nil, frame)
     contentContainer:SetPoint("TOPLEFT", tabContainer, "TOPRIGHT", 5, 0)
-    contentContainer:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 10)
+    contentContainer:SetPoint("BOTTOMRIGHT", frame.Inset, "BOTTOMRIGHT", -5, 5)
 
     -- Content background
     local contentBg = contentContainer:CreateTexture(nil, "BACKGROUND")
