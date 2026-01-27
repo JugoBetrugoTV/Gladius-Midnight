@@ -573,9 +573,9 @@ local function CreateConfigPanel()
         return configFrame
     end
 
-    -- Main frame - use BasicFrameTemplateWithInset for 12.0 compatibility
-    local frame = CreateFrame("Frame", "GladiusMidnightConfigFrame", UIParent, "BasicFrameTemplateWithInset")
-    frame:SetSize(550, 600)
+    -- Main frame - simple custom frame for 12.0 compatibility
+    local frame = CreateFrame("Frame", "GladiusMidnightConfigFrame", UIParent, "BackdropTemplate")
+    frame:SetSize(500, 500)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -583,45 +583,76 @@ local function CreateConfigPanel()
     frame:SetScript("OnDragStart", frame.StartMoving)
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     frame:SetFrameStrata("DIALOG")
-    frame:Hide()
+    frame:SetFrameLevel(100)
 
-    -- Set title
-    frame.TitleText:SetText("Gladius Midnight - Einstellungen")
+    -- Set backdrop
+    frame:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+        edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+        tile = true,
+        tileSize = 32,
+        edgeSize = 32,
+        insets = { left = 8, right = 8, top = 8, bottom = 8 }
+    })
+    frame:SetBackdropColor(0.1, 0.1, 0.1, 1)
 
-    -- Add icon next to title
-    local titleIcon = frame:CreateTexture(nil, "ARTWORK")
-    titleIcon:SetSize(24, 24)
-    titleIcon:SetPoint("RIGHT", frame.TitleText, "LEFT", -5, 0)
-    titleIcon:SetTexture("Interface\\Icons\\Achievement_Arena_2v2_7")
+    -- Title bar
+    local titleBar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    titleBar:SetHeight(30)
+    titleBar:SetPoint("TOPLEFT", 10, -10)
+    titleBar:SetPoint("TOPRIGHT", -10, -10)
+    titleBar:SetBackdrop({
+        bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 }
+    })
+    titleBar:SetBackdropColor(0.2, 0.2, 0.4, 1)
+
+    -- Title text
+    local titleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    titleText:SetPoint("CENTER")
+    titleText:SetText("Gladius Midnight")
+
+    -- Close button
+    local closeButton = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    closeButton:SetPoint("TOPRIGHT", -5, -5)
+    closeButton:SetScript("OnClick", function() frame:Hide() end)
 
     -- Tab container
-    local tabContainer = CreateFrame("Frame", nil, frame)
-    tabContainer:SetPoint("TOPLEFT", frame.Inset, "TOPLEFT", 5, -5)
-    tabContainer:SetPoint("BOTTOMLEFT", frame.Inset, "BOTTOMLEFT", 5, 5)
-    tabContainer:SetWidth(120)
-
-    -- Tab background
-    local tabBg = tabContainer:CreateTexture(nil, "BACKGROUND")
-    tabBg:SetAllPoints()
-    tabBg:SetColorTexture(0.1, 0.1, 0.1, 0.8)
+    local tabContainer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    tabContainer:SetPoint("TOPLEFT", 10, -50)
+    tabContainer:SetPoint("BOTTOMLEFT", 10, 10)
+    tabContainer:SetWidth(100)
+    tabContainer:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 12,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    tabContainer:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
 
     -- Content container
-    local contentContainer = CreateFrame("Frame", nil, frame)
+    local contentContainer = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     contentContainer:SetPoint("TOPLEFT", tabContainer, "TOPRIGHT", 5, 0)
-    contentContainer:SetPoint("BOTTOMRIGHT", frame.Inset, "BOTTOMRIGHT", -5, 5)
-
-    -- Content background
-    local contentBg = contentContainer:CreateTexture(nil, "BACKGROUND")
-    contentBg:SetAllPoints()
-    contentBg:SetColorTexture(0.05, 0.05, 0.05, 0.9)
+    contentContainer:SetPoint("BOTTOMRIGHT", -10, 10)
+    contentContainer:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 12,
+        insets = { left = 2, right = 2, top = 2, bottom = 2 }
+    })
+    contentContainer:SetBackdropColor(0.05, 0.05, 0.05, 0.95)
 
     -- Scroll frame for content
     local scrollFrame = CreateFrame("ScrollFrame", nil, contentContainer, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", 5, -5)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -25, 5)
+    scrollFrame:SetPoint("TOPLEFT", 8, -8)
+    scrollFrame:SetPoint("BOTTOMRIGHT", -28, 8)
 
     local scrollContent = CreateFrame("Frame", nil, scrollFrame)
-    scrollContent:SetSize(380, 800)
+    scrollContent:SetSize(340, 800)
     scrollFrame:SetScrollChild(scrollContent)
 
     frame.scrollContent = scrollContent
@@ -636,10 +667,10 @@ local function CreateConfigPanel()
         for i, button in ipairs(frame.tabButtons) do
             if i == index then
                 button:SetNormalFontObject("GameFontHighlight")
-                button.bg:SetColorTexture(0.2, 0.4, 0.6, 1)
+                button.bg:SetColorTexture(0.3, 0.5, 0.8, 1)
             else
                 button:SetNormalFontObject("GameFontNormal")
-                button.bg:SetColorTexture(0.15, 0.15, 0.15, 1)
+                button.bg:SetColorTexture(0.2, 0.2, 0.2, 1)
             end
         end
 
@@ -658,21 +689,21 @@ local function CreateConfigPanel()
 
     for i, tab in ipairs(tabs) do
         local button = CreateFrame("Button", nil, tabContainer)
-        button:SetSize(110, 28)
-        button:SetPoint("TOPLEFT", 5, -5 - ((i - 1) * 30))
+        button:SetSize(90, 24)
+        button:SetPoint("TOPLEFT", 5, -5 - ((i - 1) * 26))
 
         local bg = button:CreateTexture(nil, "BACKGROUND")
         bg:SetAllPoints()
-        bg:SetColorTexture(0.15, 0.15, 0.15, 1)
+        bg:SetColorTexture(0.2, 0.2, 0.2, 1)
         button.bg = bg
 
         local highlight = button:CreateTexture(nil, "HIGHLIGHT")
         highlight:SetAllPoints()
-        highlight:SetColorTexture(0.3, 0.5, 0.7, 0.3)
+        highlight:SetColorTexture(0.4, 0.6, 0.8, 0.3)
 
-        button:SetNormalFontObject("GameFontNormal")
+        button:SetNormalFontObject("GameFontNormalSmall")
         button:SetText(tab.name)
-        button:GetFontString():SetPoint("LEFT", 10, 0)
+        button:GetFontString():SetPoint("LEFT", 5, 0)
 
         button:SetScript("OnClick", function()
             SelectTab(i)
@@ -692,6 +723,7 @@ local function CreateConfigPanel()
     -- Close on escape
     tinsert(UISpecialFrames, "GladiusMidnightConfigFrame")
 
+    frame:Hide()
     configFrame = frame
     return frame
 end

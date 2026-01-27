@@ -561,38 +561,117 @@ function GladiusMidnight:ToggleTestMode()
 
     if self.testMode then
         print("|cFF00FF00Gladius Midnight|r: Test mode enabled.")
-        GladiusMidnightFrame:Show()
+
+        -- Make sure parent frame is visible and positioned
+        if GladiusMidnightFrame then
+            GladiusMidnightFrame:ClearAllPoints()
+            GladiusMidnightFrame:SetPoint("CENTER", UIParent, "CENTER", self.db.posX or 200, self.db.posY or 100)
+            GladiusMidnightFrame:Show()
+        else
+            print("|cFFFF0000Gladius Midnight|r: Main frame not found!")
+            return
+        end
+
+        -- Class icons using WoW's texture coordinates
+        local classIcons = {
+            ["WARRIOR"] = { 0, 0.25, 0, 0.25 },
+            ["MAGE"] = { 0.25, 0.5, 0, 0.25 },
+            ["ROGUE"] = { 0.5, 0.75, 0, 0.25 },
+            ["DRUID"] = { 0.75, 1, 0, 0.25 },
+            ["HUNTER"] = { 0, 0.25, 0.25, 0.5 },
+            ["SHAMAN"] = { 0.25, 0.5, 0.25, 0.5 },
+            ["PRIEST"] = { 0.5, 0.75, 0.25, 0.5 },
+            ["WARLOCK"] = { 0.75, 1, 0.25, 0.5 },
+            ["PALADIN"] = { 0, 0.25, 0.5, 0.75 },
+            ["DEATHKNIGHT"] = { 0.25, 0.5, 0.5, 0.75 },
+            ["MONK"] = { 0.5, 0.75, 0.5, 0.75 },
+            ["DEMONHUNTER"] = { 0.75, 1, 0.5, 0.75 },
+            ["EVOKER"] = { 0, 0.25, 0.75, 1 },
+        }
+
+        local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
+                          "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
+                          "DRUID", "DEMONHUNTER", "EVOKER" }
 
         -- Show test frames with mock data
-        for i, unit in ipairs(self.arenaUnits) do
-            local frame = self.frames[unit]
+        for i = 1, 3 do
+            local frame = _G["GladiusMidnightArena" .. i]
             if frame then
-                -- Set mock data
-                frame.HealthBar:SetValue(math.random(20, 100))
-                frame.ResourceBar:SetValue(math.random(0, 100))
-
-                -- Random class icon
-                local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
-                                  "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
-                                  "DRUID", "DEMONHUNTER", "EVOKER" }
-                local testClass = classes[math.random(1, #classes)]
-                local color = self.ClassResources:GetClassColor(testClass)
-                frame.HealthBar:SetStatusBarColor(color.r, color.g, color.b)
-
-                local atlasName = self.ClassResources.ClassIcons[testClass]
-                if atlasName then
-                    frame.ClassIcon:SetAtlas(atlasName)
+                -- Store reference if not already stored
+                local unit = "arena" .. i
+                if not self.frames[unit] then
+                    self.frames[unit] = frame
+                    frame.unit = unit
+                    frame.unitIndex = i
                 end
 
-                frame.HealthBar.Text:SetText(math.random(20, 100) .. "%")
-                frame.ResourceBar.Text:SetText(math.random(0, 100) .. "%")
+                -- Set mock health data
+                local healthVal = math.random(20, 100)
+                local resourceVal = math.random(0, 100)
+
+                if frame.HealthBar then
+                    frame.HealthBar:SetMinMaxValues(0, 100)
+                    frame.HealthBar:SetValue(healthVal)
+                    if frame.HealthBar.Text then
+                        frame.HealthBar.Text:SetText(healthVal .. "%")
+                    end
+                end
+
+                if frame.ResourceBar then
+                    frame.ResourceBar:SetMinMaxValues(0, 100)
+                    frame.ResourceBar:SetValue(resourceVal)
+                    if frame.ResourceBar.Text then
+                        frame.ResourceBar.Text:SetText(resourceVal .. "%")
+                    end
+                end
+
+                -- Random class
+                local testClass = classes[math.random(1, #classes)]
+                local color = self.ClassResources:GetClassColor(testClass)
+
+                if frame.HealthBar then
+                    frame.HealthBar:SetStatusBarColor(color.r, color.g, color.b)
+                end
+
+                -- Set class icon using texture coordinates
+                if frame.ClassIcon then
+                    frame.ClassIcon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
+                    local coords = classIcons[testClass]
+                    if coords then
+                        frame.ClassIcon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+                    end
+                end
+
+                -- Set trinket icon
+                if frame.Trinket and frame.Trinket.Icon then
+                    frame.Trinket.Icon:SetTexture("Interface\\Icons\\INV_Jewelry_TrinketPVP_01")
+                    frame.Trinket:Show()
+                end
+
+                -- Set racial icon
+                if frame.Racial and frame.Racial.Icon then
+                    frame.Racial.Icon:SetTexture("Interface\\Icons\\Ability_Rogue_Sprint")
+                    frame.Racial:Show()
+                end
 
                 frame:Show()
+                print("|cFF00FF00Gladius Midnight|r: Showing test frame " .. i)
+            else
+                print("|cFFFF0000Gladius Midnight|r: Frame " .. i .. " not found!")
             end
         end
     else
         print("|cFF00FF00Gladius Midnight|r: Test mode disabled.")
-        self:CheckArenaStatus()
+        -- Hide frames when not in arena
+        if GladiusMidnightFrame then
+            GladiusMidnightFrame:Hide()
+        end
+        for i = 1, 3 do
+            local frame = _G["GladiusMidnightArena" .. i]
+            if frame then
+                frame:Hide()
+            end
+        end
     end
 end
 
