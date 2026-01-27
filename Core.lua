@@ -362,9 +362,47 @@ mainFrame:RegisterEvent("ADDON_LOADED")
 mainFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 mainFrame:RegisterEvent("ARENA_OPPONENT_UPDATE")
 mainFrame:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
-mainFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 mainFrame:RegisterEvent("PLAYER_ENTERING_BATTLEGROUND")
 mainFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+mainFrame:RegisterEvent("ARENA_COOLDOWNS_UPDATE") -- 12.0 API for trinket/cooldown tracking
+mainFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED") -- For tracking spell casts
+
+-- Timer for polling trinket status (12.0 compatible approach)
+local updateTimer = nil
+local UPDATE_INTERVAL = 0.1 -- Update every 100ms
+
+local function StartUpdateTimer()
+    if updateTimer then return end
+    updateTimer = C_Timer.NewTicker(UPDATE_INTERVAL, function()
+        if not GladiusMidnight.db.enabled then return end
+
+        local _, instanceType = IsInInstance()
+        if instanceType ~= "arena" then
+            if updateTimer then
+                updateTimer:Cancel()
+                updateTimer = nil
+            end
+            return
+        end
+
+        -- Poll trinket status using C_PvP API (12.0 safe)
+        for _, unit in ipairs(GladiusMidnight.arenaUnits) do
+            local frame = GladiusMidnight.frames[unit]
+            if frame and UnitExists(unit) then
+                if GladiusMidnight.Trinkets then
+                    GladiusMidnight.Trinkets:UpdateTrinket(frame)
+                end
+            end
+        end
+    end)
+end
+
+local function StopUpdateTimer()
+    if updateTimer then
+        updateTimer:Cancel()
+        updateTimer = nil
+    end
+end
 
 mainFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "ADDON_LOADED" then
@@ -372,9 +410,11 @@ mainFrame:SetScript("OnEvent", function(self, event, ...)
         if loadedAddon == addonName then
             InitializeAddon()
 
-            -- Initialize curves for 12.0 secret values
-            GladiusMidnight.healthColorCurve = CreateHealthColorCurve()
-            GladiusMidnight.healthValueCurve = CreateHealthValueCurve()
+            -- Initialize curves for 12.0 secret values (if available)
+            if C_CurveUtil and C_CurveUtil.CreateColorCurve then
+                GladiusMidnight.healthColorCurve = CreateHealthColorCurve()
+                GladiusMidnight.healthValueCurve = CreateHealthValueCurve()
+            end
 
             -- Initialize arena frames
             for i = 1, 3 do
@@ -396,6 +436,7 @@ mainFrame:SetScript("OnEvent", function(self, event, ...)
         if frame then
             if updateType == "seen" or updateType == "cleared" then
                 GladiusMidnight:UpdateFrame(frame)
+                StartUpdateTimer()
             elseif updateType == "destroyed" then
                 frame:Hide()
             end
@@ -410,11 +451,44 @@ mainFrame:SetScript("OnEvent", function(self, event, ...)
             end
         end
 
-    elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
-        GladiusMidnight:ProcessCombatLog()
+    elseif event == "ARENA_COOLDOWNS_UPDATE" then
+        -- 12.0 event for arena cooldown updates
+        for _, unit in ipairs(GladiusMidnight.arenaUnits) do
+            local frame = GladiusMidnight.frames[unit]
+            if frame and UnitExists(unit) then
+                if GladiusMidnight.Trinkets then
+                    GladiusMidnight.Trinkets:UpdateTrinket(frame)
+                end
+            end
+        end
+
+    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
+        local unit, _, spellID = ...
+        -- Check if this is an arena unit
+        for _, arenaUnit in ipairs(GladiusMidnight.arenaUnits) do
+            if unit == arenaUnit then
+                local frame = GladiusMidnight.frames[unit]
+                if frame then
+                    -- Let modules handle specific abilities
+                    if GladiusMidnight.Trinkets then
+                        GladiusMidnight.Trinkets:OnSpellCast(frame, spellID)
+                    end
+                    if GladiusMidnight.Racials then
+                        GladiusMidnight.Racials:OnSpellCast(frame, spellID)
+                    end
+                end
+                break
+            end
+        end
 
     elseif event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_BATTLEGROUND" then
         GladiusMidnight:CheckArenaStatus()
+        local _, instanceType = IsInInstance()
+        if instanceType == "arena" then
+            StartUpdateTimer()
+        else
+            StopUpdateTimer()
+        end
     end
 end)
 
@@ -443,29 +517,9 @@ function GladiusMidnight:CheckArenaStatus()
     end
 end
 
--- Process combat log for trinket/racial usage
-function GladiusMidnight:ProcessCombatLog()
-    local _, subEvent, _, sourceGUID, _, _, _, destGUID, _, _, _, spellID = CombatLogGetCurrentEventInfo()
-
-    if subEvent == "SPELL_CAST_SUCCESS" then
-        -- Check if this is from an arena opponent
-        for _, unit in ipairs(self.arenaUnits) do
-            if UnitGUID(unit) == sourceGUID then
-                local frame = self.frames[unit]
-                if frame then
-                    -- Let modules handle specific abilities
-                    if self.Trinkets then
-                        self.Trinkets:OnSpellCast(frame, spellID)
-                    end
-                    if self.Racials then
-                        self.Racials:OnSpellCast(frame, spellID)
-                    end
-                end
-                break
-            end
-        end
-    end
-end
+-- Note: In WoW 12.0 Midnight, COMBAT_LOG_EVENT_UNFILTERED is restricted for arena
+-- We use UNIT_SPELLCAST_SUCCEEDED and C_PvP.GetArenaCrowdControlInfo() instead
+-- for tracking trinket and racial usage in a 12.0-compliant way
 
 -- Slash command handler
 SLASH_GLADIUSMIDNIGHT1 = "/gladius"
