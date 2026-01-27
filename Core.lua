@@ -8,19 +8,110 @@ GladiusMidnight.arenaUnits = { "arena1", "arena2", "arena3" }
 
 -- Default settings
 GladiusMidnight.defaults = {
+    -- General
     enabled = true,
     locked = false,
-    scale = 1.0,
-    showHealthText = true,
-    showResourceText = true,
-    showTrinket = true,
-    showRacial = true,
+    showOutOfArena = false,
+    currentProfile = "Default",
+
+    -- Position & Layout
     growDirection = "DOWN",
     spacing = 5,
+    posX = 300,
+    posY = 100,
+
+    -- Frame Size
+    scale = 1.0,
     frameWidth = 200,
     frameHeight = 50,
-    posX = -100,
-    posY = 0,
+
+    -- Background
+    showBackground = true,
+    backgroundAlpha = 0.8,
+    backgroundColor = { r = 0.1, g = 0.1, b = 0.1 },
+
+    -- Border
+    showBorder = true,
+    borderSize = 1,
+    borderColor = { r = 0.3, g = 0.3, b = 0.3 },
+
+    -- Health Bar Display
+    showHealthBar = true,
+    showHealthText = true,
+    healthShowPercent = true,
+    healthShowCurrentMax = false,
+
+    -- Health Bar Size
+    healthBarHeight = 22,
+    healthBarOffsetX = 0,
+    healthBarOffsetY = 0,
+
+    -- Health Bar Appearance
+    healthBarTexture = "Blizzard",
+    healthUseClassColor = true,
+    healthColorByPercent = false,
+    healthBarColor = { r = 0.0, g = 1.0, b = 0.0 },
+
+    -- Health Text
+    healthTextSize = 12,
+    healthTextColor = { r = 1.0, g = 1.0, b = 1.0 },
+    healthTextShadow = true,
+
+    -- Resource Bar Display
+    showResourceBar = true,
+    showResourceText = true,
+    resourceShowPercent = true,
+
+    -- Resource Bar Size
+    resourceBarHeight = 12,
+    resourceBarOffsetX = 0,
+    resourceBarOffsetY = 0,
+
+    -- Resource Bar Appearance
+    resourceBarTexture = "Blizzard",
+    resourceUseDefaultColor = true,
+    resourceBarColor = { r = 0.0, g = 0.0, b = 1.0 },
+
+    -- Resource Text
+    resourceTextSize = 10,
+    resourceTextColor = { r = 1.0, g = 1.0, b = 1.0 },
+
+    -- Class Icon
+    showClassIcon = true,
+    useSpecIcon = false,
+    classIconSize = 44,
+    classIconOffsetX = 0,
+    classIconOffsetY = 0,
+    classIconRound = false,
+    classIconBorder = true,
+    classIconBorderSize = 1,
+    classIconBorderColor = { r = 0.0, g = 0.0, b = 0.0 },
+
+    -- Trinket
+    showTrinket = true,
+    trinketShowCooldown = true,
+    trinketShowCooldownText = false,
+    trinketSize = 24,
+    trinketOffsetX = 4,
+    trinketOffsetY = 8,
+    trinketDesaturateOnCD = true,
+    trinketColorCode = false,
+    trinketReadyColor = { r = 0.0, g = 1.0, b = 0.0 },
+    trinketCDColor = { r = 1.0, g = 0.0, b = 0.0 },
+    trinketPlaySound = false,
+    trinketGlowOnReady = false,
+
+    -- Racial
+    showRacial = true,
+    racialShowCooldown = true,
+    racialShowCooldownText = false,
+    racialSize = 24,
+    racialOffsetX = 0,
+    racialOffsetY = -2,
+    racialDesaturateOnCD = true,
+    racialColorCode = false,
+    racialReadyColor = { r = 0.0, g = 1.0, b = 0.0 },
+    racialCDColor = { r = 1.0, g = 0.0, b = 0.0 },
 }
 
 -- Initialize addon
