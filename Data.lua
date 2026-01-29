@@ -126,15 +126,27 @@ addon.Data.TrinketIcon = "Interface\\Icons\\INV_Jewelry_TrinketPVP_01"
 function addon.Data.GetSpellIcon(spellID)
     if not spellID then return nil end
 
-    -- 12.0 API
+    -- 12.0 API (primary)
     if C_Spell and C_Spell.GetSpellInfo then
         local info = C_Spell.GetSpellInfo(spellID)
-        if info then return info.iconID end
+        if info and info.iconID then
+            return info.iconID
+        end
     end
 
-    -- Fallback
-    local _, _, icon = GetSpellInfo(spellID)
-    return icon
+    -- 12.0 alternative: C_Spell.GetSpellTexture
+    if C_Spell and C_Spell.GetSpellTexture then
+        local texture = C_Spell.GetSpellTexture(spellID)
+        if texture then return texture end
+    end
+
+    -- Legacy fallback (pre-12.0)
+    if GetSpellInfo then
+        local _, _, icon = GetSpellInfo(spellID)
+        if icon then return icon end
+    end
+
+    return nil
 end
 
 function addon.Data.GetClassColor(class)

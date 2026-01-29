@@ -111,12 +111,27 @@ function Health:UpdateUnit(frame)
     local health = UnitHealth(unit)
     local maxHealth = UnitHealthMax(unit)
 
-    if maxHealth > 0 then
-        healthBar:SetMinMaxValues(0, maxHealth)
-        healthBar:SetValue(health)
+    -- StatusBar:SetValue() accepts secret values in 12.0
+    healthBar:SetMinMaxValues(0, maxHealth)
+    healthBar:SetValue(health)
 
-        local percent = math.floor((health / maxHealth) * 100)
-        healthBar.text:SetText(percent .. "%")
+    -- For text display, use percentage API (12.0 safe)
+    if db.showText then
+        -- Try 12.0 API first (returns actual percentage, not secret)
+        if UnitHealthPercent then
+            local percent = UnitHealthPercent(unit)
+            if percent then
+                healthBar.text:SetText(math.floor(percent) .. "%")
+            end
+        else
+            -- Fallback: Check if values are numbers (not secret)
+            if type(health) == "number" and type(maxHealth) == "number" and maxHealth > 0 then
+                local percent = math.floor((health / maxHealth) * 100)
+                healthBar.text:SetText(percent .. "%")
+            else
+                healthBar.text:SetText("")
+            end
+        end
     end
 
     -- Class color

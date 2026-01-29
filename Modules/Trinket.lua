@@ -123,30 +123,42 @@ end
 
 function Trinket:OnUpdate(frame)
     local container = frame.moduleFrames.trinket
-    if not container or not container.onCooldown then return end
+    if not container then return end
 
     -- Check C_PvP API for trinket cooldown (12.0)
-    if C_PvP and C_PvP.GetArenaCrowdControlInfo then
+    -- This API returns CC break ability info for arena opponents
+    if C_PvP and C_PvP.GetArenaCrowdControlInfo and UnitExists(frame.unit) then
         local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(frame.unit)
-        if spellID and startTime and duration then
-            if startTime ~= container.startTime then
+
+        -- API returned valid cooldown data
+        if spellID and startTime and duration and duration > 0 then
+            -- New cooldown detected or updated
+            if startTime ~= container.startTime or duration ~= container.duration then
                 container.startTime = startTime
                 container.duration = duration
+                container.onCooldown = true
                 container.cooldown:SetCooldown(startTime, duration)
                 container.icon:SetDesaturated(true)
-                container.onCooldown = true
+
+                -- Update icon to match the spell used
+                local iconTexture = addon.Data.GetSpellIcon(spellID)
+                if iconTexture then
+                    container.icon:SetTexture(iconTexture)
+                end
             end
         end
     end
 
     -- Check if cooldown expired
-    if container.startTime > 0 and container.duration > 0 then
+    if container.onCooldown and container.startTime > 0 and container.duration > 0 then
         local elapsed = GetTime() - container.startTime
         if elapsed >= container.duration then
             container.onCooldown = false
             container.icon:SetDesaturated(false)
             container.startTime = 0
             container.duration = 0
+            -- Reset to default trinket icon
+            container.icon:SetTexture(addon.Data.TrinketIcon)
         end
     end
 end

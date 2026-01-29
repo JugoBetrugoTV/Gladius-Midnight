@@ -106,17 +106,31 @@ function Power:UpdateUnit(frame)
 
     local db = self.core.db.profile.power
 
-    -- Get power values
+    -- Get power values (12.0 API supports secret values)
     local power = UnitPower(unit)
     local maxPower = UnitPowerMax(unit)
     local powerType = UnitPowerType(unit)
 
-    if maxPower > 0 then
-        powerBar:SetMinMaxValues(0, maxPower)
-        powerBar:SetValue(power)
+    -- StatusBar:SetValue() accepts secret values in 12.0
+    powerBar:SetMinMaxValues(0, maxPower)
+    powerBar:SetValue(power)
 
-        if db.showText then
-            powerBar.text:SetText(power)
+    -- For text display, use percentage (12.0 safe)
+    if db.showText then
+        -- Try 12.0 API first
+        if UnitPowerPercent then
+            local percent = UnitPowerPercent(unit)
+            if percent then
+                powerBar.text:SetText(math.floor(percent) .. "%")
+            end
+        else
+            -- Fallback: Check if values are numbers (not secret)
+            if type(power) == "number" and type(maxPower) == "number" and maxPower > 0 then
+                local percent = math.floor((power / maxPower) * 100)
+                powerBar.text:SetText(percent .. "%")
+            else
+                powerBar.text:SetText("")
+            end
         end
     end
 
