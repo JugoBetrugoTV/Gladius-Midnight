@@ -174,12 +174,11 @@ local function CreateArenaFrame(index)
     frame.classIcon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
     frame.classIcon:SetTexCoord(0, 0.25, 0, 0.25)
 
-    -- Class icon border
-    frame.classIconBorder = frame:CreateTexture(nil, "OVERLAY")
+    -- Class icon border (behind the icon)
+    frame.classIconBorder = frame:CreateTexture(nil, "BORDER")
     frame.classIconBorder:SetPoint("TOPLEFT", frame.classIcon, -1, 1)
     frame.classIconBorder:SetPoint("BOTTOMRIGHT", frame.classIcon, 1, -1)
     frame.classIconBorder:SetColorTexture(0, 0, 0, 1)
-    frame.classIconBorder:SetDrawLayer("OVERLAY", -1)
 
     -- Health Bar
     frame.healthBar = CreateFrame("StatusBar", nil, frame)
@@ -363,37 +362,58 @@ function GladiusMidnight:UpdateTrinket(frame)
     if not UnitExists(unit) then return end
 
     -- C_PvP.GetArenaCrowdControlInfo returns info about CC break abilities
-    local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(unit)
+    -- In 12.0, this API may not exist or have different signature
+    if C_PvP and C_PvP.GetArenaCrowdControlInfo then
+        local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(unit)
 
-    if spellID and spellID ~= frame.trinket.spellID then
-        -- New trinket usage detected
-        frame.trinket.spellID = spellID
-        frame.trinket.startTime = startTime or GetTime()
-        frame.trinket.duration = duration or TRINKET_COOLDOWN
+        if spellID and spellID ~= frame.trinket.spellID then
+            -- New trinket usage detected
+            frame.trinket.spellID = spellID
+            frame.trinket.startTime = startTime or GetTime()
+            frame.trinket.duration = duration or TRINKET_COOLDOWN
 
-        -- Update icon
-        local spellInfo = C_Spell.GetSpellInfo(spellID)
-        if spellInfo and spellInfo.iconID then
-            frame.trinket.icon:SetTexture(spellInfo.iconID)
+            -- Update icon using 12.0 C_Spell API
+            if C_Spell and C_Spell.GetSpellInfo then
+                local spellInfo = C_Spell.GetSpellInfo(spellID)
+                if spellInfo and spellInfo.iconID then
+                    frame.trinket.icon:SetTexture(spellInfo.iconID)
+                end
+            else
+                -- Fallback for older API
+                local _, _, icon = GetSpellInfo(spellID)
+                if icon then
+                    frame.trinket.icon:SetTexture(icon)
+                end
+            end
+
+            -- Set cooldown
+            if frame.trinket.startTime and frame.trinket.duration then
+                frame.trinket.cooldown:SetCooldown(frame.trinket.startTime, frame.trinket.duration)
+            end
+
+            -- Desaturate when on cooldown
+            frame.trinket.icon:SetDesaturated(true)
+
+            -- Check if this affects racial (shared CD)
+            if TRINKET_SHARE_RACIALS[spellID] then
+                self:ApplySharedRacialCooldown(frame, 90) -- 90 second shared CD
+            end
+        elseif not spellID and frame.trinket.spellID then
+            -- Check if cooldown expired
+            local elapsed = GetTime() - (frame.trinket.startTime or 0)
+            if elapsed >= (frame.trinket.duration or TRINKET_COOLDOWN) then
+                frame.trinket.icon:SetDesaturated(false)
+            end
         end
+    end
 
-        -- Set cooldown
-        if frame.trinket.startTime and frame.trinket.duration then
-            frame.trinket.cooldown:SetCooldown(frame.trinket.startTime, frame.trinket.duration)
-        end
-
-        -- Desaturate when on cooldown
-        frame.trinket.icon:SetDesaturated(true)
-
-        -- Check if this affects racial (shared CD)
-        if TRINKET_SHARE_RACIALS[spellID] then
-            self:ApplySharedRacialCooldown(frame, 90) -- 90 second shared CD
-        end
-    elseif not spellID and frame.trinket.spellID then
-        -- Check if cooldown expired
-        local elapsed = GetTime() - (frame.trinket.startTime or 0)
-        if elapsed >= (frame.trinket.duration or TRINKET_COOLDOWN) then
+    -- Also check cooldown expiry
+    if frame.trinket.startTime and frame.trinket.startTime > 0 and frame.trinket.duration and frame.trinket.duration > 0 then
+        local elapsed = GetTime() - frame.trinket.startTime
+        if elapsed >= frame.trinket.duration then
             frame.trinket.icon:SetDesaturated(false)
+            frame.trinket.startTime = 0
+            frame.trinket.duration = 0
         end
     end
 end
@@ -417,10 +437,18 @@ function GladiusMidnight:OnSpellCast(frame, spellID)
         frame.racial.startTime = GetTime()
         frame.racial.duration = cooldown
 
-        -- Update icon
-        local spellInfo = C_Spell.GetSpellInfo(spellID)
-        if spellInfo and spellInfo.iconID then
-            frame.racial.icon:SetTexture(spellInfo.iconID)
+        -- Update icon using 12.0 C_Spell API with fallback
+        if C_Spell and C_Spell.GetSpellInfo then
+            local spellInfo = C_Spell.GetSpellInfo(spellID)
+            if spellInfo and spellInfo.iconID then
+                frame.racial.icon:SetTexture(spellInfo.iconID)
+            end
+        else
+            -- Fallback for older API
+            local _, _, icon = GetSpellInfo(spellID)
+            if icon then
+                frame.racial.icon:SetTexture(icon)
+            end
         end
 
         -- Set cooldown
@@ -433,6 +461,19 @@ function GladiusMidnight:OnSpellCast(frame, spellID)
             frame.trinket.duration = 90
             frame.trinket.cooldown:SetCooldown(GetTime(), 90)
             frame.trinket.icon:SetDesaturated(true)
+        end
+    end
+end
+
+-- Update all frames
+function GladiusMidnight:UpdateAllFrames()
+    for i = 1, 3 do
+        local frame = self.frames[i]
+        if frame then
+            self:UpdateFrame(frame)
+            if self.testMode or frame:IsShown() then
+                self:PositionFrames()
+            end
         end
     end
 end
@@ -455,10 +496,20 @@ function GladiusMidnight:UpdateFrame(frame, testData)
 
     -- Show/hide elements
     frame.classIcon:SetShown(db.showClassIcon)
+    frame.classIconBorder:SetShown(db.showClassIcon)
     frame.trinket:SetShown(db.showTrinket)
     frame.racial:SetShown(db.showRacial)
     frame.powerBar:SetShown(db.showPowerBar)
     frame.healthBar.text:SetShown(db.showHealthText)
+
+    -- Adjust health bar position based on class icon visibility
+    frame.healthBar:ClearAllPoints()
+    if db.showClassIcon then
+        frame.healthBar:SetPoint("TOPLEFT", frame.classIcon, "TOPRIGHT", 2, 0)
+    else
+        frame.healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+    end
+    frame.healthBar:SetPoint("RIGHT", frame, "RIGHT", db.showTrinket and -db.trinketSize - 4 or -2, 0)
 
     if testData then
         -- Test mode data
@@ -636,9 +687,22 @@ function GladiusMidnight:OnEnable()
             local frame = self.frames[i]
             if frame and frame:IsShown() then
                 self:UpdateTrinket(frame)
+                self:UpdateRacialCooldown(frame)
             end
         end
     end)
+end
+
+-- Check racial cooldown expiry
+function GladiusMidnight:UpdateRacialCooldown(frame)
+    if frame.racial.startTime and frame.racial.startTime > 0 and frame.racial.duration and frame.racial.duration > 0 then
+        local elapsed = GetTime() - frame.racial.startTime
+        if elapsed >= frame.racial.duration then
+            frame.racial.icon:SetDesaturated(false)
+            frame.racial.startTime = 0
+            frame.racial.duration = 0
+        end
+    end
 end
 
 function GladiusMidnight:OnDisable()
@@ -722,8 +786,9 @@ function GladiusMidnight:UNIT_MAXPOWER(_, unit)
     self:UNIT_POWER_UPDATE(_, unit)
 end
 
-function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, _, spellID)
+function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(event, unit, castGUID, spellID)
     if self.testMode then return end
+    if not unit or not spellID then return end
 
     local index = tonumber(unit:match("arena(%d)"))
     if index and self.frames[index] then
@@ -740,9 +805,29 @@ function GladiusMidnight:CheckArenaStatus()
         for i = 1, 3 do
             if self.frames[i] then
                 self.frames[i]:Hide()
+                self:ResetFrameCooldowns(self.frames[i])
             end
         end
     end
+end
+
+-- Reset cooldown tracking data for a frame
+function GladiusMidnight:ResetFrameCooldowns(frame)
+    -- Reset trinket
+    frame.trinket.spellID = nil
+    frame.trinket.startTime = 0
+    frame.trinket.duration = 0
+    frame.trinket.cooldown:Clear()
+    frame.trinket.icon:SetDesaturated(false)
+    frame.trinket.icon:SetTexture("Interface\\Icons\\INV_Jewelry_TrinketPVP_01")
+
+    -- Reset racial
+    frame.racial.spellID = nil
+    frame.racial.startTime = 0
+    frame.racial.duration = 0
+    frame.racial.cooldown:Clear()
+    frame.racial.icon:SetDesaturated(false)
+    frame.racial.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
 end
 
 -- ============================================================================
