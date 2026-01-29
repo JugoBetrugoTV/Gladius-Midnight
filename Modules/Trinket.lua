@@ -6,13 +6,26 @@
 local addonName, addon = ...
 local Trinket = {}
 
--- PvP Trinket spell IDs
+-- PvP Trinket spell IDs (comprehensive list for all expansions)
 local TRINKET_SPELLS = {
-    [336126] = true,  -- Gladiator's Medallion
-    [336135] = true,  -- Adaptation
-    [208683] = true,  -- Gladiator's Medallion (old)
-    [195710] = true,  -- Honorable Medallion
-    [42292] = true,   -- PvP Trinket (generic)
+    -- Current (Midnight 12.0)
+    [336126] = 120,   -- Gladiator's Medallion
+    [336135] = 120,   -- Adaptation
+
+    -- The War Within / Dragonflight
+    [363117] = 120,   -- Gladiator's Medallion (DF)
+    [370613] = 120,   -- Precognition Immunity
+
+    -- Shadowlands
+    [208683] = 120,   -- Gladiator's Medallion (SL)
+
+    -- Legacy
+    [195710] = 120,   -- Honorable Medallion
+    [42292] = 120,    -- PvP Trinket (generic)
+
+    -- Racial CC-breaks (also trigger trinket CD)
+    [59752] = 120,    -- Every Man for Himself (Human) - shares CD
+    [7744] = 30,      -- Will of the Forsaken (Undead) - own CD but affects trinket
 }
 
 -- ============================================================================
@@ -97,15 +110,25 @@ end
 function Trinket:OnSpellCast(frame, spellID)
     if not spellID then return end
 
-    -- Check if it's a trinket spell
-    if TRINKET_SPELLS[spellID] then
-        self:TriggerCooldown(frame, addon.Data.TrinketCooldown)
+    -- Check if it's a trinket spell (includes CC-break racials)
+    local cooldownDuration = TRINKET_SPELLS[spellID]
+    if cooldownDuration then
+        -- Update icon to match the spell used
+        local iconTexture = addon.Data.GetSpellIcon(spellID)
+        if iconTexture then
+            local container = frame.moduleFrames.trinket
+            if container then
+                container.icon:SetTexture(iconTexture)
+            end
+        end
+
+        self:TriggerCooldown(frame, cooldownDuration)
         return
     end
 
-    -- Check if it's a trinket-sharing racial (Human, Undead)
+    -- Fallback: Check Data.lua trinket-sharing racials
     if addon.Data.TrinketShareRacials[spellID] then
-        self:TriggerCooldown(frame, 90) -- Shared 90 sec cooldown
+        self:TriggerCooldown(frame, 90)
     end
 end
 
