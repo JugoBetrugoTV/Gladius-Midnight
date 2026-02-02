@@ -47,9 +47,9 @@ local defaults = {
             position = "LEFT",
         },
         name = {
-            height = 14,
-            fontSize = 11,
+            fontSize = 12,
             showArenaId = true,
+            colorByClass = true,
         },
         health = {
             height = 28,
@@ -349,6 +349,7 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_POWER_UPDATE")
     self:RegisterEvent("UNIT_MAXPOWER")
     self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    self:RegisterEvent("UNIT_NAME_UPDATE")
 
     -- Enable modules
     for name, module in pairs(self.modules) do
@@ -481,6 +482,18 @@ function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
     local racialModule = self:GetModule("racial")
     if racialModule and self:IsModuleEnabled("racial") then
         racialModule:OnSpellCast(self.frames[index], spellID)
+    end
+end
+
+function GladiusMidnight:UNIT_NAME_UPDATE(_, unit)
+    if self.testMode then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if index and self.frames[index] and self.frames[index]:IsShown() then
+        local module = self:GetModule("name")
+        if module and self:IsModuleEnabled("name") then
+            module:UpdateUnit(self.frames[index])
+        end
     end
 end
 

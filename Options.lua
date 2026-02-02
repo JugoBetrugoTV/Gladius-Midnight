@@ -276,20 +276,8 @@ local options = {
             name = "Namensanzeige Einstellungen",
             inline = true,
             args = {
-                height = {
-                    order = 1,
-                    type = "range",
-                    name = "Höhe",
-                    min = 8, max = 24, step = 1,
-                    get = function() return GladiusMidnight.db.profile.name.height end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.name.height = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                    width = "normal",
-                },
                 fontSize = {
-                    order = 2,
+                    order = 1,
                     type = "range",
                     name = "Schriftgröße",
                     min = 8, max = 18, step = 1,
@@ -301,12 +289,22 @@ local options = {
                     width = "normal",
                 },
                 showArenaId = {
-                    order = 3,
+                    order = 2,
                     type = "toggle",
                     name = "Arena-ID anzeigen",
                     get = function() return GladiusMidnight.db.profile.name.showArenaId end,
                     set = function(_, val)
                         GladiusMidnight.db.profile.name.showArenaId = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                colorByClass = {
+                    order = 3,
+                    type = "toggle",
+                    name = "Klassenfarbe",
+                    get = function() return GladiusMidnight.db.profile.name.colorByClass end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.name.colorByClass = val
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },

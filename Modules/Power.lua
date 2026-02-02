@@ -75,10 +75,6 @@ function Power:Update(frame, testData)
             rightOffset = -(self.core.db.profile.trinket.size + 4)
         end
 
-        if self.core:IsModuleEnabled("name") then
-            topOffset = topOffset + self.core.db.profile.name.height
-        end
-
         powerBar:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, -topOffset)
         powerBar:SetPoint("RIGHT", frame, "RIGHT", rightOffset, 0)
     end
