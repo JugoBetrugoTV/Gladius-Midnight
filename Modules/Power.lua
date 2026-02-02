@@ -66,6 +66,7 @@ function Power:Update(frame, testData)
         -- Fallback if no health bar
         local leftOffset = 2
         local rightOffset = -2
+        local topOffset = healthDb.height + 3
 
         if self.core:IsModuleEnabled("classIcon") then
             leftOffset = self.core.db.profile.classIcon.size + 4
@@ -74,7 +75,11 @@ function Power:Update(frame, testData)
             rightOffset = -(self.core.db.profile.trinket.size + 4)
         end
 
-        powerBar:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, -healthDb.height - 3)
+        if self.core:IsModuleEnabled("name") then
+            topOffset = topOffset + self.core.db.profile.name.height
+        end
+
+        powerBar:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, -topOffset)
         powerBar:SetPoint("RIGHT", frame, "RIGHT", rightOffset, 0)
     end
 

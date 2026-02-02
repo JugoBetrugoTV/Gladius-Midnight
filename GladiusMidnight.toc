@@ -17,6 +17,7 @@ Core.lua
 
 # Modules
 Modules\ClassIcon.lua
+Modules\Name.lua
 Modules\Health.lua
 Modules\Power.lua
 Modules\Trinket.lua

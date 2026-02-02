@@ -34,6 +34,7 @@ local defaults = {
         -- Module toggles
         modules = {
             classIcon = true,
+            name = true,
             health = true,
             power = true,
             trinket = true,
@@ -44,6 +45,11 @@ local defaults = {
         classIcon = {
             size = 50,
             position = "LEFT",
+        },
+        name = {
+            height = 14,
+            fontSize = 11,
+            showArenaId = true,
         },
         health = {
             height = 28,
@@ -258,12 +264,17 @@ function GladiusMidnight:ToggleTest()
         local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
                           "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
                           "DRUID", "DEMONHUNTER", "EVOKER" }
+        local names = { "Aldarion", "Lyra", "Thorgal", "Mira", "Kael",
+                        "Seraph", "Borin", "Nyssa", "Riven", "Talos",
+                        "Eira", "Vorin", "Selene" }
 
         for i = 1, 3 do
             local frame = self.frames[i]
             if frame then
                 local testData = {
                     class = classes[math.random(1, #classes)],
+                    name = names[math.random(1, #names)],
+                    arenaIndex = i,
                     health = math.random(20, 100),
                     maxHealth = 100,
                     power = math.random(0, 100),

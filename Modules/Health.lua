@@ -62,6 +62,7 @@ function Health:Update(frame, testData)
     -- Calculate position based on other modules
     local leftOffset = 2
     local rightOffset = -2
+    local topOffset = 2
 
     -- Account for class icon
     if self.core:IsModuleEnabled("classIcon") then
@@ -73,7 +74,11 @@ function Health:Update(frame, testData)
         rightOffset = -(self.core.db.profile.trinket.size + 4)
     end
 
-    healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, -2)
+    if self.core:IsModuleEnabled("name") then
+        topOffset = topOffset + self.core.db.profile.name.height
+    end
+
+    healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, -topOffset)
     healthBar:SetPoint("RIGHT", frame, "RIGHT", rightOffset, 0)
     healthBar:SetHeight(db.height)
 

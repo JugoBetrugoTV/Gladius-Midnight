@@ -182,8 +182,18 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
-                health = {
+                name = {
                     order = 2,
+                    type = "toggle",
+                    name = "Namen",
+                    get = function() return GladiusMidnight.db.profile.modules.name end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.modules.name = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                health = {
+                    order = 3,
                     type = "toggle",
                     name = "Lebensanzeige",
                     get = function() return GladiusMidnight.db.profile.modules.health end,
@@ -193,7 +203,7 @@ local options = {
                     end,
                 },
                 power = {
-                    order = 3,
+                    order = 4,
                     type = "toggle",
                     name = "Ressourcen",
                     get = function() return GladiusMidnight.db.profile.modules.power end,
@@ -203,7 +213,7 @@ local options = {
                     end,
                 },
                 trinket = {
-                    order = 4,
+                    order = 5,
                     type = "toggle",
                     name = "Trinket Tracker",
                     get = function() return GladiusMidnight.db.profile.modules.trinket end,
@@ -213,7 +223,7 @@ local options = {
                     end,
                 },
                 racial = {
-                    order = 5,
+                    order = 6,
                     type = "toggle",
                     name = "Racial Tracker",
                     get = function() return GladiusMidnight.db.profile.modules.racial end,
@@ -259,9 +269,53 @@ local options = {
             },
         },
 
+        -- Name Settings
+        nameSettings = {
+            order = 6,
+            type = "group",
+            name = "Namensanzeige Einstellungen",
+            inline = true,
+            args = {
+                height = {
+                    order = 1,
+                    type = "range",
+                    name = "Höhe",
+                    min = 8, max = 24, step = 1,
+                    get = function() return GladiusMidnight.db.profile.name.height end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.name.height = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                    width = "normal",
+                },
+                fontSize = {
+                    order = 2,
+                    type = "range",
+                    name = "Schriftgröße",
+                    min = 8, max = 18, step = 1,
+                    get = function() return GladiusMidnight.db.profile.name.fontSize end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.name.fontSize = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                    width = "normal",
+                },
+                showArenaId = {
+                    order = 3,
+                    type = "toggle",
+                    name = "Arena-ID anzeigen",
+                    get = function() return GladiusMidnight.db.profile.name.showArenaId end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.name.showArenaId = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+            },
+        },
+
         -- Health Settings
         healthSettings = {
-            order = 6,
+            order = 7,
             type = "group",
             name = "Lebensanzeige Einstellungen",
             inline = true,
@@ -303,7 +357,7 @@ local options = {
 
         -- Power Settings
         powerSettings = {
-            order = 7,
+            order = 8,
             type = "group",
             name = "Ressourcen Einstellungen",
             inline = true,
@@ -335,7 +389,7 @@ local options = {
 
         -- Trinket/Racial Settings
         trinketSettings = {
-            order = 8,
+            order = 9,
             type = "group",
             name = "Trinket/Racial Einstellungen",
             inline = true,
