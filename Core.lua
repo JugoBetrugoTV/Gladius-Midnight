@@ -229,6 +229,10 @@ function GladiusMidnight:DetectArenaType()
         return
     end
 
+    if not self.db.profile.enabled then
+        self.db.profile.enabled = true
+    end
+
     -- Solo Shuffle
     if C_PvP and C_PvP.IsSoloShuffle and C_PvP.IsSoloShuffle() then
         self.arenaSize = 3
