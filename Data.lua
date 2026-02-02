@@ -120,6 +120,92 @@ addon.Data.TrinketSpellID = 336126  -- Gladiator's Medallion
 addon.Data.TrinketIcon = "Interface\\Icons\\INV_Jewelry_TrinketPVP_01"
 
 -- ============================================================================
+-- Interrupt Spells (SpellID -> Cooldown in seconds)
+-- ============================================================================
+
+addon.Data.InterruptSpells = {
+    [1766] = 15,   -- Kick
+    [2139] = 24,   -- Counterspell
+    [6552] = 15,   -- Pummel
+    [96231] = 15,  -- Rebuke
+    [47528] = 15,  -- Mind Freeze
+    [57994] = 12,  -- Wind Shear
+    [183752] = 15, -- Disrupt
+    [78675] = 60,  -- Solar Beam
+    [116705] = 15, -- Spear Hand Strike
+    [351338] = 15, -- Quell (Evoker)
+    [147362] = 24, -- Counter Shot
+    [187707] = 15, -- Muzzle
+}
+
+-- ============================================================================
+-- DR Categories (SpellID -> Category)
+-- ============================================================================
+
+addon.Data.DRCategories = {
+    -- Stuns
+    [5211] = "stun",     -- Mighty Bash
+    [853] = "stun",      -- Hammer of Justice
+    [408] = "stun",      -- Kidney Shot
+    [1833] = "stun",     -- Cheap Shot
+    [30283] = "stun",    -- Shadowfury
+    [85388] = "stun",    -- Throwdown
+    [132169] = "stun",   -- Storm Bolt
+    [179057] = "stun",   -- Chaos Nova
+    [211881] = "stun",   -- Fel Eruption
+    [221562] = "stun",   -- Asphyxiate (DK)
+    [91800] = "stun",    -- Gnaw
+    [24394] = "stun",    -- Intimidation
+    [119381] = "stun",   -- Leg Sweep
+    [213691] = "stun",   -- Scatter?
+
+    -- Disorient (incap)
+    [118] = "disorient",       -- Polymorph
+    [28272] = "disorient",     -- Polymorph: Pig
+    [28271] = "disorient",     -- Polymorph: Turtle
+    [61305] = "disorient",     -- Polymorph: Black Cat
+    [6770] = "disorient",      -- Sap
+    [1776] = "disorient",      -- Gouge
+    [51514] = "disorient",     -- Hex
+    [605] = "disorient",       -- Mind Control
+    [20066] = "disorient",     -- Repentance
+    [115078] = "disorient",    -- Paralysis
+    [217832] = "disorient",    -- Imprison
+    [710] = "disorient",       -- Banish
+    [8122] = "disorient",      -- Psychic Scream
+
+    -- Fear
+    [5782] = "fear",    -- Fear
+    [6358] = "fear",    -- Seduction
+    [5484] = "fear",    -- Howl of Terror
+    [8122] = "fear",    -- Psychic Scream
+    [5246] = "fear",    -- Intimidating Shout
+    [2094] = "fear",    -- Blind
+
+    -- Silence
+    [15487] = "silence",    -- Silence (Priest)
+    [1330] = "silence",     -- Garrote
+    [47476] = "silence",    -- Strangulate
+    [204490] = "silence",   -- Sigil of Silence
+
+    -- Root
+    [339] = "root",      -- Entangling Roots
+    [122] = "root",      -- Frost Nova
+    [33395] = "root",    -- Freeze
+    [64695] = "root",    -- Earthgrab
+    [162480] = "root",   -- Steel Trap
+    [105771] = "root",   -- Charge root
+}
+
+addon.Data.DRIcons = {
+    stun = 135860,       -- Hammer of Justice icon
+    disorient = 135994,  -- Polymorph icon
+    fear = 136183,       -- Fear icon
+    silence = 135975,    -- Silence icon
+    root = 136100,       -- Entangling Roots icon
+}
+
+-- ============================================================================
 -- Helper Functions
 -- ============================================================================
 

@@ -272,6 +272,26 @@ local options = {
                                 GladiusMidnight:UpdateAllFrames()
                             end,
                         },
+                        interrupt = {
+                            order = 9,
+                            type = "toggle",
+                            name = "Interrupt",
+                            get = function() return GladiusMidnight.db.profile.modules.interrupt end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.interrupt = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        drTracker = {
+                            order = 10,
+                            type = "toggle",
+                            name = "DR Tracker",
+                            get = function() return GladiusMidnight.db.profile.modules.drTracker end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.drTracker = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
                     },
                 },
             },
@@ -507,6 +527,82 @@ local options = {
                         },
                     },
                 },
+                interruptSettings = {
+                    order = 8,
+                    type = "group",
+                    name = "Interrupt",
+                    inline = true,
+                    args = {
+                        size = {
+                            order = 1,
+                            type = "range",
+                            name = "Icon Größe",
+                            min = 16, max = 40, step = 1,
+                            get = function() return GladiusMidnight.db.profile.interrupt.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.interrupt.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        position = {
+                            order = 2,
+                            type = "select",
+                            name = "Position",
+                            values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
+                            get = function() return GladiusMidnight.db.profile.interrupt.position end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.interrupt.position = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
+                },
+                drTrackerSettings = {
+                    order = 9,
+                    type = "group",
+                    name = "DR Tracker",
+                    inline = true,
+                    args = {
+                        size = {
+                            order = 1,
+                            type = "range",
+                            name = "Icon Größe",
+                            min = 12, max = 28, step = 1,
+                            get = function() return GladiusMidnight.db.profile.drTracker.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.drTracker.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        spacing = {
+                            order = 2,
+                            type = "range",
+                            name = "Abstand",
+                            min = 0, max = 8, step = 1,
+                            get = function() return GladiusMidnight.db.profile.drTracker.spacing end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.drTracker.spacing = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        position = {
+                            order = 3,
+                            type = "select",
+                            name = "Position",
+                            values = { ["BOTTOM"] = "Unten", ["TOP"] = "Oben" },
+                            get = function() return GladiusMidnight.db.profile.drTracker.position end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.drTracker.position = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
+                },
             },
         },
 
@@ -548,6 +644,15 @@ function GladiusMidnight:StyleConfigFrame(frame)
     })
     frame:SetBackdropColor(0.06, 0.07, 0.08, 0.98)
     frame:SetBackdropBorderColor(0.9, 0.7, 0.2, 0.9)
+
+    if not frame.GuildWarsAccent then
+        local accent = frame:CreateTexture(nil, "BORDER")
+        accent:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
+        accent:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+        accent:SetHeight(3)
+        accent:SetColorTexture(0.9, 0.7, 0.2, 0.9)
+        frame.GuildWarsAccent = accent
+    end
 
     if frame.TitleText then
         frame.TitleText:SetTextColor(0.95, 0.82, 0.32)

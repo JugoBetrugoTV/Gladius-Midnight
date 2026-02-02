@@ -19,6 +19,8 @@ Core.lua
 Modules\ClassIcon.lua
 Modules\Name.lua
 Modules\SpecIcon.lua
+Modules\Interrupt.lua
+Modules\DRTracker.lua
 Modules\Health.lua
 Modules\Power.lua
 Modules\Trinket.lua

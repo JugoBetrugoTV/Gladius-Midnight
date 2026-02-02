@@ -41,6 +41,8 @@ local defaults = {
             racial = true,
             targetIndicator = true,
             specIcon = true,
+            interrupt = true,
+            drTracker = true,
         },
 
         -- Module-specific settings
@@ -76,6 +78,15 @@ local defaults = {
         specIcon = {
             size = 22,
             position = "RIGHT",
+        },
+        interrupt = {
+            size = 22,
+            position = "RIGHT",
+        },
+        drTracker = {
+            size = 18,
+            spacing = 2,
+            position = "BOTTOM",
         },
     }
 }
@@ -500,6 +511,16 @@ function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
     local racialModule = self:GetModule("racial")
     if racialModule and self:IsModuleEnabled("racial") then
         racialModule:OnSpellCast(self.frames[index], spellID)
+    end
+
+    local interruptModule = self:GetModule("interrupt")
+    if interruptModule and self:IsModuleEnabled("interrupt") then
+        interruptModule:OnSpellCast(self.frames[index], spellID)
+    end
+
+    local drModule = self:GetModule("drTracker")
+    if drModule and self:IsModuleEnabled("drTracker") then
+        drModule:OnSpellCast(self.frames[index], spellID)
     end
 end
 
