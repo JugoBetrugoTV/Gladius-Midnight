@@ -271,6 +271,7 @@ function GladiusMidnight:ToggleTest()
         for i = 1, 3 do
             local frame = self.frames[i]
             if frame then
+                UnregisterUnitWatch(frame)
                 local testData = {
                     class = classes[math.random(1, #classes)],
                     name = names[math.random(1, #names)],
@@ -293,6 +294,7 @@ function GladiusMidnight:ToggleTest()
 
         for i = 1, 3 do
             if self.frames[i] then
+                RegisterUnitWatch(self.frames[i])
                 self.frames[i]:Hide()
             end
         end
