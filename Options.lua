@@ -442,8 +442,11 @@ function GladiusMidnight:SetupOptions()
     -- Register options table
     AceConfig:RegisterOptionsTable(addonName, options)
 
-    -- Add to Blizzard options panel
-    self.optionsFrame = AceConfigDialog:AddToBlizOptions(addonName, "Gladius Midnight")
+    AceConfigDialog:SetDefaultSize(addonName, 600, 540)
+end
+
+function GladiusMidnight:OpenConfig()
+    AceConfigDialog:Open(addonName)
 end
 
 -- Hook into OnInitialize

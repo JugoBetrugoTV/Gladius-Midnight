@@ -540,7 +540,11 @@ function GladiusMidnight:SlashCommand(input)
         self:UpdateAllFrames()
         self:Print("Einstellungen zurückgesetzt")
     elseif input == "config" or input == "" then
-        LibStub("AceConfigDialog-3.0"):Open(addonName)
+        if self.OpenConfig then
+            self:OpenConfig()
+        else
+            LibStub("AceConfigDialog-3.0"):Open(addonName)
+        end
     else
         self:Print("Befehle:")
         self:Print("  |cFF00FF00/gladius|r - Einstellungen öffnen")
