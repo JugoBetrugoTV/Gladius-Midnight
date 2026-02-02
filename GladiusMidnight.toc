@@ -18,10 +18,12 @@ Core.lua
 # Modules
 Modules\ClassIcon.lua
 Modules\Name.lua
+Modules\SpecIcon.lua
 Modules\Health.lua
 Modules\Power.lua
 Modules\Trinket.lua
 Modules\Racial.lua
+Modules\TargetIndicator.lua
 
 # Options (must be last)
 Options.lua

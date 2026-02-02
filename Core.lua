@@ -39,6 +39,8 @@ local defaults = {
             power = true,
             trinket = true,
             racial = true,
+            targetIndicator = true,
+            specIcon = true,
         },
 
         -- Module-specific settings
@@ -66,6 +68,13 @@ local defaults = {
         },
         racial = {
             size = 26,
+            position = "RIGHT",
+        },
+        targetIndicator = {
+            enabledInTest = true,
+        },
+        specIcon = {
+            size = 22,
             position = "RIGHT",
         },
     }
@@ -285,6 +294,7 @@ function GladiusMidnight:ToggleTest()
                     power = math.random(0, 100),
                     maxPower = 100,
                     powerType = Enum.PowerType.Mana,
+                    isTarget = i == 1,
                 }
 
                 self:UpdateFrame(frame, testData)
@@ -356,6 +366,8 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_MAXPOWER")
     self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     self:RegisterEvent("UNIT_NAME_UPDATE")
+    self:RegisterEvent("PLAYER_TARGET_CHANGED")
+    self:RegisterEvent("UNIT_TARGET")
 
     -- Enable modules
     for name, module in pairs(self.modules) do
@@ -500,6 +512,28 @@ function GladiusMidnight:UNIT_NAME_UPDATE(_, unit)
         if module and self:IsModuleEnabled("name") then
             module:UpdateUnit(self.frames[index])
         end
+    end
+end
+
+function GladiusMidnight:PLAYER_TARGET_CHANGED()
+    if self.testMode then return end
+
+    local targetModule = self:GetModule("targetIndicator")
+    if targetModule and self:IsModuleEnabled("targetIndicator") then
+        for i = 1, 3 do
+            local frame = self.frames[i]
+            if frame and frame:IsShown() then
+                targetModule:UpdateUnit(frame)
+            end
+        end
+    end
+end
+
+function GladiusMidnight:UNIT_TARGET(_, unit)
+    if self.testMode then return end
+
+    if unit == "player" then
+        self:PLAYER_TARGET_CHANGED()
     end
 end
 

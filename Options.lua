@@ -252,6 +252,26 @@ local options = {
                                 GladiusMidnight:UpdateAllFrames()
                             end,
                         },
+                        specIcon = {
+                            order = 7,
+                            type = "toggle",
+                            name = "Spezialisierung",
+                            get = function() return GladiusMidnight.db.profile.modules.specIcon end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.specIcon = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        targetIndicator = {
+                            order = 8,
+                            type = "toggle",
+                            name = "Zielmarkierung",
+                            get = function() return GladiusMidnight.db.profile.modules.targetIndicator end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.targetIndicator = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
                     },
                 },
             },
@@ -437,6 +457,56 @@ local options = {
                         },
                     },
                 },
+                specSettings = {
+                    order = 6,
+                    type = "group",
+                    name = "Spezialisierung",
+                    inline = true,
+                    args = {
+                        size = {
+                            order = 1,
+                            type = "range",
+                            name = "Icon Größe",
+                            min = 16, max = 40, step = 1,
+                            get = function() return GladiusMidnight.db.profile.specIcon.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.specIcon.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        position = {
+                            order = 2,
+                            type = "select",
+                            name = "Position",
+                            values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
+                            get = function() return GladiusMidnight.db.profile.specIcon.position end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.specIcon.position = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
+                },
+                targetIndicatorSettings = {
+                    order = 7,
+                    type = "group",
+                    name = "Zielmarkierung",
+                    inline = true,
+                    args = {
+                        enabledInTest = {
+                            order = 1,
+                            type = "toggle",
+                            name = "Im Testmodus anzeigen",
+                            get = function() return GladiusMidnight.db.profile.targetIndicator.enabledInTest end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.targetIndicator.enabledInTest = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                    },
+                },
             },
         },
 
@@ -466,8 +536,29 @@ function GladiusMidnight:SetupOptions()
     AceConfigDialog:SetDefaultSize(addonName, 600, 540)
 end
 
+function GladiusMidnight:StyleConfigFrame(frame)
+    if not frame or frame._gmStyled then return end
+
+    frame._gmStyled = true
+    frame:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    frame:SetBackdropColor(0.06, 0.07, 0.08, 0.98)
+    frame:SetBackdropBorderColor(0.9, 0.7, 0.2, 0.9)
+
+    if frame.TitleText then
+        frame.TitleText:SetTextColor(0.95, 0.82, 0.32)
+    end
+end
+
 function GladiusMidnight:OpenConfig()
     AceConfigDialog:Open(addonName)
+    if AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[addonName] then
+        self:StyleConfigFrame(AceConfigDialog.OpenFrames[addonName])
+    end
 end
 
 -- Hook into OnInitialize
