@@ -289,9 +289,11 @@ function GladiusMidnight:UpdateFrame(frame, testData)
 
     local db = self.db.profile
 
-    -- Update frame size
-    frame:SetSize(db.frameWidth, db.frameHeight)
-    frame:SetScale(db.scale)
+    -- Update frame size (only outside of combat to avoid taint)
+    if not InCombatLockdown() then
+        frame:SetSize(db.frameWidth, db.frameHeight)
+        frame:SetScale(db.scale)
+    end
 
     -- Update each module (show enabled, hide disabled)
     for name, module in pairs(self.modules) do
