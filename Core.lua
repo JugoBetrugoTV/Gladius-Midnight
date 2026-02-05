@@ -138,6 +138,10 @@ function GladiusMidnight:CreateArenaFrame(index)
     frame:RegisterForClicks("AnyUp")
     frame:SetClampedToScreen(true)
 
+    -- IMPORTANT: Allow child frames to render outside parent bounds
+    -- This is needed for DR Tracker (left of frame) and Cast Bar (below frame)
+    frame:SetClipsChildren(false)
+
     frame.unit = unit
     frame.index = index
 
