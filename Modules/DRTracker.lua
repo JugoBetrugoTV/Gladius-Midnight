@@ -318,16 +318,13 @@ function DRTracker:Update(frame, testData)
     container:SetPoint("RIGHT", frame, "LEFT", -4, 0)
     container:SetSize(iconSize * 5 + 10, iconSize)
 
-    -- Match visibility to parent arena frame
-    container:SetShown(frame:IsShown())
-
     -- Update icon sizes
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
     end
 
     if testData then
-        -- Test mode - show some sample DRs
+        -- Test mode - show sample DRs and ensure container is visible
         self:ShowTestDR(frame)
         container:Show()
         return  -- Early return in test mode

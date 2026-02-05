@@ -714,9 +714,44 @@ function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
 
         self:UpdateFrame(frame)
         frame:Show()
+
+        -- Explicitly show UIParent-parented module containers now that frame is visible
+        if frame.moduleFrames then
+            if frame.moduleFrames.drTracker then
+                frame.moduleFrames.drTracker:ClearAllPoints()
+                frame.moduleFrames.drTracker:SetPoint("RIGHT", frame, "LEFT", -4, 0)
+            end
+            if frame.moduleFrames.castBar then
+                frame.moduleFrames.castBar:ClearAllPoints()
+                local height = self.db.profile.castBar.height or 16
+                frame.moduleFrames.castBar:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", height + 2, -2)
+                frame.moduleFrames.castBar:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -2)
+            end
+            if frame.moduleFrames.auras then
+                local healthHeight = self.db.profile.health.height or 28
+                local powerHeight = self:IsModuleEnabled("power") and (self.db.profile.power.height or 10) or 0
+                local yOffset = -(healthHeight + powerHeight + 6)
+                local leftOffset = self.db.profile.classIcon.size + 4
+                frame.moduleFrames.auras:ClearAllPoints()
+                frame.moduleFrames.auras:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, yOffset)
+            end
+        end
+
         self:PositionFrames()
     elseif updateType == "destroyed" then
         frame:Hide()
+        -- Hide UIParent-parented module containers
+        if frame.moduleFrames then
+            if frame.moduleFrames.drTracker then
+                frame.moduleFrames.drTracker:Hide()
+            end
+            if frame.moduleFrames.castBar then
+                frame.moduleFrames.castBar:Hide()
+            end
+            if frame.moduleFrames.auras then
+                frame.moduleFrames.auras:Hide()
+            end
+        end
         self:ResetFrame(frame)
     end
 end

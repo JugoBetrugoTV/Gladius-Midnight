@@ -250,13 +250,12 @@ function Auras:Update(frame, testData)
         iconFrame:SetPoint("LEFT", container, "LEFT", (i - 1) * (iconSize + 2), 0)
     end
 
-    -- Match visibility to parent arena frame, then populate
-    container:SetShown(frame:IsShown())
-
     if testData then
         -- Test mode - show sample auras
         self:ShowTestAuras(frame)
+        container:Show()
     else
+        -- Live mode - RefreshAuras will show/hide based on content
         self:RefreshAuras(frame)
     end
 end
@@ -412,6 +411,13 @@ function Auras:RefreshAuras(frame)
     end
 
     container.activeAuras = auras
+
+    -- Show container if there are auras to display, hide if empty
+    if #auras > 0 then
+        container:Show()
+    else
+        container:Hide()
+    end
 end
 
 function Auras:OnUpdate(frame)
