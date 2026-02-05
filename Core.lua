@@ -571,9 +571,118 @@ function GladiusMidnight:PLAYER_ENTERING_WORLD()
     -- After reload in arena, scan for existing opponents
     local _, instanceType = IsInInstance()
     if instanceType == "arena" and self.db.profile.enabled then
+        -- Initialize Blizzard DR frames (reparent to our frames)
+        C_Timer.After(0.3, function()
+            self:InitializeBlizzardDRFrames()
+        end)
+
         C_Timer.After(0.5, function()
             self:ScanExistingOpponents()
         end)
+    end
+end
+
+-- ============================================================================
+-- Blizzard DR Frame Reparenting (Midnight 12.0)
+-- In Midnight 12.0, Blizzard provides built-in DR tracking via SpellDiminishStatusTray
+-- We reparent these frames to our arena frames (like sArena does)
+-- ============================================================================
+
+function GladiusMidnight:InitializeBlizzardDRFrames()
+    if self.blizzDRFramesInitialized then return end
+
+    local db = self.db.profile.drTracker
+    if not db or not self:IsModuleEnabled("drTracker") then return end
+
+    local iconSize = db.iconSize or 24
+
+    for i = 1, 3 do
+        local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
+        local ourFrame = self.frames[i]
+
+        if not blizzArenaFrame or not ourFrame then
+            -- Blizzard frames not created yet, try again later
+            C_Timer.After(1, function()
+                self:InitializeBlizzardDRFrames()
+            end)
+            return
+        end
+
+        -- Get Blizzard's built-in DR tray
+        local drTray = blizzArenaFrame.SpellDiminishStatusTray
+        if not drTray then
+            -- DR tray not available, try again later
+            C_Timer.After(1, function()
+                self:InitializeBlizzardDRFrames()
+            end)
+            return
+        end
+
+        -- Reparent Blizzard's DR tray to our frame
+        drTray:SetParent(ourFrame)
+        ourFrame.blizzDRTray = drTray
+
+        -- Configure the DR tray
+        drTray:SetFrameStrata("MEDIUM")
+        drTray:SetFrameLevel(15)
+        drTray:EnableMouse(false)
+        if drTray.SetMouseClickEnabled then
+            drTray:SetMouseClickEnabled(false)
+        end
+
+        -- Position to the LEFT of our frame
+        drTray:ClearAllPoints()
+        drTray:SetPoint("RIGHT", ourFrame, "LEFT", -4, 0)
+
+        -- Get and configure individual DR frames
+        local drFrames = {drTray:GetChildren()}
+        ourFrame.blizzDRFrames = drFrames
+
+        for drIndex, drFrame in ipairs(drFrames) do
+            if drFrame and drFrame.Icon then
+                drFrame:SetFrameStrata("MEDIUM")
+                drFrame:SetFrameLevel(16)
+                drFrame:SetAlpha(1)
+                drFrame:EnableMouse(false)
+                if drFrame.SetMouseClickEnabled then
+                    drFrame:SetMouseClickEnabled(false)
+                end
+
+                -- Optional: Add custom border
+                if not drFrame.customBorder then
+                    drFrame.customBorder = drFrame:CreateTexture(nil, "OVERLAY", nil, 6)
+                    drFrame.customBorder:SetTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+                    drFrame.customBorder:SetAllPoints(drFrame)
+                    drFrame.customBorder:SetVertexColor(0, 1, 0)  -- Green border
+                end
+            end
+        end
+
+        -- Hide our custom DR tracker (we're using Blizzard's now)
+        if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
+            ourFrame.moduleFrames.drTracker:Hide()
+        end
+    end
+
+    self.blizzDRFramesInitialized = true
+    self:Print("Blizzard DR Frames initialisiert")
+end
+
+-- Reset Blizzard DR frames when leaving arena
+function GladiusMidnight:ResetBlizzardDRFrames()
+    self.blizzDRFramesInitialized = false
+
+    for i = 1, 3 do
+        local ourFrame = self.frames[i]
+        if ourFrame and ourFrame.blizzDRTray then
+            -- Reparent back to Blizzard frame
+            local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
+            if blizzArenaFrame then
+                ourFrame.blizzDRTray:SetParent(blizzArenaFrame)
+            end
+            ourFrame.blizzDRTray = nil
+            ourFrame.blizzDRFrames = nil
+        end
     end
 end
 
@@ -679,8 +788,22 @@ function GladiusMidnight:HideBlizzardFrames()
 end
 
 function GladiusMidnight:ZONE_CHANGED_NEW_AREA()
+    local _, instanceType = IsInInstance()
+
+    -- Reset Blizzard DR frames when leaving arena
+    if instanceType ~= "arena" and self.blizzDRFramesInitialized then
+        self:ResetBlizzardDRFrames()
+    end
+
     self:DetectArenaType()
     self:CheckArenaStatus()
+
+    -- Initialize Blizzard DR frames when entering arena
+    if instanceType == "arena" and self.db.profile.enabled then
+        C_Timer.After(0.5, function()
+            self:InitializeBlizzardDRFrames()
+        end)
+    end
 end
 
 function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
