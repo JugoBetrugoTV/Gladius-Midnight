@@ -297,8 +297,14 @@ function Auras:RefreshAuras(frame)
         for i, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
         end
+        container.blizzDebuffShown = false
         return
     end
+
+    -- In Midnight 12.0 live arena, we rely on Blizzard hooks for the main debuff
+    -- The native aura scanning below may not work due to "secret" data
+    -- Keep the first slot reserved for Blizzard's hooked debuff if active
+    local startIndex = container.blizzDebuffShown and 2 or 1
 
     -- Collect auras with priority
     local auras = {}
@@ -379,9 +385,11 @@ function Auras:RefreshAuras(frame)
         return a.priority > b.priority
     end)
 
-    -- Update icons
-    for i, iconFrame in ipairs(container.icons) do
-        local aura = auras[i]
+    -- Update icons (starting from startIndex to preserve Blizzard's hooked debuff)
+    local auraIndex = 1
+    for i = startIndex, #container.icons do
+        local iconFrame = container.icons[i]
+        local aura = auras[auraIndex]
         if aura then
             iconFrame.icon:SetTexture(aura.icon)
 
@@ -413,6 +421,7 @@ function Auras:RefreshAuras(frame)
             end
 
             iconFrame:Show()
+            auraIndex = auraIndex + 1
         else
             iconFrame:Hide()
         end
@@ -420,8 +429,8 @@ function Auras:RefreshAuras(frame)
 
     container.activeAuras = auras
 
-    -- Show container if there are auras to display, hide if empty
-    if #auras > 0 then
+    -- Show container if there are auras to display or Blizzard debuff is shown
+    if #auras > 0 or container.blizzDebuffShown then
         container:Show()
     else
         container:Hide()
@@ -461,6 +470,60 @@ end
 function Auras:OnAuraChange(frame)
     if not self.core.testMode then
         self:RefreshAuras(frame)
+    end
+end
+
+-- ============================================================================
+-- Blizzard DebuffFrame Hooks (Midnight 12.0)
+-- Since we can't read aura data directly, we hook into Blizzard's debuff display
+-- ============================================================================
+
+function Auras:OnBlizzardDebuffUpdate(frame, texture)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.auras
+    if not container then return end
+
+    -- Ignore placeholder textures
+    if not texture or texture == "" or
+       texture == "INTERFACE\\ICONS\\INV_MISC_QUESTIONMARK.BLP" or
+       texture:find("INV_MISC_QUESTIONMARK") then
+        -- No valid debuff - hide first icon if it was showing Blizzard debuff
+        if container.blizzDebuffShown and container.icons[1] then
+            container.icons[1]:Hide()
+            container.blizzDebuffShown = false
+        end
+        return
+    end
+
+    -- Show the first aura icon with Blizzard's debuff texture
+    local iconFrame = container.icons[1]
+    if iconFrame then
+        iconFrame.icon:SetTexture(texture)
+        iconFrame:SetBackdropBorderColor(1, 0, 0, 1)  -- Red for CC
+        iconFrame.stacks:SetText("")
+        iconFrame.duration:SetText("")
+        iconFrame:Show()
+        container.blizzDebuffShown = true
+        container:Show()
+    end
+end
+
+function Auras:OnBlizzardDebuffCooldown(frame, start, duration)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.auras
+    if not container then return end
+
+    local iconFrame = container.icons[1]
+    if iconFrame and container.blizzDebuffShown then
+        if start and duration and start > 0 and duration > 0 then
+            iconFrame.cooldown:SetCooldown(start, duration)
+            iconFrame.expirationTime = start + duration
+        else
+            iconFrame.cooldown:Clear()
+            iconFrame.expirationTime = nil
+        end
     end
 end
 
@@ -530,6 +593,7 @@ function Auras:Reset(frame)
     if container then
         container.activeAuras = {}
         container.lastRefresh = nil
+        container.blizzDebuffShown = false
         for i, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
             iconFrame.cooldown:Clear()

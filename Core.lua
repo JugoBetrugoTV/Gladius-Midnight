@@ -571,9 +571,9 @@ function GladiusMidnight:PLAYER_ENTERING_WORLD()
     -- After reload in arena, scan for existing opponents
     local _, instanceType = IsInInstance()
     if instanceType == "arena" and self.db.profile.enabled then
-        -- Initialize Blizzard DR frames (reparent to our frames)
+        -- Initialize Blizzard frames (DR + CastBar reparenting)
         C_Timer.After(0.3, function()
-            self:InitializeBlizzardDRFrames()
+            self:InitializeBlizzardFrames()
         end)
 
         C_Timer.After(0.5, function()
@@ -588,13 +588,8 @@ end
 -- We reparent these frames to our arena frames (like sArena does)
 -- ============================================================================
 
-function GladiusMidnight:InitializeBlizzardDRFrames()
-    if self.blizzDRFramesInitialized then return end
-
-    local db = self.db.profile.drTracker
-    if not db or not self:IsModuleEnabled("drTracker") then return end
-
-    local iconSize = db.iconSize or 24
+function GladiusMidnight:InitializeBlizzardFrames()
+    if self.blizzFramesInitialized then return end
 
     for i = 1, 3 do
         local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
@@ -603,87 +598,174 @@ function GladiusMidnight:InitializeBlizzardDRFrames()
         if not blizzArenaFrame or not ourFrame then
             -- Blizzard frames not created yet, try again later
             C_Timer.After(1, function()
-                self:InitializeBlizzardDRFrames()
+                self:InitializeBlizzardFrames()
             end)
             return
         end
 
-        -- Get Blizzard's built-in DR tray
-        local drTray = blizzArenaFrame.SpellDiminishStatusTray
-        if not drTray then
-            -- DR tray not available, try again later
-            C_Timer.After(1, function()
-                self:InitializeBlizzardDRFrames()
-            end)
-            return
-        end
+        -- =====================================================================
+        -- DR Tray Reparenting (SpellDiminishStatusTray)
+        -- =====================================================================
+        if self:IsModuleEnabled("drTracker") then
+            local drTray = blizzArenaFrame.SpellDiminishStatusTray
+            if drTray then
+                -- Reparent Blizzard's DR tray to our frame
+                drTray:SetParent(ourFrame)
+                ourFrame.blizzDRTray = drTray
 
-        -- Reparent Blizzard's DR tray to our frame
-        drTray:SetParent(ourFrame)
-        ourFrame.blizzDRTray = drTray
-
-        -- Configure the DR tray
-        drTray:SetFrameStrata("MEDIUM")
-        drTray:SetFrameLevel(15)
-        drTray:EnableMouse(false)
-        if drTray.SetMouseClickEnabled then
-            drTray:SetMouseClickEnabled(false)
-        end
-
-        -- Position to the LEFT of our frame
-        drTray:ClearAllPoints()
-        drTray:SetPoint("RIGHT", ourFrame, "LEFT", -4, 0)
-
-        -- Get and configure individual DR frames
-        local drFrames = {drTray:GetChildren()}
-        ourFrame.blizzDRFrames = drFrames
-
-        for drIndex, drFrame in ipairs(drFrames) do
-            if drFrame and drFrame.Icon then
-                drFrame:SetFrameStrata("MEDIUM")
-                drFrame:SetFrameLevel(16)
-                drFrame:SetAlpha(1)
-                drFrame:EnableMouse(false)
-                if drFrame.SetMouseClickEnabled then
-                    drFrame:SetMouseClickEnabled(false)
+                -- Configure the DR tray
+                drTray:SetFrameStrata("MEDIUM")
+                drTray:SetFrameLevel(15)
+                drTray:EnableMouse(false)
+                if drTray.SetMouseClickEnabled then
+                    drTray:SetMouseClickEnabled(false)
                 end
 
-                -- Optional: Add custom border
-                if not drFrame.customBorder then
-                    drFrame.customBorder = drFrame:CreateTexture(nil, "OVERLAY", nil, 6)
-                    drFrame.customBorder:SetTexture("Interface\\Buttons\\UI-Quickslot-Depress")
-                    drFrame.customBorder:SetAllPoints(drFrame)
-                    drFrame.customBorder:SetVertexColor(0, 1, 0)  -- Green border
+                -- Position to the LEFT of our frame
+                drTray:ClearAllPoints()
+                drTray:SetPoint("RIGHT", ourFrame, "LEFT", -4, 0)
+
+                -- Get and configure individual DR frames
+                local drFrames = {drTray:GetChildren()}
+                ourFrame.blizzDRFrames = drFrames
+
+                for drIndex, drFrame in ipairs(drFrames) do
+                    if drFrame and drFrame.Icon then
+                        drFrame:SetFrameStrata("MEDIUM")
+                        drFrame:SetFrameLevel(16)
+                        drFrame:SetAlpha(1)
+                        drFrame:EnableMouse(false)
+                        if drFrame.SetMouseClickEnabled then
+                            drFrame:SetMouseClickEnabled(false)
+                        end
+                    end
+                end
+
+                -- Hide our custom DR tracker (we're using Blizzard's now)
+                if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
+                    ourFrame.moduleFrames.drTracker:Hide()
                 end
             end
         end
 
-        -- Hide our custom DR tracker (we're using Blizzard's now)
-        if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
-            ourFrame.moduleFrames.drTracker:Hide()
+        -- =====================================================================
+        -- CastBar Reparenting (CastingBarFrame)
+        -- In Midnight 12.0, cast data for arena opponents is "secret"
+        -- We reparent Blizzard's built-in cast bar instead
+        -- =====================================================================
+        if self:IsModuleEnabled("castBar") then
+            local blizzCastBar = blizzArenaFrame.CastingBarFrame
+            if blizzCastBar then
+                -- Reparent Blizzard's cast bar to our frame
+                blizzCastBar:SetParent(ourFrame)
+                ourFrame.blizzCastBar = blizzCastBar
+
+                -- Configure the cast bar
+                blizzCastBar:SetFrameStrata("HIGH")
+                blizzCastBar:SetFrameLevel(20)
+                blizzCastBar:EnableMouse(false)
+                if blizzCastBar.SetMouseClickEnabled then
+                    blizzCastBar:SetMouseClickEnabled(false)
+                end
+
+                -- Position BELOW our frame
+                local db = self.db.profile.castBar
+                local height = db and db.height or 16
+                blizzCastBar:ClearAllPoints()
+                blizzCastBar:SetPoint("TOPLEFT", ourFrame, "BOTTOMLEFT", 0, -2)
+                blizzCastBar:SetPoint("TOPRIGHT", ourFrame, "BOTTOMRIGHT", 0, -2)
+                blizzCastBar:SetHeight(height)
+
+                -- Hide our custom cast bar (we're using Blizzard's now)
+                if ourFrame.moduleFrames and ourFrame.moduleFrames.castBar then
+                    ourFrame.moduleFrames.castBar:Hide()
+                end
+            end
+        end
+
+        -- =====================================================================
+        -- DebuffFrame Hooking (for main CC/Debuff display)
+        -- In Midnight 12.0, aura data is "secret" - we hook Blizzard's display
+        -- to show the most important CC on our aura slot
+        -- =====================================================================
+        if self:IsModuleEnabled("auras") then
+            local debuffFrame = blizzArenaFrame.DebuffFrame
+            if debuffFrame and debuffFrame.Icon then
+                ourFrame.blizzDebuffFrame = debuffFrame
+
+                -- Store reference for this frame index
+                local frameIndex = i
+
+                -- Hook SetTexture to catch when Blizzard updates the debuff icon
+                if not debuffFrame.gladiusHooked then
+                    hooksecurefunc(debuffFrame.Icon, "SetTexture", function(_, tex)
+                        local frame = self.frames[frameIndex]
+                        if frame and frame.moduleFrames and frame.moduleFrames.auras then
+                            local aurasModule = self:GetModule("auras")
+                            if aurasModule and aurasModule.OnBlizzardDebuffUpdate then
+                                aurasModule:OnBlizzardDebuffUpdate(frame, tex)
+                            end
+                        end
+                    end)
+
+                    -- Hook SetCooldown to catch cooldown updates
+                    if debuffFrame.Cooldown then
+                        hooksecurefunc(debuffFrame.Cooldown, "SetCooldown", function(_, start, duration)
+                            local frame = self.frames[frameIndex]
+                            if frame and frame.moduleFrames and frame.moduleFrames.auras then
+                                local aurasModule = self:GetModule("auras")
+                                if aurasModule and aurasModule.OnBlizzardDebuffCooldown then
+                                    aurasModule:OnBlizzardDebuffCooldown(frame, start, duration)
+                                end
+                            end
+                        end)
+                    end
+
+                    debuffFrame.gladiusHooked = true
+                end
+            end
         end
     end
 
-    self.blizzDRFramesInitialized = true
-    self:Print("Blizzard DR Frames initialisiert")
+    self.blizzFramesInitialized = true
+    self:Print("Blizzard Frames initialisiert (DR + CastBar + Aura Hooks)")
 end
 
--- Reset Blizzard DR frames when leaving arena
-function GladiusMidnight:ResetBlizzardDRFrames()
-    self.blizzDRFramesInitialized = false
+-- Legacy alias for backwards compatibility
+function GladiusMidnight:InitializeBlizzardDRFrames()
+    self:InitializeBlizzardFrames()
+end
+
+-- Reset Blizzard frames when leaving arena
+function GladiusMidnight:ResetBlizzardFrames()
+    self.blizzFramesInitialized = false
 
     for i = 1, 3 do
         local ourFrame = self.frames[i]
+        local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
+
+        -- Reset DR tray
         if ourFrame and ourFrame.blizzDRTray then
-            -- Reparent back to Blizzard frame
-            local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
             if blizzArenaFrame then
                 ourFrame.blizzDRTray:SetParent(blizzArenaFrame)
             end
             ourFrame.blizzDRTray = nil
             ourFrame.blizzDRFrames = nil
         end
+
+        -- Reset Cast bar
+        if ourFrame and ourFrame.blizzCastBar then
+            if blizzArenaFrame then
+                ourFrame.blizzCastBar:SetParent(blizzArenaFrame)
+            end
+            ourFrame.blizzCastBar = nil
+        end
     end
+end
+
+-- Legacy alias for backwards compatibility
+function GladiusMidnight:ResetBlizzardDRFrames()
+    self:ResetBlizzardFrames()
 end
 
 function GladiusMidnight:ScanExistingOpponents()
@@ -790,18 +872,18 @@ end
 function GladiusMidnight:ZONE_CHANGED_NEW_AREA()
     local _, instanceType = IsInInstance()
 
-    -- Reset Blizzard DR frames when leaving arena
-    if instanceType ~= "arena" and self.blizzDRFramesInitialized then
-        self:ResetBlizzardDRFrames()
+    -- Reset Blizzard frames when leaving arena
+    if instanceType ~= "arena" and self.blizzFramesInitialized then
+        self:ResetBlizzardFrames()
     end
 
     self:DetectArenaType()
     self:CheckArenaStatus()
 
-    -- Initialize Blizzard DR frames when entering arena
+    -- Initialize Blizzard frames when entering arena (DR + CastBar)
     if instanceType == "arena" and self.db.profile.enabled then
         C_Timer.After(0.5, function()
-            self:InitializeBlizzardDRFrames()
+            self:InitializeBlizzardFrames()
         end)
     end
 end
