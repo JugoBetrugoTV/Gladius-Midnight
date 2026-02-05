@@ -125,11 +125,13 @@ end
 
 function Trinket:OnSpellCast(frame, spellID)
     -- In Midnight 12.0, spellID may be "secret" for arena opponents
-    if not spellID or type(spellID) ~= "number" then return end
+    if not spellID then return end
 
-    -- Check if it's a trinket spell (includes CC-break racials)
-    local cooldownDuration = TRINKET_SPELLS[spellID]
-    if cooldownDuration then
+    -- Use pcall for table access to handle secret values
+    local success, cooldownDuration = pcall(function()
+        return TRINKET_SPELLS[spellID]
+    end)
+    if success and cooldownDuration then
         -- Update icon to match the spell used
         local iconTexture = addon.Data.GetSpellIcon(spellID)
         if iconTexture then
@@ -144,7 +146,10 @@ function Trinket:OnSpellCast(frame, spellID)
     end
 
     -- Fallback: Check Data.lua trinket-sharing racials
-    if addon.Data.TrinketShareRacials[spellID] then
+    local fallbackSuccess, isTrinketRacial = pcall(function()
+        return addon.Data.TrinketShareRacials[spellID]
+    end)
+    if fallbackSuccess and isTrinketRacial then
         self:TriggerCooldown(frame, 90)
     end
 end
@@ -209,18 +214,18 @@ function Trinket:OnUpdate(frame)
     if C_PvP and C_PvP.GetArenaCrowdControlInfo and UnitExists(frame.unit) then
         local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(frame.unit)
 
-        -- In Midnight 12.0, values may be "secret" - check types first
-        if spellID and startTime and duration
-           and type(spellID) == "number" and type(startTime) == "number" and type(duration) == "number"
-           and duration > 0 then
-            -- Validate: duration must be reasonable (max 3 min for trinkets)
-            -- Validate: startTime must be reasonable (within last 3 min)
-            local isValidDuration = duration <= 180
-            local isValidStartTime = startTime > 0 and (now - startTime) < 300
+        -- In Midnight 12.0, values may be "secret" - use pcall for comparisons
+        if spellID and startTime and duration then
+            local validateSuccess, isValid = pcall(function()
+                return duration > 0 and duration <= 180 and startTime > 0 and (now - startTime) < 300
+            end)
 
-            if isValidDuration and isValidStartTime then
-                -- New cooldown detected or updated
-                if startTime ~= container.startTime or duration ~= container.duration then
+            if validateSuccess and isValid then
+                -- Check if this is new cooldown data
+                local checkSuccess, isNewData = pcall(function()
+                    return startTime ~= container.startTime or duration ~= container.duration
+                end)
+                if checkSuccess and isNewData then
                     container.startTime = startTime
                     container.duration = duration
                     container.onCooldown = true
@@ -279,16 +284,20 @@ function Trinket:OnBlizzardTrinketCooldown(frame, start, duration)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
-    -- In Midnight 12.0, start/duration may be "secret" values - check type first
+    -- In Midnight 12.0, start/duration may be "secret" values
+    -- Use pcall for comparisons to handle secret values safely
     if not start or not duration then return end
-    if type(start) ~= "number" or type(duration) ~= "number" then return end
-    if start <= 0 or duration <= 0 then return end
 
-    -- Validate duration (max 3 min for trinkets)
-    if duration > 180 then return end
+    local validateSuccess, isValid = pcall(function()
+        return start > 0 and duration > 0 and duration <= 180
+    end)
+    if not validateSuccess or not isValid then return end
 
     -- Only update if this is new data
-    if start ~= container.startTime or duration ~= container.duration then
+    local checkSuccess, isNewData = pcall(function()
+        return start ~= container.startTime or duration ~= container.duration
+    end)
+    if checkSuccess and isNewData then
         container.startTime = start
         container.duration = duration
         container.onCooldown = true

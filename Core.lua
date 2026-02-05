@@ -1262,14 +1262,20 @@ function GladiusMidnight:ScanDebuffsForDR(frame, unit)
             local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
             if not auraData then break end
 
-            -- In Midnight 12.0, spellId may be secret (nil or inaccessible)
+            -- In Midnight 12.0, spellId may be secret - use pcall for table access
             local spellId = auraData.spellId
-            if spellId and type(spellId) == "number" then
-                currentDebuffs[spellId] = true
-
-                -- Only process if this is a NEW debuff (not seen in last scan)
-                if not frame.lastDRScan[spellId] then
-                    drModule:OnAura(frame, spellId)
+            if spellId then
+                local success = pcall(function()
+                    currentDebuffs[spellId] = true
+                end)
+                if success then
+                    -- Only process if this is a NEW debuff (not seen in last scan)
+                    local checkSuccess, isNew = pcall(function()
+                        return not frame.lastDRScan[spellId]
+                    end)
+                    if checkSuccess and isNew then
+                        drModule:OnAura(frame, spellId)
+                    end
                 end
             end
         end

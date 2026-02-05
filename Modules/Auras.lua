@@ -315,23 +315,25 @@ function Auras:RefreshAuras(frame)
         local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
         if not auraData then break end
 
-        -- In Midnight 12.0, spellId and other fields may be secret/nil
+        -- In Midnight 12.0, spellId and other fields may be secret
+        -- Use pcall to safely access potentially secret table indices
         local spellId = auraData.spellId
-        if spellId and type(spellId) == "number" then
-            local priority = PRIORITY_AURAS[spellId]
+        local success, priority = pcall(function()
+            if spellId then return PRIORITY_AURAS[spellId] end
+            return nil
+        end)
 
-            if priority then
-                table.insert(auras, {
-                    spellId = spellId,
-                    name = auraData.name,
-                    icon = auraData.icon,
-                    duration = (type(auraData.duration) == "number") and auraData.duration or 0,
-                    expirationTime = (type(auraData.expirationTime) == "number") and auraData.expirationTime or 0,
-                    stacks = (type(auraData.applications) == "number") and auraData.applications or 0,
-                    priority = priority,
-                    isDebuff = true,
-                })
-            end
+        if success and priority then
+            table.insert(auras, {
+                spellId = spellId,
+                name = auraData.name,
+                icon = auraData.icon,
+                duration = (type(auraData.duration) == "number") and auraData.duration or 0,
+                expirationTime = (type(auraData.expirationTime) == "number") and auraData.expirationTime or 0,
+                stacks = (type(auraData.applications) == "number") and auraData.applications or 0,
+                priority = priority,
+                isDebuff = true,
+            })
         end
     end
 
@@ -342,14 +344,20 @@ function Auras:RefreshAuras(frame)
         local auraData = C_UnitAuras.GetBuffDataByIndex(unit, i)
         if not auraData then break end
 
-        -- In Midnight 12.0, spellId and other fields may be secret/nil
+        -- In Midnight 12.0, spellId and other fields may be secret
+        -- Use pcall to safely access potentially secret table indices
         local spellId = auraData.spellId
-        if spellId and type(spellId) == "number" then
-            local priority = PRIORITY_AURAS[spellId]
+        local success, priority = pcall(function()
+            if spellId then return PRIORITY_AURAS[spellId] end
+            return nil
+        end)
 
+        if success then
             -- Check for immunity type (ArenaCore style - magic vs total)
-            local spellImmunityType = addon.Data.GetImmunityType(spellId)
-            if spellImmunityType then
+            local immSuccess, spellImmunityType = pcall(function()
+                return addon.Data.GetImmunityType(spellId)
+            end)
+            if immSuccess and spellImmunityType then
                 -- Total immunity takes priority over magic immunity
                 if spellImmunityType == "total" then
                     immunityType = "total"
@@ -358,8 +366,13 @@ function Auras:RefreshAuras(frame)
                 end
             end
             -- Fallback: Check old IMMUNITY_SPELLS table
-            if not immunityType and IMMUNITY_SPELLS[spellId] then
-                immunityType = "total"
+            if not immunityType then
+                local immTableSuccess, isImmunity = pcall(function()
+                    return spellId and IMMUNITY_SPELLS[spellId]
+                end)
+                if immTableSuccess and isImmunity then
+                    immunityType = "total"
+                end
             end
 
             if priority then

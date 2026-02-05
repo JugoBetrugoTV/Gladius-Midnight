@@ -404,8 +404,12 @@ function DRTracker:ApplyDR(frame, spellID)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
-    local category = DR_SPELLS[spellID]
-    if not category then return end
+    -- In Midnight 12.0, spellID may be secret - use pcall for table access
+    local success, category = pcall(function()
+        if spellID then return DR_SPELLS[spellID] end
+        return nil
+    end)
+    if not success or not category then return end
 
     local drData = container.drData
     local now = GetTime()
@@ -536,11 +540,14 @@ end
 -- Called when UNIT_AURA fires for arena units
 -- NOTE: In Midnight 12.0, spellID may be "secret" and inaccessible
 function DRTracker:OnAura(frame, spellID)
-    -- In Midnight 12.0, spellID is often secret/nil for arena opponents
-    if not spellID or type(spellID) ~= "number" then return end
+    -- In Midnight 12.0, spellID is often secret for arena opponents
+    -- Use pcall for table index access to handle secret values
+    if not spellID then return end
 
-    -- Check if this is a DR spell
-    if DR_SPELLS[spellID] then
+    local success, isDRSpell = pcall(function()
+        return DR_SPELLS[spellID] ~= nil
+    end)
+    if success and isDRSpell then
         self:ApplyDR(frame, spellID)
     end
 end

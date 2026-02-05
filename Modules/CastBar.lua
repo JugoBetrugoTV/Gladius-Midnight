@@ -164,16 +164,21 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
     -- Check if we got valid data before proceeding
     if not name then return end
     if not startTimeMS or not endTimeMS then return end
-    if type(startTimeMS) ~= "number" or type(endTimeMS) ~= "number" then return end
+
+    -- Use pcall for arithmetic on potentially secret values
+    local success, startTime = pcall(function() return startTimeMS / 1000 end)
+    if not success then return end
+    local success2, endTime = pcall(function() return endTimeMS / 1000 end)
+    if not success2 then return end
 
     -- Setup cast bar
     castBar.casting = not isChannel
     castBar.channeling = isChannel
-    castBar.startTime = startTimeMS / 1000
-    castBar.endTime = endTimeMS / 1000
+    castBar.startTime = startTime
+    castBar.endTime = endTime
     castBar.spellID = spellId or spellID
 
-    local duration = castBar.endTime - castBar.startTime
+    local duration = endTime - startTime
 
     -- Set color based on interruptibility
     if notInterruptible then

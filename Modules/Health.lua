@@ -168,17 +168,30 @@ function Health:UpdateUnit(frame)
                 end
             end)
 
-            if success and percent and type(percent) == "number" then
-                healthBar.text:SetFormattedText("%d%%", math.floor(percent))
+            if success and percent then
+                -- Use pcall for math.floor in case percent is a secret value
+                local floorSuccess, floorPercent = pcall(function()
+                    return math.floor(percent)
+                end)
+                if floorSuccess and floorPercent then
+                    healthBar.text:SetFormattedText("%d%%", floorPercent)
+                else
+                    healthBar.text:SetText("100%")
+                end
             else
                 -- Fallback if API call failed
                 healthBar.text:SetText("100%")
             end
         else
-            -- Pre-12.0 fallback: Check if values are numbers (not secret)
-            if type(health) == "number" and type(maxHealth) == "number" and maxHealth > 0 then
-                local percent = math.floor((health / maxHealth) * 100)
-                healthBar.text:SetText(percent .. "%")
+            -- Pre-12.0 fallback: Use pcall for potentially secret values
+            local calcSuccess, calcPercent = pcall(function()
+                if health and maxHealth and maxHealth > 0 then
+                    return math.floor((health / maxHealth) * 100)
+                end
+                return nil
+            end)
+            if calcSuccess and calcPercent then
+                healthBar.text:SetText(calcPercent .. "%")
             else
                 healthBar.text:SetText("")
             end

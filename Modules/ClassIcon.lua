@@ -229,11 +229,17 @@ function ClassIcon:OnDebuffCooldown(frame, start, duration)
     local container = frame.moduleFrames.classIcon
     if not container or not container.debuffCooldown then return end
 
-    -- In Midnight 12.0, start/duration may be "secret" values - check type before comparison
-    if container.showingDebuff and start and duration
-       and type(start) == "number" and type(duration) == "number"
-       and start > 0 and duration > 0 then
-        container.debuffCooldown:SetCooldown(start, duration)
+    -- In Midnight 12.0, start/duration may be "secret" values
+    -- Use pcall for comparisons to handle secret values safely
+    if container.showingDebuff and start and duration then
+        local success, shouldShow = pcall(function()
+            return start > 0 and duration > 0
+        end)
+        if success and shouldShow then
+            container.debuffCooldown:SetCooldown(start, duration)
+        else
+            container.debuffCooldown:Clear()
+        end
     else
         container.debuffCooldown:Clear()
     end
