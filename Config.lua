@@ -930,7 +930,7 @@ local function CreateConfigPanel()
 
     -- Main frame
     local frame = CreateFrame("Frame", "GladiusMidnightConfigFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(700, 550)
+    frame:SetSize(720, 600)
     frame:SetPoint("CENTER")
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -952,108 +952,307 @@ local function CreateConfigPanel()
     frame:SetBackdropColor(ColorRGB(COLORS.bgDark, 0.98))
 
     -- =========================================================================
-    -- Header Section
+    -- GRAFFITI STYLE Header Section
     -- =========================================================================
 
-    local headerFrame = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    headerFrame:SetHeight(60)
+    local headerFrame = CreateFrame("Frame", nil, frame)
+    headerFrame:SetHeight(90)
     headerFrame:SetPoint("TOPLEFT", 8, -8)
     headerFrame:SetPoint("TOPRIGHT", -8, -8)
-    headerFrame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-    })
 
-    -- Header gradient
-    local headerGradient = headerFrame:CreateTexture(nil, "BACKGROUND")
-    headerGradient:SetAllPoints()
-    headerGradient:SetColorTexture(1, 1, 1)
-    headerGradient:SetGradient("VERTICAL",
-        CreateColor(COLORS.accentDark.r * 0.3, COLORS.accentDark.g * 0.3, COLORS.accentDark.b * 0.3, 1),
-        CreateColor(COLORS.bgDark.r, COLORS.bgDark.g, COLORS.bgDark.b, 1))
+    -- Dark base background
+    local headerBg = headerFrame:CreateTexture(nil, "BACKGROUND", nil, 0)
+    headerBg:SetAllPoints()
+    headerBg:SetColorTexture(0.02, 0.02, 0.05, 1)
 
-    -- Logo/Title area
-    local logoIcon = headerFrame:CreateTexture(nil, "ARTWORK")
-    logoIcon:SetSize(48, 48)
-    logoIcon:SetPoint("LEFT", 15, 0)
+    -- Diagonal stripes pattern (urban graffiti style)
+    for i = 0, 20 do
+        local stripe = headerFrame:CreateTexture(nil, "BACKGROUND", nil, 1)
+        stripe:SetSize(4, 120)
+        stripe:SetPoint("TOPLEFT", -20 + (i * 35), 20)
+        stripe:SetColorTexture(1, 1, 1)
+        stripe:SetGradient("VERTICAL",
+            CreateColor(0.1, 0.1, 0.15, 0.3),
+            CreateColor(0.05, 0.05, 0.1, 0.1))
+        stripe:SetRotation(math.rad(45))
+    end
+
+    -- Neon glow bar at top
+    local topGlow = headerFrame:CreateTexture(nil, "ARTWORK", nil, 1)
+    topGlow:SetHeight(3)
+    topGlow:SetPoint("TOPLEFT", 0, 0)
+    topGlow:SetPoint("TOPRIGHT", 0, 0)
+    topGlow:SetColorTexture(1, 1, 1)
+    topGlow:SetGradient("HORIZONTAL",
+        CreateColor(1, 0, 0.5, 1),
+        CreateColor(0, 0.8, 1, 1))
+
+    -- Glow blur effect
+    local topGlowBlur = headerFrame:CreateTexture(nil, "ARTWORK", nil, 0)
+    topGlowBlur:SetHeight(15)
+    topGlowBlur:SetPoint("TOPLEFT", 0, 5)
+    topGlowBlur:SetPoint("TOPRIGHT", 0, 5)
+    topGlowBlur:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    topGlowBlur:SetGradient("HORIZONTAL",
+        CreateColor(1, 0, 0.5, 0.3),
+        CreateColor(0, 0.8, 1, 0.3))
+    topGlowBlur:SetBlendMode("ADD")
+
+    -- Bottom neon line
+    local bottomGlow = headerFrame:CreateTexture(nil, "ARTWORK", nil, 2)
+    bottomGlow:SetHeight(2)
+    bottomGlow:SetPoint("BOTTOMLEFT", 0, 0)
+    bottomGlow:SetPoint("BOTTOMRIGHT", 0, 0)
+    bottomGlow:SetColorTexture(1, 1, 1)
+    bottomGlow:SetGradient("HORIZONTAL",
+        CreateColor(0, 0.8, 1, 1),
+        CreateColor(1, 0, 0.5, 1))
+
+    -- Spray paint splatter effects (decorative circles)
+    local splatters = {
+        {x = 50, y = -15, size = 40, r = 1, g = 0, b = 0.5, a = 0.15},
+        {x = 580, y = -25, size = 50, r = 0, g = 0.8, b = 1, a = 0.12},
+        {x = 300, y = -60, size = 30, r = 1, g = 0.8, b = 0, a = 0.1},
+        {x = 450, y = -10, size = 25, r = 0.5, g = 0, b = 1, a = 0.15},
+        {x = 150, y = -70, size = 35, r = 0, g = 1, b = 0.5, a = 0.08},
+    }
+
+    for _, splat in ipairs(splatters) do
+        local circle = headerFrame:CreateTexture(nil, "ARTWORK", nil, 0)
+        circle:SetSize(splat.size, splat.size)
+        circle:SetPoint("TOPLEFT", splat.x, splat.y)
+        circle:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+        circle:SetVertexColor(splat.r, splat.g, splat.b, splat.a)
+        circle:SetBlendMode("ADD")
+    end
+
+    -- Logo with glow effect
+    local logoGlow = headerFrame:CreateTexture(nil, "ARTWORK", nil, 2)
+    logoGlow:SetSize(70, 70)
+    logoGlow:SetPoint("LEFT", 12, 0)
+    logoGlow:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+    logoGlow:SetVertexColor(0, 0.8, 1, 0.4)
+    logoGlow:SetBlendMode("ADD")
+
+    local logoIcon = headerFrame:CreateTexture(nil, "ARTWORK", nil, 3)
+    logoIcon:SetSize(55, 55)
+    logoIcon:SetPoint("LEFT", 20, 0)
     logoIcon:SetTexture("Interface\\Icons\\Achievement_Arena_5v5_1")
     logoIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    -- Logo border
-    local logoBorder = CreateFrame("Frame", nil, headerFrame, "BackdropTemplate")
-    logoBorder:SetPoint("TOPLEFT", logoIcon, "TOPLEFT", -2, 2)
-    logoBorder:SetPoint("BOTTOMRIGHT", logoIcon, "BOTTOMRIGHT", 2, -2)
-    logoBorder:SetBackdrop({
+    -- Neon border for logo
+    local logoBorderFrame = CreateFrame("Frame", nil, headerFrame)
+    logoBorderFrame:SetSize(59, 59)
+    logoBorderFrame:SetPoint("CENTER", logoIcon, "CENTER")
+
+    local borderTop = logoBorderFrame:CreateTexture(nil, "OVERLAY")
+    borderTop:SetHeight(2)
+    borderTop:SetPoint("TOPLEFT", -2, 2)
+    borderTop:SetPoint("TOPRIGHT", 2, 2)
+    borderTop:SetColorTexture(0, 0.8, 1, 1)
+
+    local borderBottom = logoBorderFrame:CreateTexture(nil, "OVERLAY")
+    borderBottom:SetHeight(2)
+    borderBottom:SetPoint("BOTTOMLEFT", -2, -2)
+    borderBottom:SetPoint("BOTTOMRIGHT", 2, -2)
+    borderBottom:SetColorTexture(1, 0, 0.5, 1)
+
+    local borderLeft = logoBorderFrame:CreateTexture(nil, "OVERLAY")
+    borderLeft:SetWidth(2)
+    borderLeft:SetPoint("TOPLEFT", -2, 2)
+    borderLeft:SetPoint("BOTTOMLEFT", -2, -2)
+    borderLeft:SetColorTexture(1, 1, 1)
+    borderLeft:SetGradient("VERTICAL",
+        CreateColor(1, 0, 0.5, 1),
+        CreateColor(0, 0.8, 1, 1))
+
+    local borderRight = logoBorderFrame:CreateTexture(nil, "OVERLAY")
+    borderRight:SetWidth(2)
+    borderRight:SetPoint("TOPRIGHT", 2, 2)
+    borderRight:SetPoint("BOTTOMRIGHT", 2, -2)
+    borderRight:SetColorTexture(1, 1, 1)
+    borderRight:SetGradient("VERTICAL",
+        CreateColor(0, 0.8, 1, 1),
+        CreateColor(1, 0, 0.5, 1))
+
+    -- ===== GRAFFITI TITLE - Multi-layer 3D effect =====
+
+    -- Layer 4: Deep shadow (black, offset)
+    local titleShadow3 = headerFrame:CreateFontString(nil, "ARTWORK", nil, 1)
+    titleShadow3:SetFont("Fonts\\SKURRI.TTF", 36, "OUTLINE")
+    titleShadow3:SetPoint("LEFT", logoIcon, "RIGHT", 22, -3)
+    titleShadow3:SetTextColor(0, 0, 0, 0.9)
+    titleShadow3:SetText("GLADIUS")
+
+    -- Layer 3: Magenta/pink shadow
+    local titleShadow2 = headerFrame:CreateFontString(nil, "ARTWORK", nil, 2)
+    titleShadow2:SetFont("Fonts\\SKURRI.TTF", 36, "OUTLINE")
+    titleShadow2:SetPoint("LEFT", logoIcon, "RIGHT", 20, -1)
+    titleShadow2:SetTextColor(1, 0, 0.5, 0.8)
+    titleShadow2:SetText("GLADIUS")
+
+    -- Layer 2: Cyan shadow
+    local titleShadow1 = headerFrame:CreateFontString(nil, "ARTWORK", nil, 3)
+    titleShadow1:SetFont("Fonts\\SKURRI.TTF", 36, "OUTLINE")
+    titleShadow1:SetPoint("LEFT", logoIcon, "RIGHT", 18, 1)
+    titleShadow1:SetTextColor(0, 0.8, 1, 0.7)
+    titleShadow1:SetText("GLADIUS")
+
+    -- Layer 1: Main title (white/gold)
+    local titleText = headerFrame:CreateFontString(nil, "OVERLAY", nil, 4)
+    titleText:SetFont("Fonts\\SKURRI.TTF", 36, "OUTLINE")
+    titleText:SetPoint("LEFT", logoIcon, "RIGHT", 16, 3)
+    titleText:SetTextColor(1, 1, 1, 1)
+    titleText:SetText("GLADIUS")
+
+    -- "MIDNIGHT" subtitle with neon effect
+    local midnightShadow = headerFrame:CreateFontString(nil, "ARTWORK", nil, 1)
+    midnightShadow:SetFont("Fonts\\SKURRI.TTF", 22, "OUTLINE")
+    midnightShadow:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 4, 4)
+    midnightShadow:SetTextColor(0, 0, 0, 0.9)
+    midnightShadow:SetText("MIDNIGHT")
+
+    local midnightGlow = headerFrame:CreateFontString(nil, "ARTWORK", nil, 2)
+    midnightGlow:SetFont("Fonts\\SKURRI.TTF", 22, "OUTLINE")
+    midnightGlow:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 2, 6)
+    midnightGlow:SetTextColor(0, 0.8, 1, 0.6)
+    midnightGlow:SetText("MIDNIGHT")
+
+    local midnightText = headerFrame:CreateFontString(nil, "OVERLAY", nil, 3)
+    midnightText:SetFont("Fonts\\SKURRI.TTF", 22, "OUTLINE")
+    midnightText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, 8)
+    midnightText:SetTextColor(0, 0.9, 1, 1)
+    midnightText:SetText("MIDNIGHT")
+
+    -- Tagline with urban style
+    local tagline = headerFrame:CreateFontString(nil, "OVERLAY")
+    tagline:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    tagline:SetPoint("TOPLEFT", midnightText, "BOTTOMLEFT", 0, -2)
+    tagline:SetTextColor(0.6, 0.6, 0.6, 1)
+    tagline:SetText("// ARENA UNIT FRAMES // PATCH 12.0 //")
+
+    -- Version badge with neon style
+    local versionBadge = CreateFrame("Frame", nil, headerFrame, "BackdropTemplate")
+    versionBadge:SetSize(70, 26)
+    versionBadge:SetPoint("TOPRIGHT", -15, -10)
+    versionBadge:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Buttons\\WHITE8X8",
         edgeSize = 2,
     })
-    logoBorder:SetBackdropBorderColor(ColorRGB(COLORS.gold, 1))
+    versionBadge:SetBackdropColor(0, 0, 0, 0.8)
+    versionBadge:SetBackdropBorderColor(0, 1, 0.5, 1)
 
-    -- Title text with shadow
-    local titleShadow = headerFrame:CreateFontString(nil, "ARTWORK")
-    titleShadow:SetFont("Fonts\\MORPHEUS.TTF", 28, "")
-    titleShadow:SetPoint("LEFT", logoIcon, "RIGHT", 17, -1)
-    titleShadow:SetTextColor(0, 0, 0, 0.7)
-    titleShadow:SetText("Gladius Midnight")
+    local versionGlow = versionBadge:CreateTexture(nil, "BACKGROUND", nil, -1)
+    versionGlow:SetPoint("TOPLEFT", -5, 5)
+    versionGlow:SetPoint("BOTTOMRIGHT", 5, -5)
+    versionGlow:SetTexture("Interface\\CHARACTERFRAME\\TempPortraitAlphaMask")
+    versionGlow:SetVertexColor(0, 1, 0.5, 0.3)
+    versionGlow:SetBlendMode("ADD")
 
-    local titleText = headerFrame:CreateFontString(nil, "OVERLAY")
-    titleText:SetFont("Fonts\\MORPHEUS.TTF", 28, "")
-    titleText:SetPoint("LEFT", logoIcon, "RIGHT", 15, 0)
-    titleText:SetTextColor(ColorRGB(COLORS.gold))
-    titleText:SetText("Gladius Midnight")
+    local versionText = versionBadge:CreateFontString(nil, "OVERLAY")
+    versionText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+    versionText:SetPoint("CENTER")
+    versionText:SetTextColor(0, 1, 0.5, 1)
+    versionText:SetText("v1.0")
 
-    -- Subtitle
-    local subtitleText = headerFrame:CreateFontString(nil, "OVERLAY")
-    subtitleText:SetFont("Fonts\\FRIZQT__.TTF", 11, "")
-    subtitleText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 2, -2)
-    subtitleText:SetTextColor(ColorRGB(COLORS.textGray))
-    subtitleText:SetText("Arena Unit Frames - Midnight 12.0")
-
-    -- Version badge
-    local versionBadge = CreateFrame("Frame", nil, headerFrame, "BackdropTemplate")
-    versionBadge:SetSize(60, 20)
-    versionBadge:SetPoint("RIGHT", -15, 0)
-    versionBadge:SetBackdrop({
+    -- PVP badge
+    local pvpBadge = CreateFrame("Frame", nil, headerFrame, "BackdropTemplate")
+    pvpBadge:SetSize(50, 20)
+    pvpBadge:SetPoint("TOP", versionBadge, "BOTTOM", 0, -5)
+    pvpBadge:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Buttons\\WHITE8X8",
         edgeSize = 1,
     })
-    versionBadge:SetBackdropColor(COLORS.success.r * 0.3, COLORS.success.g * 0.3, COLORS.success.b * 0.3, 0.9)
-    versionBadge:SetBackdropBorderColor(ColorRGB(COLORS.success, 0.8))
+    pvpBadge:SetBackdropColor(1, 0, 0.3, 0.3)
+    pvpBadge:SetBackdropBorderColor(1, 0, 0.5, 0.8)
 
-    local versionText = versionBadge:CreateFontString(nil, "OVERLAY")
-    versionText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
-    versionText:SetPoint("CENTER")
-    versionText:SetTextColor(ColorRGB(COLORS.success))
-    versionText:SetText("v1.0")
+    local pvpText = pvpBadge:CreateFontString(nil, "OVERLAY")
+    pvpText:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    pvpText:SetPoint("CENTER")
+    pvpText:SetTextColor(1, 0.3, 0.5, 1)
+    pvpText:SetText("PVP")
 
-    -- Close button
-    local closeButton = CreateFrame("Button", nil, frame)
-    closeButton:SetSize(28, 28)
+    -- Close button with custom style
+    local closeButton = CreateFrame("Button", nil, frame, "BackdropTemplate")
+    closeButton:SetSize(24, 24)
     closeButton:SetPoint("TOPRIGHT", -12, -12)
-    closeButton:SetNormalTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up")
-    closeButton:SetPushedTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Down")
-    closeButton:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight", "ADD")
+    closeButton:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    closeButton:SetBackdropColor(0.8, 0, 0.2, 0.8)
+    closeButton:SetBackdropBorderColor(1, 0, 0.3, 1)
+
+    local closeX = closeButton:CreateFontString(nil, "OVERLAY")
+    closeX:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
+    closeX:SetPoint("CENTER", 0, 1)
+    closeX:SetTextColor(1, 1, 1, 1)
+    closeX:SetText("X")
+
+    closeButton:SetScript("OnEnter", function(self)
+        self:SetBackdropColor(1, 0, 0.3, 1)
+        self:SetBackdropBorderColor(1, 0.5, 0.5, 1)
+    end)
+    closeButton:SetScript("OnLeave", function(self)
+        self:SetBackdropColor(0.8, 0, 0.2, 0.8)
+        self:SetBackdropBorderColor(1, 0, 0.3, 1)
+    end)
     closeButton:SetScript("OnClick", function() frame:Hide() end)
 
+    -- Animated pulse effect on logo (using OnUpdate)
+    local pulseFrame = CreateFrame("Frame", nil, headerFrame)
+    pulseFrame.elapsed = 0
+    pulseFrame.direction = 1
+    pulseFrame.alpha = 0.4
+    pulseFrame:SetScript("OnUpdate", function(self, elapsed)
+        self.elapsed = self.elapsed + elapsed
+        if self.elapsed > 0.03 then
+            self.elapsed = 0
+            self.alpha = self.alpha + (0.01 * self.direction)
+            if self.alpha >= 0.6 then
+                self.direction = -1
+            elseif self.alpha <= 0.2 then
+                self.direction = 1
+            end
+            logoGlow:SetVertexColor(0, 0.8, 1, self.alpha)
+        end
+    end)
+
     -- =========================================================================
-    -- Tab Bar
+    -- Tab Bar (Graffiti Style)
     -- =========================================================================
 
     local tabBar = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    tabBar:SetHeight(36)
-    tabBar:SetPoint("TOPLEFT", headerFrame, "BOTTOMLEFT", 0, -4)
-    tabBar:SetPoint("TOPRIGHT", headerFrame, "BOTTOMRIGHT", 0, -4)
+    tabBar:SetHeight(40)
+    tabBar:SetPoint("TOPLEFT", headerFrame, "BOTTOMLEFT", 0, 0)
+    tabBar:SetPoint("TOPRIGHT", headerFrame, "BOTTOMRIGHT", 0, 0)
     tabBar:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8X8",
     })
-    tabBar:SetBackdropColor(ColorRGB(COLORS.bgMedium, 0.95))
+    tabBar:SetBackdropColor(0.03, 0.03, 0.06, 0.98)
 
-    -- Tab bottom line
+    -- Neon accent line at top of tab bar
+    local tabTopLine = tabBar:CreateTexture(nil, "OVERLAY")
+    tabTopLine:SetHeight(1)
+    tabTopLine:SetPoint("TOPLEFT", 0, 0)
+    tabTopLine:SetPoint("TOPRIGHT", 0, 0)
+    tabTopLine:SetColorTexture(1, 1, 1)
+    tabTopLine:SetGradient("HORIZONTAL",
+        CreateColor(0, 0.8, 1, 0.8),
+        CreateColor(1, 0, 0.5, 0.8))
+
+    -- Tab bottom line with neon gradient
     local tabLine = tabBar:CreateTexture(nil, "BORDER")
     tabLine:SetHeight(2)
     tabLine:SetPoint("BOTTOMLEFT", 0, 0)
     tabLine:SetPoint("BOTTOMRIGHT", 0, 0)
-    tabLine:SetColorTexture(ColorRGB(COLORS.accent, 0.5))
+    tabLine:SetColorTexture(1, 1, 1)
+    tabLine:SetGradient("HORIZONTAL",
+        CreateColor(1, 0, 0.5, 0.6),
+        CreateColor(0, 0.8, 1, 0.6))
 
     frame.tabButtons = {}
     frame.tabContents = {}
