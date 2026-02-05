@@ -345,6 +345,11 @@ function GladiusMidnight:GetTestData()
 end
 
 function GladiusMidnight:PositionFrames()
+    -- Cannot modify frame positions during combat (protected functions)
+    if InCombatLockdown() then
+        return
+    end
+
     local db = self.db.profile
     local prevFrame = nil
     local numFrames = self.arenaSize > 0 and self.arenaSize or 3
