@@ -501,6 +501,66 @@ function GladiusMidnight:PLAYER_ENTERING_WORLD()
     self:CheckArenaStatus()
     self:UpdateTargetHighlight()
     self:HideBlizzardFrames()
+
+    -- After reload in arena, scan for existing opponents
+    local _, instanceType = IsInInstance()
+    if instanceType == "arena" and self.db.profile.enabled then
+        C_Timer.After(0.5, function()
+            self:ScanExistingOpponents()
+        end)
+    end
+end
+
+function GladiusMidnight:ScanExistingOpponents()
+    local _, instanceType = IsInInstance()
+    if instanceType ~= "arena" or self.testMode then return end
+
+    self:Print("Scanne Arena-Gegner...")
+
+    local foundOpponents = 0
+    for i = 1, 3 do
+        local unit = "arena" .. i
+        local frame = self.frames[i]
+
+        if frame and UnitExists(unit) then
+            foundOpponents = foundOpponents + 1
+
+            -- Get class info
+            local _, classFile = UnitClass(unit)
+            if classFile then
+                frame.class = classFile
+            end
+
+            -- Get spec info
+            if GetArenaOpponentSpec then
+                local specID = GetArenaOpponentSpec(i)
+                if specID and specID > 0 then
+                    frame.specID = specID
+                    local _, _, _, _, _, specClassFile = GetSpecializationInfoByID(specID)
+                    if specClassFile then
+                        frame.class = specClassFile
+                    end
+                end
+            end
+
+            -- Get race info
+            if UnitRace then
+                local _, raceToken = UnitRace(unit)
+                if raceToken then
+                    frame.race = raceToken
+                end
+            end
+
+            -- Update and show frame
+            self:UpdateFrame(frame)
+            frame:Show()
+        end
+    end
+
+    if foundOpponents > 0 then
+        self:Print(foundOpponents .. " Gegner gefunden nach Reload")
+        self:PositionFrames()
+    end
 end
 
 function GladiusMidnight:PLAYER_TARGET_CHANGED()

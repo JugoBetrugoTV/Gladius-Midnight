@@ -167,8 +167,17 @@ function Trinket:UpdateCooldownText(container)
     end
 
     local remaining = (container.startTime + container.duration) - GetTime()
-    if remaining <= 0 then
+
+    -- Validate remaining time - trinkets max 2 minutes (120s)
+    if remaining <= 0 or remaining > 180 then
         container.cdText:SetText("")
+        -- If remaining is invalid/garbage, reset cooldown state
+        if remaining > 180 then
+            container.onCooldown = false
+            container.startTime = 0
+            container.duration = 0
+            container.icon:SetDesaturated(false)
+        end
         return
     end
 
@@ -184,30 +193,34 @@ function Trinket:OnUpdate(frame)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
+    local now = GetTime()
+
     -- Check C_PvP API for trinket cooldown (12.0)
     -- This API returns CC break ability info for arena opponents
     if C_PvP and C_PvP.GetArenaCrowdControlInfo and UnitExists(frame.unit) then
         local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(frame.unit)
 
-        -- API returned valid cooldown data
+        -- API returned valid cooldown data - validate all values
         if spellID and startTime and duration and duration > 0 then
-            -- Validate duration (trinkets are 120s max, not days)
-            if duration > 300 then
-                duration = 120  -- Default to 2 minutes if invalid
-            end
+            -- Validate: duration must be reasonable (max 3 min for trinkets)
+            -- Validate: startTime must be reasonable (within last 3 min)
+            local isValidDuration = duration <= 180
+            local isValidStartTime = startTime > 0 and (now - startTime) < 300
 
-            -- New cooldown detected or updated
-            if startTime ~= container.startTime or duration ~= container.duration then
-                container.startTime = startTime
-                container.duration = duration
-                container.onCooldown = true
-                container.cooldown:SetCooldown(startTime, duration)
-                container.icon:SetDesaturated(true)
+            if isValidDuration and isValidStartTime then
+                -- New cooldown detected or updated
+                if startTime ~= container.startTime or duration ~= container.duration then
+                    container.startTime = startTime
+                    container.duration = duration
+                    container.onCooldown = true
+                    container.cooldown:SetCooldown(startTime, duration)
+                    container.icon:SetDesaturated(true)
 
-                -- Update icon to match the spell used
-                local iconTexture = addon.Data.GetSpellIcon(spellID)
-                if iconTexture then
-                    container.icon:SetTexture(iconTexture)
+                    -- Update icon to match the spell used
+                    local iconTexture = addon.Data.GetSpellIcon(spellID)
+                    if iconTexture then
+                        container.icon:SetTexture(iconTexture)
+                    end
                 end
             end
         end
@@ -215,8 +228,8 @@ function Trinket:OnUpdate(frame)
 
     -- Check if cooldown expired
     if container.onCooldown and container.startTime > 0 and container.duration > 0 then
-        local elapsed = GetTime() - container.startTime
-        if elapsed >= container.duration then
+        local elapsed = now - container.startTime
+        if elapsed >= container.duration or elapsed < 0 then
             container.onCooldown = false
             container.icon:SetDesaturated(false)
             container.startTime = 0

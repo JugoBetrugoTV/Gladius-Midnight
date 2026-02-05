@@ -192,9 +192,18 @@ function Racial:UpdateCooldownText(container)
     end
 
     local remaining = (container.startTime + container.duration) - GetTime()
-    if remaining <= 0 then
+
+    -- Validate remaining time - racials max 3 minutes (180s)
+    if remaining <= 0 or remaining > 200 then
         if container.cdText then
             container.cdText:SetText("")
+        end
+        -- If remaining is garbage, reset cooldown state
+        if remaining > 200 then
+            container.onCooldown = false
+            container.startTime = 0
+            container.duration = 0
+            container.icon:SetDesaturated(false)
         end
         return
     end
