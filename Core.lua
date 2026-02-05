@@ -141,9 +141,22 @@ function GladiusMidnight:CreateArenaFrame(index)
 
     frame:SetScript("OnDragStop", function(f)
         f:StopMovingOrSizing()
-        local _, _, _, x, y = f:GetPoint()
-        GladiusMidnight.db.profile.posX = x
-        GladiusMidnight.db.profile.posY = y
+        -- Only save position from frame 1 (other frames are positioned relative to it)
+        if f.index == 1 then
+            -- Calculate frame center relative to UIParent center
+            local centerX, centerY = f:GetCenter()
+            local uiCenterX, uiCenterY = UIParent:GetCenter()
+            local scale = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
+
+            if centerX and uiCenterX then
+                local x = (centerX - uiCenterX) * scale
+                local y = (centerY - uiCenterY) * scale
+                GladiusMidnight.db.profile.posX = x
+                GladiusMidnight.db.profile.posY = y
+            end
+        end
+        -- Re-position all frames to maintain relative layout
+        GladiusMidnight:PositionFrames()
     end)
 
     -- Container for module elements
