@@ -309,6 +309,11 @@ function GladiusMidnight:UpdateAllFrames()
         end
     end
     self:PositionFrames()
+
+    -- Update Blizzard frame sizes (for live arena)
+    self:UpdateBlizzardDRSize()
+    self:UpdateBlizzardCastBarSize()
+    self:UpdateBlizzardDebuffSize()
 end
 
 -- Get test data for test mode
@@ -613,6 +618,10 @@ function GladiusMidnight:InitializeBlizzardFrames()
                 drTray:SetParent(ourFrame)
                 ourFrame.blizzDRTray = drTray
 
+                -- Get size from our settings
+                local db = self.db.profile.drTracker
+                local iconSize = db and db.iconSize or 24
+
                 -- Configure the DR tray
                 drTray:SetFrameStrata("MEDIUM")
                 drTray:SetFrameLevel(15)
@@ -620,6 +629,10 @@ function GladiusMidnight:InitializeBlizzardFrames()
                 if drTray.SetMouseClickEnabled then
                     drTray:SetMouseClickEnabled(false)
                 end
+
+                -- Scale the tray based on our icon size (Blizzard default is ~20-24)
+                local scale = iconSize / 20
+                drTray:SetScale(scale)
 
                 -- Position to the LEFT of our frame
                 drTray:ClearAllPoints()
@@ -630,13 +643,21 @@ function GladiusMidnight:InitializeBlizzardFrames()
                 ourFrame.blizzDRFrames = drFrames
 
                 for drIndex, drFrame in ipairs(drFrames) do
-                    if drFrame and drFrame.Icon then
+                    if drFrame then
                         drFrame:SetFrameStrata("MEDIUM")
                         drFrame:SetFrameLevel(16)
                         drFrame:SetAlpha(1)
                         drFrame:EnableMouse(false)
                         if drFrame.SetMouseClickEnabled then
                             drFrame:SetMouseClickEnabled(false)
+                        end
+
+                        -- Try to resize the individual DR icons
+                        if drFrame.SetSize then
+                            drFrame:SetSize(iconSize, iconSize)
+                        end
+                        if drFrame.Icon then
+                            drFrame.Icon:SetSize(iconSize - 4, iconSize - 4)
                         end
                     end
                 end
@@ -830,6 +851,67 @@ end
 -- Legacy alias for backwards compatibility
 function GladiusMidnight:ResetBlizzardDRFrames()
     self:ResetBlizzardFrames()
+end
+
+-- Update Blizzard DR frame sizes when settings change
+function GladiusMidnight:UpdateBlizzardDRSize()
+    if not self.blizzFramesInitialized then return end
+
+    local db = self.db.profile.drTracker
+    local iconSize = db and db.iconSize or 24
+    local scale = iconSize / 20
+
+    for i = 1, 3 do
+        local ourFrame = self.frames[i]
+        if ourFrame and ourFrame.blizzDRTray then
+            -- Update scale
+            ourFrame.blizzDRTray:SetScale(scale)
+
+            -- Update individual DR frames
+            if ourFrame.blizzDRFrames then
+                for _, drFrame in ipairs(ourFrame.blizzDRFrames) do
+                    if drFrame then
+                        if drFrame.SetSize then
+                            drFrame:SetSize(iconSize, iconSize)
+                        end
+                        if drFrame.Icon then
+                            drFrame.Icon:SetSize(iconSize - 4, iconSize - 4)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Update Blizzard CastBar size when settings change
+function GladiusMidnight:UpdateBlizzardCastBarSize()
+    if not self.blizzFramesInitialized then return end
+
+    local db = self.db.profile.castBar
+    local height = db and db.height or 16
+
+    for i = 1, 3 do
+        local ourFrame = self.frames[i]
+        if ourFrame and ourFrame.blizzCastBar then
+            ourFrame.blizzCastBar:SetHeight(height)
+        end
+    end
+end
+
+-- Update Blizzard DebuffFrame (CC) size when settings change
+function GladiusMidnight:UpdateBlizzardDebuffSize()
+    if not self.blizzFramesInitialized then return end
+
+    local db = self.db.profile.classIcon
+    local size = db and db.size or 50
+
+    for i = 1, 3 do
+        local ourFrame = self.frames[i]
+        if ourFrame and ourFrame.blizzDebuffFrame then
+            ourFrame.blizzDebuffFrame:SetSize(size, size)
+        end
+    end
 end
 
 function GladiusMidnight:ScanExistingOpponents()
