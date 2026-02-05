@@ -196,6 +196,31 @@ local options = {
                         GladiusMidnight:PositionFrames()
                     end,
                 },
+                spacer = { order = 6, type = "description", name = "\n|cFFFFFF00Position (oder /gladius unlock zum Verschieben)|r\n" },
+                posX = {
+                    order = 7,
+                    type = "range",
+                    name = "X Position",
+                    min = -1000, max = 1000, step = 5,
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.posX end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.posX = val
+                        GladiusMidnight:PositionFrames()
+                    end,
+                },
+                posY = {
+                    order = 8,
+                    type = "range",
+                    name = "Y Position",
+                    min = -800, max = 800, step = 5,
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.posY end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.posY = val
+                        GladiusMidnight:PositionFrames()
+                    end,
+                },
             },
         },
 
@@ -394,8 +419,21 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
-                racialSize = {
+                trinketPosition = {
                     order = 2,
+                    type = "select",
+                    name = "Trinket Position",
+                    values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.trinket.position end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.trinket.position = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                spacer = { order = 3, type = "description", name = "\n" },
+                racialSize = {
+                    order = 4,
                     type = "range",
                     name = "Racial Icon Größe",
                     min = 16, max = 50, step = 2,
@@ -403,6 +441,18 @@ local options = {
                     get = function() return GladiusMidnight.db.profile.racial.size end,
                     set = function(_, val)
                         GladiusMidnight.db.profile.racial.size = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                racialPosition = {
+                    order = 5,
+                    type = "select",
+                    name = "Racial Position",
+                    values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.racial.position end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.racial.position = val
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
