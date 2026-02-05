@@ -134,13 +134,19 @@ local function CreateStyledSlider(parent, width, min, max, value, step, onChange
     slider:SetValue(value or min or 0)
     slider:SetValueStep(step or 1)
     slider:SetObeyStepOnDrag(true)
+    slider:EnableMouse(true)
     slider:EnableMouseWheel(true)
+    slider:SetOrientation("HORIZONTAL")
 
-    -- Thumb texture (purple)
+    -- Thumb texture (purple) - needs to be a proper texture for dragging
     local thumb = slider:CreateTexture(nil, "OVERLAY")
-    thumb:SetSize(14, 14)
-    thumb:SetColorTexture(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 1)
+    thumb:SetSize(16, 16)
+    thumb:SetTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+    thumb:SetVertexColor(COLORS.PRIMARY[1], COLORS.PRIMARY[2], COLORS.PRIMARY[3], 1)
     slider:SetThumbTexture(thumb)
+
+    -- Make slider clickable area larger
+    slider:SetHitRectInsets(0, 0, -10, -10)
 
     -- Fill bar (shows progress)
     local fill = CreateFlatTexture(slider, "ARTWORK", 1, COLORS.PRIMARY, 0.5)
