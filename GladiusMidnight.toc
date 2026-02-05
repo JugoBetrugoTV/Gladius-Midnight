@@ -28,3 +28,4 @@ Modules\Kicks.lua
 
 # Options (must be last)
 Options.lua
+OptionsUI.lua
