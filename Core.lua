@@ -267,8 +267,15 @@ function GladiusMidnight:ToggleTest()
         for i = 1, 3 do
             local frame = self.frames[i]
             if frame then
+                -- Unregister unit watch so we can show the frame manually
+                UnregisterUnitWatch(frame)
+
+                -- Store test class on frame
+                local testClass = classes[math.random(1, #classes)]
+                frame.class = testClass
+
                 local testData = {
-                    class = classes[math.random(1, #classes)],
+                    class = testClass,
                     health = math.random(20, 100),
                     maxHealth = 100,
                     power = math.random(0, 100),
@@ -286,8 +293,12 @@ function GladiusMidnight:ToggleTest()
         self:Print("Test Modus |cFFFF0000deaktiviert|r")
 
         for i = 1, 3 do
-            if self.frames[i] then
-                self.frames[i]:Hide()
+            local frame = self.frames[i]
+            if frame then
+                frame:Hide()
+                frame.class = nil
+                -- Re-register unit watch for normal arena operation
+                RegisterUnitWatch(frame)
             end
         end
     end
