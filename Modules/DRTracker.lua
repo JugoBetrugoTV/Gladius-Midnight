@@ -486,30 +486,39 @@ end
 
 function DRTracker:OnUpdate(frame)
     local container = frame.moduleFrames.drTracker
-    if not container then return end
+    if not container or not container:IsShown() then return end
 
     local now = GetTime()
     local drData = container.drData
     local needsRefresh = false
     local hasActiveDR = false
 
-    -- Check for expired DRs and update timers
+    -- Update timer text and check for expired DRs
+    local index = 1
     for category, data in pairs(drData) do
         if data.expireTime <= now then
             drData[category] = nil
             needsRefresh = true
         else
             hasActiveDR = true
+            -- Just update the timer text for visible icons (performance optimization)
+            local iconFrame = container.icons[index]
+            if iconFrame and iconFrame:IsShown() then
+                local remaining = data.expireTime - now
+                iconFrame.text:SetText(math.ceil(remaining))
+            end
+            index = index + 1
         end
     end
 
-    if needsRefresh or hasActiveDR then
+    -- Only do full refresh when DRs expire
+    if needsRefresh then
         self:RefreshDisplay(frame)
     end
 
     -- Hide container if no active DRs
     if not hasActiveDR then
-        for i, iconFrame in ipairs(container.icons) do
+        for _, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
         end
         container:Hide()

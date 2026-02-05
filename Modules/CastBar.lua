@@ -123,10 +123,17 @@ function CastBar:Update(frame, testData)
         castBar.iconFrame:Show()
         castBar:Show()
 
-        -- Position spark
-        local width = castBar:GetWidth()
-        castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * 0.6, 0)
-        castBar.spark:Show()
+        -- Position spark (delay to ensure width is calculated)
+        C_Timer.After(0.05, function()
+            if castBar:IsShown() then
+                local width = castBar:GetWidth()
+                if width > 0 then
+                    castBar.spark:ClearAllPoints()
+                    castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * 0.6, 0)
+                    castBar.spark:Show()
+                end
+            end
+        end)
     else
         -- Not test mode - only show if actively casting
         if not castBar.casting and not castBar.channeling then
@@ -246,8 +253,11 @@ function CastBar:OnUpdate(frame)
 
         -- Update spark position
         local width = castBar:GetWidth()
-        local progress = elapsed / duration
-        castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * progress, 0)
+        if width > 0 then
+            local progress = elapsed / duration
+            castBar.spark:ClearAllPoints()
+            castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * progress, 0)
+        end
 
     elseif castBar.channeling then
         local remaining = castBar.endTime - now
@@ -263,8 +273,11 @@ function CastBar:OnUpdate(frame)
 
         -- Update spark position (reverse for channel)
         local width = castBar:GetWidth()
-        local progress = remaining / duration
-        castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * progress, 0)
+        if width > 0 and duration > 0 then
+            local progress = remaining / duration
+            castBar.spark:ClearAllPoints()
+            castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * progress, 0)
+        end
     end
 end
 

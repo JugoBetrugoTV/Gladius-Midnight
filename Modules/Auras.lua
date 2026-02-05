@@ -410,11 +410,11 @@ end
 
 function Auras:OnUpdate(frame)
     local container = frame.moduleFrames.auras
-    if not container then return end
+    if not container or not container:IsShown() then return end
 
     local now = GetTime()
 
-    -- Update duration text for visible icons
+    -- Update duration text for visible icons only
     for i, iconFrame in ipairs(container.icons) do
         if iconFrame:IsShown() and iconFrame.expirationTime then
             local remaining = iconFrame.expirationTime - now
@@ -427,18 +427,13 @@ function Auras:OnUpdate(frame)
                     iconFrame.duration:SetText(string.format("%.1f", remaining))
                 end
             else
+                -- Aura expired - trigger refresh
                 iconFrame.duration:SetText("")
+                if not self.core.testMode then
+                    self:RefreshAuras(frame)
+                end
+                break
             end
-        else
-            iconFrame.duration:SetText("")
-        end
-    end
-
-    -- Periodically refresh auras (every 0.5 seconds via frame counter)
-    if not container.lastRefresh or (now - container.lastRefresh) > 0.5 then
-        container.lastRefresh = now
-        if not self.core.testMode then
-            self:RefreshAuras(frame)
         end
     end
 end

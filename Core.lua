@@ -783,14 +783,16 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
     local index = tonumber(unit:match("arena(%d)"))
     if not index or not self.frames[index] then return end
 
+    local frame = self.frames[index]
+
     -- Check for DR-triggering auras using 12.0 API
     local drModule = self:GetModule("drTracker")
-    if drModule and self:IsModuleEnabled("drTracker") and updateInfo then
-        -- Check added auras
-        if updateInfo.addedAuras then
+    if drModule and self:IsModuleEnabled("drTracker") then
+        if updateInfo and updateInfo.addedAuras then
+            -- New 12.0 API with updateInfo
             for _, auraInfo in ipairs(updateInfo.addedAuras) do
-                if auraInfo.spellId then
-                    drModule:OnAura(self.frames[index], auraInfo.spellId)
+                if auraInfo and auraInfo.spellId then
+                    drModule:OnAura(frame, auraInfo.spellId)
                 end
             end
         end
