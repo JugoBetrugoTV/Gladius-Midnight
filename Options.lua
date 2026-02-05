@@ -432,7 +432,7 @@ local options = {
 
         -- Health Settings
         healthSettings = {
-            order = 5,
+            order = 6,
             type = "group",
             name = "Lebensanzeige",
             args = {
@@ -459,8 +459,20 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
-                colorByClass = {
+                showName = {
                     order = 3,
+                    type = "toggle",
+                    name = "Spielername anzeigen",
+                    desc = "Zeigt den Spielernamen auf der Lebensleiste",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.health.showName end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.health.showName = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                colorByClass = {
+                    order = 4,
                     type = "toggle",
                     name = "Klassenfarbe",
                     width = "full",
@@ -475,7 +487,7 @@ local options = {
 
         -- Power Settings
         powerSettings = {
-            order = 6,
+            order = 7,
             type = "group",
             name = "Ressourcen",
             args = {
@@ -507,7 +519,7 @@ local options = {
 
         -- Trinket/Racial Settings
         cooldownSettings = {
-            order = 7,
+            order = 8,
             type = "group",
             name = "Trinket & Racial",
             args = {
@@ -557,6 +569,126 @@ local options = {
                     get = function() return GladiusMidnight.db.profile.racial.position end,
                     set = function(_, val)
                         GladiusMidnight.db.profile.racial.position = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+            },
+        },
+
+        -- DR Tracker Settings
+        drTrackerSettings = {
+            order = 9,
+            type = "group",
+            name = "DR Tracker",
+            args = {
+                iconSize = {
+                    order = 1,
+                    type = "range",
+                    name = "Icon Größe",
+                    min = 16, max = 40, step = 2,
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.drTracker.iconSize end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.drTracker.iconSize = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                showTimer = {
+                    order = 2,
+                    type = "toggle",
+                    name = "Timer anzeigen",
+                    desc = "Zeigt die verbleibende DR-Zeit an",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.drTracker.showTimer end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.drTracker.showTimer = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+            },
+        },
+
+        -- Cast Bar Settings
+        castBarSettings = {
+            order = 10,
+            type = "group",
+            name = "Cast Bar",
+            args = {
+                height = {
+                    order = 1,
+                    type = "range",
+                    name = "Höhe",
+                    min = 10, max = 30, step = 2,
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.castBar.height end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.castBar.height = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                showIcon = {
+                    order = 2,
+                    type = "toggle",
+                    name = "Spell Icon anzeigen",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.castBar.showIcon end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.castBar.showIcon = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+            },
+        },
+
+        -- Auras Settings
+        aurasSettings = {
+            order = 11,
+            type = "group",
+            name = "Auras / CC",
+            args = {
+                iconSize = {
+                    order = 1,
+                    type = "range",
+                    name = "Icon Größe",
+                    min = 16, max = 50, step = 2,
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.auras.iconSize end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.auras.iconSize = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                maxAuras = {
+                    order = 2,
+                    type = "range",
+                    name = "Max. Auras",
+                    desc = "Maximale Anzahl angezeigter Auras",
+                    min = 1, max = 8, step = 1,
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.auras.maxAuras end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.auras.maxAuras = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+            },
+        },
+
+        -- Kicks Tracker Settings
+        kicksSettings = {
+            order = 12,
+            type = "group",
+            name = "Kick Tracker",
+            args = {
+                size = {
+                    order = 1,
+                    type = "range",
+                    name = "Icon Größe",
+                    min = 16, max = 40, step = 2,
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.kicks.size end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.kicks.size = val
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
