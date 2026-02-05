@@ -45,7 +45,15 @@ function Racial:CreateElements(frame)
     cooldown:SetAllPoints(icon)
     cooldown:SetDrawSwipe(true)
     cooldown:SetDrawEdge(false)
-    cooldown:SetHideCountdownNumbers(false)
+    cooldown:SetHideCountdownNumbers(true)  -- Use our own text
+
+    -- Custom cooldown text
+    local cdText = container:CreateFontString(nil, "OVERLAY")
+    cdText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+    cdText:SetPoint("CENTER", 0, 0)
+    cdText:SetTextColor(1, 1, 0)
+    cdText:SetJustifyH("CENTER")
+    container.cdText = cdText
 
     container.icon = icon
     container.cooldown = cooldown
@@ -163,11 +171,40 @@ function Racial:OnSpellCast(frame, spellID)
     container.cooldown:SetCooldown(container.startTime, cooldown)
     container.icon:SetDesaturated(true)
 
+    -- Update cooldown text
+    self:UpdateCooldownText(container)
+
     -- Also trigger trinket cooldown for certain racials
     if addon.Data.TrinketShareRacials[spellID] then
         local trinketModule = self.core:GetModule("trinket")
         if trinketModule and self.core:IsModuleEnabled("trinket") then
             trinketModule:TriggerCooldown(frame, 90)
+        end
+    end
+end
+
+function Racial:UpdateCooldownText(container)
+    if not container.onCooldown or container.startTime == 0 then
+        if container.cdText then
+            container.cdText:SetText("")
+        end
+        return
+    end
+
+    local remaining = (container.startTime + container.duration) - GetTime()
+    if remaining <= 0 then
+        if container.cdText then
+            container.cdText:SetText("")
+        end
+        return
+    end
+
+    -- Format: show seconds if < 60, else show minutes
+    if container.cdText then
+        if remaining < 60 then
+            container.cdText:SetText(math.ceil(remaining))
+        else
+            container.cdText:SetText(math.ceil(remaining / 60) .. "m")
         end
     end
 end
@@ -189,6 +226,12 @@ function Racial:OnUpdate(frame)
             container.icon:SetDesaturated(false)
             container.startTime = 0
             container.duration = 0
+            if container.cdText then
+                container.cdText:SetText("")
+            end
+        else
+            -- Update cooldown text
+            self:UpdateCooldownText(container)
         end
     end
 end
@@ -204,6 +247,9 @@ function Racial:Reset(frame)
         container.cooldown:Clear()
         container.icon:SetDesaturated(false)
         container.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+        if container.cdText then
+            container.cdText:SetText("")
+        end
     end
     -- Clear stored race
     frame.race = nil

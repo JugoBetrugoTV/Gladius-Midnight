@@ -71,9 +71,10 @@ function Trinket:CreateElements(frame)
 
     -- Custom cooldown text (more reliable than built-in)
     local cdText = container:CreateFontString(nil, "OVERLAY")
-    cdText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+    cdText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
     cdText:SetPoint("CENTER", 0, 0)
-    cdText:SetTextColor(1, 1, 1)
+    cdText:SetTextColor(1, 1, 0)  -- Yellow for better visibility
+    cdText:SetJustifyH("CENTER")
     container.cdText = cdText
 
     container.icon = icon

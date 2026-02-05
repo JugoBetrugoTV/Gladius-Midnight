@@ -160,8 +160,19 @@ function Health:UpdateUnit(frame)
         -- Try 12.0 API first (returns actual percentage, not secret)
         if UnitHealthPercent then
             local percent = UnitHealthPercent(unit)
-            if percent then
+            -- Ensure percent is a valid number
+            if percent and type(percent) == "number" then
                 healthBar.text:SetText(math.floor(percent) .. "%")
+            elseif percent then
+                -- Try to convert to number (might be BigNumber)
+                local numPercent = tonumber(tostring(percent))
+                if numPercent then
+                    healthBar.text:SetText(math.floor(numPercent) .. "%")
+                else
+                    healthBar.text:SetText("100%")
+                end
+            else
+                healthBar.text:SetText("100%")
             end
         else
             -- Fallback: Check if values are numbers (not secret)
