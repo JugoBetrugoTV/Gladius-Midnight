@@ -215,20 +215,43 @@ function GladiusMidnight:CreateArenaFrame(index)
         f:StopMovingOrSizing()
         -- Only save position from frame 1 (other frames are positioned relative to it)
         if f.index == 1 then
-            -- Calculate frame center relative to UIParent center
+            -- Get the frame's current position relative to UIParent center
+            local scale = f:GetEffectiveScale()
+            local uiScale = UIParent:GetEffectiveScale()
             local centerX, centerY = f:GetCenter()
             local uiCenterX, uiCenterY = UIParent:GetCenter()
-            local scale = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
 
             if centerX and uiCenterX then
-                local x = (centerX - uiCenterX) * scale
-                local y = (centerY - uiCenterY) * scale
-                GladiusMidnight.db.profile.posX = x
-                GladiusMidnight.db.profile.posY = y
+                -- Convert to UIParent-relative coordinates (accounting for frame's scale)
+                local x = (centerX - uiCenterX) * (scale / uiScale)
+                local y = (centerY - uiCenterY) * (scale / uiScale)
+
+                -- Account for the frame's own scale setting
+                local frameScale = GladiusMidnight.db.profile.scale or 1
+                GladiusMidnight.db.profile.posX = x / frameScale
+                GladiusMidnight.db.profile.posY = y / frameScale
             end
         end
-        -- Re-position all frames to maintain relative layout
-        GladiusMidnight:PositionFrames()
+        -- Re-position other frames relative to frame 1 (but don't reposition frame 1 itself)
+        local db = GladiusMidnight.db.profile
+        local prevFrame = GladiusMidnight.frames[1]
+        for i = 2, 3 do
+            local otherFrame = GladiusMidnight.frames[i]
+            if otherFrame and prevFrame then
+                otherFrame:ClearAllPoints()
+                local spacing = db.spacing
+                if db.growDirection == "DOWN" then
+                    otherFrame:SetPoint("TOP", prevFrame, "BOTTOM", 0, -spacing)
+                elseif db.growDirection == "UP" then
+                    otherFrame:SetPoint("BOTTOM", prevFrame, "TOP", 0, spacing)
+                elseif db.growDirection == "LEFT" then
+                    otherFrame:SetPoint("RIGHT", prevFrame, "LEFT", -spacing, 0)
+                else
+                    otherFrame:SetPoint("LEFT", prevFrame, "RIGHT", spacing, 0)
+                end
+                prevFrame = otherFrame
+            end
+        end
     end)
 
     -- Container for module elements
