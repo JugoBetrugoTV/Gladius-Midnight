@@ -476,8 +476,8 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
 
-    -- Combat log for DR tracking (12.0 compatible - UNIT_AURA updateInfo is restricted)
-    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    -- Note: COMBAT_LOG_EVENT_UNFILTERED is BLOCKED in Midnight 12.0 during PvP
+    -- DR tracking uses full aura scan via UNIT_AURA instead
 
     -- Enable modules
     for name, module in pairs(self.modules) do
@@ -788,59 +788,59 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
 
     local frame = self.frames[index]
 
-    -- Check for DR-triggering auras using 12.0 API
+    -- DR Tracking: In Midnight 12.0, updateInfo may be restricted
+    -- Use full debuff scan as fallback
     local drModule = self:GetModule("drTracker")
     if drModule and self:IsModuleEnabled("drTracker") then
+        -- Try new API first
         if updateInfo and updateInfo.addedAuras then
-            -- New 12.0 API with updateInfo
             for _, auraInfo in ipairs(updateInfo.addedAuras) do
                 if auraInfo and auraInfo.spellId then
                     drModule:OnAura(frame, auraInfo.spellId)
                 end
             end
+        else
+            -- Fallback: Full debuff scan for DR spells
+            self:ScanDebuffsForDR(frame, unit)
         end
     end
 
     -- Notify Auras module
     local aurasModule = self:GetModule("auras")
     if aurasModule and self:IsModuleEnabled("auras") then
-        aurasModule:OnAuraChange(self.frames[index])
+        aurasModule:OnAuraChange(frame)
     end
 end
 
--- Combat Log Event for DR Tracking (12.0 compatible)
-function GladiusMidnight:COMBAT_LOG_EVENT_UNFILTERED()
-    if self.testMode then return end
+-- Scan all debuffs for DR spells (Midnight 12.0 fallback)
+function GladiusMidnight:ScanDebuffsForDR(frame, unit)
+    local drModule = self:GetModule("drTracker")
+    if not drModule then return end
 
-    local _, subEvent, _, sourceGUID, _, _, _, destGUID, destName, destFlags, _, spellID = CombatLogGetCurrentEventInfo()
+    -- Track which spells we've already processed this scan
+    frame.lastDRScan = frame.lastDRScan or {}
+    local currentDebuffs = {}
 
-    -- Only care about SPELL_AURA_APPLIED on arena enemies
-    if subEvent ~= "SPELL_AURA_APPLIED" then return end
-    if not spellID or not destGUID then return end
+    -- Scan all debuffs
+    if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
+        for i = 1, 40 do
+            local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
+            if not auraData then break end
 
-    -- Check if destination is an arena opponent
-    local index = nil
-    for i = 1, 3 do
-        local unit = "arena" .. i
-        if UnitGUID(unit) == destGUID then
-            index = i
-            break
+            local spellId = auraData.spellId
+            if spellId then
+                currentDebuffs[spellId] = true
+
+                -- Only process if this is a NEW debuff (not seen in last scan)
+                if not frame.lastDRScan[spellId] then
+                    drModule:OnAura(frame, spellId)
+                end
+            end
         end
     end
 
-    if not index or not self.frames[index] then return end
-
-    -- Notify DR Tracker
-    local drModule = self:GetModule("drTracker")
-    if drModule and self:IsModuleEnabled("drTracker") then
-        drModule:OnAura(self.frames[index], spellID)
-    end
-
-    -- Notify Auras module for immediate updates
-    local aurasModule = self:GetModule("auras")
-    if aurasModule and self:IsModuleEnabled("auras") then
-        aurasModule:OnAuraChange(self.frames[index])
-    end
+    -- Update last scan
+    frame.lastDRScan = currentDebuffs
 end
 
 -- Cast Bar Events
