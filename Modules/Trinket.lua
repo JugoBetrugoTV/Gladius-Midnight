@@ -67,7 +67,14 @@ function Trinket:CreateElements(frame)
     cooldown:SetAllPoints(icon)
     cooldown:SetDrawSwipe(true)
     cooldown:SetDrawEdge(false)
-    cooldown:SetHideCountdownNumbers(false)
+    cooldown:SetHideCountdownNumbers(true)  -- Hide default numbers, use our own
+
+    -- Custom cooldown text (more reliable than built-in)
+    local cdText = container:CreateFontString(nil, "OVERLAY")
+    cdText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+    cdText:SetPoint("CENTER", 0, 0)
+    cdText:SetTextColor(1, 1, 1)
+    container.cdText = cdText
 
     container.icon = icon
     container.cooldown = cooldown
@@ -136,12 +143,40 @@ function Trinket:TriggerCooldown(frame, duration)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
+    -- Validate duration (trinkets are 120s max, not days)
+    if duration > 300 then
+        duration = 120  -- Default to 2 minutes if invalid
+    end
+
     container.startTime = GetTime()
     container.duration = duration
     container.onCooldown = true
 
     container.cooldown:SetCooldown(container.startTime, duration)
     container.icon:SetDesaturated(true)
+
+    -- Update custom text
+    self:UpdateCooldownText(container)
+end
+
+function Trinket:UpdateCooldownText(container)
+    if not container.onCooldown or container.startTime == 0 then
+        container.cdText:SetText("")
+        return
+    end
+
+    local remaining = (container.startTime + container.duration) - GetTime()
+    if remaining <= 0 then
+        container.cdText:SetText("")
+        return
+    end
+
+    -- Format: show seconds if < 60, else show minutes
+    if remaining < 60 then
+        container.cdText:SetText(math.ceil(remaining))
+    else
+        container.cdText:SetText(math.ceil(remaining / 60) .. "m")
+    end
 end
 
 function Trinket:OnUpdate(frame)
@@ -155,6 +190,11 @@ function Trinket:OnUpdate(frame)
 
         -- API returned valid cooldown data
         if spellID and startTime and duration and duration > 0 then
+            -- Validate duration (trinkets are 120s max, not days)
+            if duration > 300 then
+                duration = 120  -- Default to 2 minutes if invalid
+            end
+
             -- New cooldown detected or updated
             if startTime ~= container.startTime or duration ~= container.duration then
                 container.startTime = startTime
@@ -180,8 +220,12 @@ function Trinket:OnUpdate(frame)
             container.icon:SetDesaturated(false)
             container.startTime = 0
             container.duration = 0
+            container.cdText:SetText("")
             -- Reset to default trinket icon
             container.icon:SetTexture(addon.Data.TrinketIcon)
+        else
+            -- Update cooldown text
+            self:UpdateCooldownText(container)
         end
     end
 end
@@ -195,6 +239,7 @@ function Trinket:Reset(frame)
         container.cooldown:Clear()
         container.icon:SetDesaturated(false)
         container.icon:SetTexture(addon.Data.TrinketIcon)
+        container.cdText:SetText("")
     end
 end
 

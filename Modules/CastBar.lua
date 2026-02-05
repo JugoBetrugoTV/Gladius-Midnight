@@ -127,6 +127,11 @@ function CastBar:Update(frame, testData)
         local width = castBar:GetWidth()
         castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * 0.6, 0)
         castBar.spark:Show()
+    else
+        -- Not test mode - only show if actively casting
+        if not castBar.casting and not castBar.channeling then
+            castBar:Hide()
+        end
     end
 end
 

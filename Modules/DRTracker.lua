@@ -183,17 +183,17 @@ function DRTracker:CreateElements(frame)
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.icon = icon
 
-        -- Duration text (top/center)
+        -- Duration text (center, large and readable)
         local text = iconFrame:CreateFontString(nil, "OVERLAY")
-        text:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
-        text:SetPoint("TOP", 0, -2)
+        text:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
+        text:SetPoint("CENTER", 0, 0)
         text:SetTextColor(1, 1, 1)
         iconFrame.text = text
 
         -- DR level text (bottom - shows 1/3, 2/3, 3/3)
         local drLevelText = iconFrame:CreateFontString(nil, "OVERLAY")
-        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
-        drLevelText:SetPoint("BOTTOM", 0, 2)
+        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
+        drLevelText:SetPoint("BOTTOM", 0, 1)
         drLevelText:SetTextColor(1, 0.8, 0)
         iconFrame.drLevelText = drLevelText
 
@@ -236,9 +236,29 @@ function DRTracker:Update(frame, testData)
     if testData then
         -- Test mode - show some sample DRs
         self:ShowTestDR(frame)
-    end
+        container:Show()
+    else
+        -- Only show container if there are active DRs
+        local hasActiveDR = false
+        local now = GetTime()
+        for _, data in pairs(container.drData) do
+            if data.expireTime > now then
+                hasActiveDR = true
+                break
+            end
+        end
 
-    container:Show()
+        if hasActiveDR then
+            self:RefreshDisplay(frame)
+            container:Show()
+        else
+            -- Hide all icons and container when no active DRs
+            for i, iconFrame in ipairs(container.icons) do
+                iconFrame:Hide()
+            end
+            container:Hide()
+        end
+    end
 end
 
 function DRTracker:ShowTestDR(frame)
@@ -379,17 +399,28 @@ function DRTracker:OnUpdate(frame)
     local now = GetTime()
     local drData = container.drData
     local needsRefresh = false
+    local hasActiveDR = false
 
-    -- Check for expired DRs
+    -- Check for expired DRs and update timers
     for category, data in pairs(drData) do
         if data.expireTime <= now then
             drData[category] = nil
             needsRefresh = true
+        else
+            hasActiveDR = true
         end
     end
 
-    if needsRefresh then
+    if needsRefresh or hasActiveDR then
         self:RefreshDisplay(frame)
+    end
+
+    -- Hide container if no active DRs
+    if not hasActiveDR then
+        for i, iconFrame in ipairs(container.icons) do
+            iconFrame:Hide()
+        end
+        container:Hide()
     end
 end
 
