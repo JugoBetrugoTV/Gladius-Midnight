@@ -94,15 +94,26 @@ function Trinket:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.trinket
+    local classIconDb = self.core.db.profile.classIcon
 
     -- Size and position
     container:SetSize(db.size, db.size)
     container:ClearAllPoints()
 
     if db.position == "RIGHT" then
-        container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+        -- Check if class icon is also on RIGHT
+        if classIconDb.position == "RIGHT" and self.core:IsModuleEnabled("classIcon") then
+            container:SetPoint("RIGHT", frame.moduleFrames.classIcon, "LEFT", -2, 0)
+        else
+            container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+        end
     else
-        container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+        -- Check if class icon is also on LEFT
+        if classIconDb.position == "LEFT" and self.core:IsModuleEnabled("classIcon") then
+            container:SetPoint("LEFT", frame.moduleFrames.classIcon, "RIGHT", 2, 0)
+        else
+            container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+        end
     end
 
     -- Reset icon

@@ -276,22 +276,48 @@ function GladiusMidnight:UpdateFrame(frame, testData)
     frame:SetSize(db.frameWidth, db.frameHeight)
     frame:SetScale(db.scale)
 
-    -- Update each enabled module
+    -- Update each module (show enabled, hide disabled)
     for name, module in pairs(self.modules) do
-        if self:IsModuleEnabled(name) and module.Update then
-            module:Update(frame, testData)
+        if self:IsModuleEnabled(name) then
+            if module.Update then
+                module:Update(frame, testData)
+            end
+        else
+            -- Hide disabled module's frame
+            if frame.moduleFrames and frame.moduleFrames[name] then
+                frame.moduleFrames[name]:Hide()
+            end
         end
     end
+
+    -- Update target highlight
+    self:UpdateTargetHighlight()
 end
 
 function GladiusMidnight:UpdateAllFrames()
+    -- Pass testData if in test mode
+    local testData = self.testMode and self:GetTestData() or nil
+
     for i = 1, 3 do
         local frame = self.frames[i]
         if frame then
-            self:UpdateFrame(frame)
+            self:UpdateFrame(frame, testData)
         end
     end
     self:PositionFrames()
+end
+
+-- Get test data for test mode
+function GladiusMidnight:GetTestData()
+    return {
+        class = "MAGE",
+        name = "TestPlayer",
+        health = 75,
+        maxHealth = 100,
+        power = 80,
+        maxPower = 100,
+        powerType = Enum.PowerType.Mana,
+    }
 end
 
 function GladiusMidnight:PositionFrames()
@@ -591,16 +617,19 @@ function GladiusMidnight:PLAYER_TARGET_CHANGED()
 end
 
 function GladiusMidnight:UpdateTargetHighlight()
-    if not self.db.profile.targetHighlight then return end
-
     for i = 1, 3 do
         local frame = self.frames[i]
         if frame and frame.targetGlow then
-            if UnitIsUnit("target", frame.unit) then
+            if self.db.profile.targetHighlight and UnitIsUnit("target", frame.unit) then
                 frame.targetGlow:Show()
             else
                 frame.targetGlow:Hide()
             end
+        end
+        -- Also hide immunity glow if disabled
+        if frame and frame.immunityGlow and not self.db.profile.immunityGlow then
+            frame.immunityGlow:Hide()
+            frame.hasImmunity = false
         end
     end
 end
