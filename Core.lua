@@ -21,15 +21,15 @@ local defaults = {
         locked = true,
 
         -- Frame settings
-        frameWidth = 200,
-        frameHeight = 60,
+        frameWidth = 275,
+        frameHeight = 74,
         scale = 1.0,
-        spacing = 2,
+        spacing = 30,
         growDirection = "DOWN",
 
         -- Position
-        posX = 300,
-        posY = 100,
+        posX = 606.87,
+        posY = -50.97,
 
         -- Minimap
         minimap = {
