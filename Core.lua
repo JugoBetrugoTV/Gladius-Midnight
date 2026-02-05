@@ -1195,7 +1195,8 @@ function GladiusMidnight:UNIT_MAXPOWER(_, unit)
 end
 
 function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
-    if self.testMode or not unit or not spellID then return end
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if self.testMode or not unit or not spellID or type(spellID) ~= "number" then return end
 
     local index = tonumber(unit:match("arena(%d)"))
     if not index or not self.frames[index] then return end

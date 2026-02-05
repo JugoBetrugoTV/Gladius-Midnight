@@ -161,7 +161,8 @@ addon.Data.TrinketIcon = "Interface\\Icons\\INV_Jewelry_TrinketPVP_01"
 -- ============================================================================
 
 function addon.Data.GetSpellIcon(spellID)
-    if not spellID then return nil end
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return nil end
 
     -- 12.0 API (primary)
     if C_Spell and C_Spell.GetSpellInfo then
@@ -220,6 +221,8 @@ addon.Data.TotalImmunities = {
 
 -- Check if a spell is an immunity and what type
 function addon.Data.GetImmunityType(spellID)
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return nil end
     if addon.Data.TotalImmunities[spellID] then
         return "total"
     elseif addon.Data.MagicImmunities[spellID] then

@@ -209,8 +209,10 @@ function Trinket:OnUpdate(frame)
     if C_PvP and C_PvP.GetArenaCrowdControlInfo and UnitExists(frame.unit) then
         local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(frame.unit)
 
-        -- API returned valid cooldown data - validate all values
-        if spellID and startTime and duration and duration > 0 then
+        -- In Midnight 12.0, values may be "secret" - check types first
+        if spellID and startTime and duration
+           and type(spellID) == "number" and type(startTime) == "number" and type(duration) == "number"
+           and duration > 0 then
             -- Validate: duration must be reasonable (max 3 min for trinkets)
             -- Validate: startTime must be reasonable (within last 3 min)
             local isValidDuration = duration <= 180
@@ -277,15 +279,13 @@ function Trinket:OnBlizzardTrinketCooldown(frame, start, duration)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
-    -- Validate cooldown data
-    if not start or not duration or start <= 0 or duration <= 0 then
-        return
-    end
+    -- In Midnight 12.0, start/duration may be "secret" values - check type first
+    if not start or not duration then return end
+    if type(start) ~= "number" or type(duration) ~= "number" then return end
+    if start <= 0 or duration <= 0 then return end
 
     -- Validate duration (max 3 min for trinkets)
-    if duration > 180 then
-        return
-    end
+    if duration > 180 then return end
 
     -- Only update if this is new data
     if start ~= container.startTime or duration ~= container.duration then

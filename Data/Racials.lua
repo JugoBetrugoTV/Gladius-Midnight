@@ -146,11 +146,15 @@ GladiusMidnight.RacialData.CCBreakTypes = {
 
 -- Get racial info by spellID
 function GladiusMidnight.RacialData:GetRacialInfo(spellID)
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return nil end
     return self.Abilities[spellID]
 end
 
 -- Check if a spellID is a tracked racial
 function GladiusMidnight.RacialData:IsTrackedRacial(spellID)
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return false end
     return self.Abilities[spellID] ~= nil
 end
 
@@ -165,5 +169,7 @@ end
 
 -- Check if racial shares CD with trinket
 function GladiusMidnight.RacialData:SharesTrinketCooldown(spellID)
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return false end
     return self.TrinketSharedCooldown[spellID] == true
 end

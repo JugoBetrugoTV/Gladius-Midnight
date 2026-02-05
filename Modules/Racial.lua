@@ -162,7 +162,8 @@ function Racial:UpdateRaceIcon(frame)
 end
 
 function Racial:OnSpellCast(frame, spellID)
-    if not spellID then return end
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return end
 
     -- Check if it's a tracked racial
     local cooldown = addon.Data.RacialCooldowns[spellID]
