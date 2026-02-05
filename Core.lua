@@ -44,6 +44,8 @@ local defaults = {
             trinket = true,
             racial = true,
             drTracker = true,
+            castBar = true,
+            auras = true,
         },
 
         -- Module-specific settings
@@ -71,6 +73,14 @@ local defaults = {
         drTracker = {
             iconSize = 20,
             showTimer = true,
+        },
+        castBar = {
+            height = 16,
+            showIcon = true,
+        },
+        auras = {
+            iconSize = 28,
+            maxAuras = 4,
         },
     }
 }
@@ -376,6 +386,14 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
     self:RegisterEvent("UNIT_AURA")
 
+    -- Cast bar events
+    self:RegisterEvent("UNIT_SPELLCAST_START")
+    self:RegisterEvent("UNIT_SPELLCAST_STOP")
+    self:RegisterEvent("UNIT_SPELLCAST_FAILED")
+    self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
+    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
+    self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
+
     -- Enable modules
     for name, module in pairs(self.modules) do
         if module.OnEnable then
@@ -586,6 +604,85 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
                 end
             end
         end
+    end
+
+    -- Notify Auras module
+    local aurasModule = self:GetModule("auras")
+    if aurasModule and self:IsModuleEnabled("auras") then
+        aurasModule:OnAuraChange(self.frames[index])
+    end
+end
+
+-- Cast Bar Events
+function GladiusMidnight:UNIT_SPELLCAST_START(_, unit, castGUID, spellID)
+    if self.testMode or not unit then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index or not self.frames[index] then return end
+
+    local castBarModule = self:GetModule("castBar")
+    if castBarModule and self:IsModuleEnabled("castBar") then
+        castBarModule:OnCastStart(self.frames[index], unit, spellID, false)
+    end
+end
+
+function GladiusMidnight:UNIT_SPELLCAST_STOP(_, unit)
+    if self.testMode or not unit then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index or not self.frames[index] then return end
+
+    local castBarModule = self:GetModule("castBar")
+    if castBarModule and self:IsModuleEnabled("castBar") then
+        castBarModule:OnCastStop(self.frames[index])
+    end
+end
+
+function GladiusMidnight:UNIT_SPELLCAST_FAILED(_, unit)
+    if self.testMode or not unit then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index or not self.frames[index] then return end
+
+    local castBarModule = self:GetModule("castBar")
+    if castBarModule and self:IsModuleEnabled("castBar") then
+        castBarModule:OnCastStop(self.frames[index])
+    end
+end
+
+function GladiusMidnight:UNIT_SPELLCAST_INTERRUPTED(_, unit)
+    if self.testMode or not unit then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index or not self.frames[index] then return end
+
+    local castBarModule = self:GetModule("castBar")
+    if castBarModule and self:IsModuleEnabled("castBar") then
+        castBarModule:OnCastInterrupted(self.frames[index])
+    end
+end
+
+function GladiusMidnight:UNIT_SPELLCAST_CHANNEL_START(_, unit, castGUID, spellID)
+    if self.testMode or not unit then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index or not self.frames[index] then return end
+
+    local castBarModule = self:GetModule("castBar")
+    if castBarModule and self:IsModuleEnabled("castBar") then
+        castBarModule:OnCastStart(self.frames[index], unit, spellID, true)
+    end
+end
+
+function GladiusMidnight:UNIT_SPELLCAST_CHANNEL_STOP(_, unit)
+    if self.testMode or not unit then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index or not self.frames[index] then return end
+
+    local castBarModule = self:GetModule("castBar")
+    if castBarModule and self:IsModuleEnabled("castBar") then
+        castBarModule:OnCastStop(self.frames[index])
     end
 end
 

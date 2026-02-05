@@ -302,6 +302,30 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
+                castBar = {
+                    order = 7,
+                    type = "toggle",
+                    name = "Cast Bar",
+                    desc = "Zeigt Zauberleiste des Gegners",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.modules.castBar end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.modules.castBar = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                auras = {
+                    order = 8,
+                    type = "toggle",
+                    name = "Auras / CC Anzeige",
+                    desc = "Zeigt wichtige Buffs/Debuffs und aktuelle CCs",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.modules.auras end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.modules.auras = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
             },
         },
 
