@@ -476,6 +476,9 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
 
+    -- Combat log for DR tracking (12.0 compatible - UNIT_AURA updateInfo is restricted)
+    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+
     -- Enable modules
     for name, module in pairs(self.modules) do
         if module.OnEnable then
@@ -799,6 +802,41 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
     end
 
     -- Notify Auras module
+    local aurasModule = self:GetModule("auras")
+    if aurasModule and self:IsModuleEnabled("auras") then
+        aurasModule:OnAuraChange(self.frames[index])
+    end
+end
+
+-- Combat Log Event for DR Tracking (12.0 compatible)
+function GladiusMidnight:COMBAT_LOG_EVENT_UNFILTERED()
+    if self.testMode then return end
+
+    local _, subEvent, _, sourceGUID, _, _, _, destGUID, destName, destFlags, _, spellID = CombatLogGetCurrentEventInfo()
+
+    -- Only care about SPELL_AURA_APPLIED on arena enemies
+    if subEvent ~= "SPELL_AURA_APPLIED" then return end
+    if not spellID or not destGUID then return end
+
+    -- Check if destination is an arena opponent
+    local index = nil
+    for i = 1, 3 do
+        local unit = "arena" .. i
+        if UnitGUID(unit) == destGUID then
+            index = i
+            break
+        end
+    end
+
+    if not index or not self.frames[index] then return end
+
+    -- Notify DR Tracker
+    local drModule = self:GetModule("drTracker")
+    if drModule and self:IsModuleEnabled("drTracker") then
+        drModule:OnAura(self.frames[index], spellID)
+    end
+
+    -- Notify Auras module for immediate updates
     local aurasModule = self:GetModule("auras")
     if aurasModule and self:IsModuleEnabled("auras") then
         aurasModule:OnAuraChange(self.frames[index])
