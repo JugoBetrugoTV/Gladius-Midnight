@@ -144,6 +144,7 @@ function GladiusMidnight:CreateArenaFrame(index)
 
     frame.unit = unit
     frame.index = index
+    frame.displayedUnit = unit  -- Required by Blizzard's aura code
 
     -- Add optionTable to prevent Blizzard CompactUnitFrame errors
     -- Blizzard's code expects this field when updating auras on reparented frames
@@ -621,44 +622,59 @@ function GladiusMidnight:InitializeBlizzardFrames()
         end
 
         -- =====================================================================
-        -- DR Tracking - Hook Blizzard's DR frames to update our custom tracker
-        -- We use our own DRTracker with category icons (stun, silence, etc.)
-        -- instead of Blizzard's spell-specific icons
+        -- DR Tracking - Use Blizzard's DR tray but reparent and style it
+        -- In Midnight 12.0, DR data is often "secret" so we can't fully
+        -- control the icons, but we can position Blizzard's display
         -- =====================================================================
         if self:IsModuleEnabled("drTracker") then
             local drTray = blizzArenaFrame.SpellDiminishStatusTray
             if drTray then
+                -- Reparent Blizzard's DR tray to our frame
+                drTray:SetParent(ourFrame)
                 ourFrame.blizzDRTray = drTray
 
-                -- Hide Blizzard's DR tray - we use our own with category icons
-                drTray:SetAlpha(0)
-                drTray:EnableMouse(false)
+                -- Get size from our settings
+                local db = self.db.profile.drTracker
+                local iconSize = db and db.iconSize or 24
 
-                -- Hook Blizzard's DR frames to detect when DRs are applied
+                -- Configure the DR tray
+                drTray:SetFrameStrata("MEDIUM")
+                drTray:SetFrameLevel(15)
+                drTray:EnableMouse(false)
+                drTray:SetAlpha(1)
+
+                -- Scale the tray based on our icon size (Blizzard default is ~20-24)
+                local scale = iconSize / 20
+                drTray:SetScale(scale)
+
+                -- Position to the LEFT of our frame
+                drTray:ClearAllPoints()
+                drTray:SetPoint("RIGHT", ourFrame, "LEFT", -4, 0)
+
+                -- Get and configure individual DR frames
                 local drFrames = {drTray:GetChildren()}
                 ourFrame.blizzDRFrames = drFrames
 
                 for drIndex, drFrame in ipairs(drFrames) do
-                    if drFrame and not drFrame.gladiusHooked then
-                        drFrame.gladiusHooked = true
+                    if drFrame then
+                        drFrame:SetFrameStrata("MEDIUM")
+                        drFrame:SetFrameLevel(16)
+                        drFrame:SetAlpha(1)
+                        drFrame:EnableMouse(false)
 
-                        -- Hook the Show event to detect DR applications
-                        drFrame:HookScript("OnShow", function(self)
-                            local drModule = GladiusMidnight:GetModule("drTracker")
-                            if drModule then
-                                -- Try to get the DR category from the frame
-                                local spellID = self.spellID or (self.GetSpellID and self:GetSpellID())
-                                if spellID then
-                                    drModule:OnBlizzardDR(ourFrame, spellID)
-                                end
-                            end
-                        end)
+                        -- Try to resize the individual DR icons
+                        if drFrame.SetSize then
+                            drFrame:SetSize(iconSize, iconSize)
+                        end
+                        if drFrame.Icon then
+                            drFrame.Icon:SetSize(iconSize - 4, iconSize - 4)
+                        end
                     end
                 end
 
-                -- Make sure our custom DR tracker is visible
+                -- Hide our custom DR tracker (we're using Blizzard's now)
                 if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
-                    ourFrame.moduleFrames.drTracker:Show()
+                    ourFrame.moduleFrames.drTracker:Hide()
                 end
             end
         end
@@ -806,8 +822,13 @@ function GladiusMidnight:ResetBlizzardFrames()
         local ourFrame = self.frames[i]
         local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
 
-        -- Reset DR tray (restore visibility for non-arena use)
+        -- Reset DR tray (reparent back to Blizzard)
         if ourFrame and ourFrame.blizzDRTray then
+            if blizzArenaFrame then
+                ourFrame.blizzDRTray:SetParent(blizzArenaFrame)
+                ourFrame.blizzDRTray:SetScale(1)
+                ourFrame.blizzDRTray:ClearAllPoints()
+            end
             ourFrame.blizzDRTray:SetAlpha(1)
             ourFrame.blizzDRTray = nil
             ourFrame.blizzDRFrames = nil
@@ -845,16 +866,32 @@ function GladiusMidnight:ResetBlizzardDRFrames()
     self:ResetBlizzardFrames()
 end
 
--- Update DR tracker sizes when settings change
--- Now updates our custom DRTracker with category icons
+-- Update Blizzard DR frame sizes when settings change
 function GladiusMidnight:UpdateBlizzardDRSize()
-    -- Update our custom DR tracker
-    local drModule = self:GetModule("drTracker")
-    if drModule and self:IsModuleEnabled("drTracker") then
-        for i = 1, 3 do
-            local frame = self.frames[i]
-            if frame then
-                drModule:Update(frame)
+    if not self.blizzFramesInitialized then return end
+
+    local db = self.db.profile.drTracker
+    local iconSize = db and db.iconSize or 24
+    local scale = iconSize / 20
+
+    for i = 1, 3 do
+        local ourFrame = self.frames[i]
+        if ourFrame and ourFrame.blizzDRTray then
+            -- Update scale
+            ourFrame.blizzDRTray:SetScale(scale)
+
+            -- Update individual DR frames
+            if ourFrame.blizzDRFrames then
+                for _, drFrame in ipairs(ourFrame.blizzDRFrames) do
+                    if drFrame then
+                        if drFrame.SetSize then
+                            drFrame:SetSize(iconSize, iconSize)
+                        end
+                        if drFrame.Icon then
+                            drFrame.Icon:SetSize(iconSize - 4, iconSize - 4)
+                        end
+                    end
+                end
             end
         end
     end
@@ -1089,6 +1126,14 @@ function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
     -- Detect arena size if not already detected
     if self.arenaSize == 0 then
         self:DetectArenaType()
+    end
+
+    -- Reset all frames for new round (fixes trinket/DR not resetting)
+    for i = 1, 3 do
+        local frame = self.frames[i]
+        if frame then
+            self:ResetFrame(frame)
+        end
     end
 
     -- Enter prep phase - unregister unit watch so we can show frames manually
