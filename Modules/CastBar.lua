@@ -160,7 +160,11 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
         name, text, texture, startTimeMS, endTimeMS, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo(unit)
     end
 
+    -- In Midnight 12.0, cast data for arena opponents is "secret"
+    -- Check if we got valid data before proceeding
     if not name then return end
+    if not startTimeMS or not endTimeMS then return end
+    if type(startTimeMS) ~= "number" or type(endTimeMS) ~= "number" then return end
 
     -- Setup cast bar
     castBar.casting = not isChannel

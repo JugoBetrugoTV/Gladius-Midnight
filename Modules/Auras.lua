@@ -304,62 +304,70 @@ function Auras:RefreshAuras(frame)
     local auras = {}
 
     -- Scan debuffs on the unit
+    -- NOTE: In Midnight 12.0, most aura data is "secret" for arena opponents
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
         if not auraData then break end
 
+        -- In Midnight 12.0, spellId and other fields may be secret/nil
         local spellId = auraData.spellId
-        local priority = PRIORITY_AURAS[spellId]
+        if spellId and type(spellId) == "number" then
+            local priority = PRIORITY_AURAS[spellId]
 
-        if priority then
-            table.insert(auras, {
-                spellId = spellId,
-                name = auraData.name,
-                icon = auraData.icon,
-                duration = auraData.duration or 0,
-                expirationTime = auraData.expirationTime or 0,
-                stacks = auraData.applications or 0,
-                priority = priority,
-                isDebuff = true,
-            })
+            if priority then
+                table.insert(auras, {
+                    spellId = spellId,
+                    name = auraData.name,
+                    icon = auraData.icon,
+                    duration = (type(auraData.duration) == "number") and auraData.duration or 0,
+                    expirationTime = (type(auraData.expirationTime) == "number") and auraData.expirationTime or 0,
+                    stacks = (type(auraData.applications) == "number") and auraData.applications or 0,
+                    priority = priority,
+                    isDebuff = true,
+                })
+            end
         end
     end
 
     -- Also scan important buffs (defensive CDs) and check for immunities
+    -- NOTE: In Midnight 12.0, most aura data is "secret" for arena opponents
     local immunityType = nil  -- "total" or "magic" or nil
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetBuffDataByIndex(unit, i)
         if not auraData then break end
 
+        -- In Midnight 12.0, spellId and other fields may be secret/nil
         local spellId = auraData.spellId
-        local priority = PRIORITY_AURAS[spellId]
+        if spellId and type(spellId) == "number" then
+            local priority = PRIORITY_AURAS[spellId]
 
-        -- Check for immunity type (ArenaCore style - magic vs total)
-        local spellImmunityType = addon.Data.GetImmunityType(spellId)
-        if spellImmunityType then
-            -- Total immunity takes priority over magic immunity
-            if spellImmunityType == "total" then
-                immunityType = "total"
-            elseif not immunityType then
-                immunityType = "magic"
+            -- Check for immunity type (ArenaCore style - magic vs total)
+            local spellImmunityType = addon.Data.GetImmunityType(spellId)
+            if spellImmunityType then
+                -- Total immunity takes priority over magic immunity
+                if spellImmunityType == "total" then
+                    immunityType = "total"
+                elseif not immunityType then
+                    immunityType = "magic"
+                end
             end
-        end
-        -- Fallback: Check old IMMUNITY_SPELLS table
-        if not immunityType and IMMUNITY_SPELLS[spellId] then
-            immunityType = "total"
-        end
+            -- Fallback: Check old IMMUNITY_SPELLS table
+            if not immunityType and IMMUNITY_SPELLS[spellId] then
+                immunityType = "total"
+            end
 
-        if priority then
-            table.insert(auras, {
-                spellId = spellId,
-                name = auraData.name,
-                icon = auraData.icon,
-                duration = auraData.duration or 0,
-                expirationTime = auraData.expirationTime or 0,
-                stacks = auraData.applications or 0,
-                priority = priority,
-                isDebuff = false,
-            })
+            if priority then
+                table.insert(auras, {
+                    spellId = spellId,
+                    name = auraData.name,
+                    icon = auraData.icon,
+                    duration = (type(auraData.duration) == "number") and auraData.duration or 0,
+                    expirationTime = (type(auraData.expirationTime) == "number") and auraData.expirationTime or 0,
+                    stacks = (type(auraData.applications) == "number") and auraData.applications or 0,
+                    priority = priority,
+                    isDebuff = false,
+                })
+            end
         end
     end
 

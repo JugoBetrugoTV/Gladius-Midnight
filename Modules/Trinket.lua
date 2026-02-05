@@ -124,7 +124,8 @@ function Trinket:Update(frame, testData)
 end
 
 function Trinket:OnSpellCast(frame, spellID)
-    if not spellID then return end
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return end
 
     -- Check if it's a trinket spell (includes CC-break racials)
     local cooldownDuration = TRINKET_SPELLS[spellID]

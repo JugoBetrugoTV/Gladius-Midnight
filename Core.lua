@@ -869,24 +869,24 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
 
     local frame = self.frames[index]
 
-    -- DR Tracking: In Midnight 12.0, updateInfo may be restricted
-    -- Use full debuff scan as fallback
+    -- DR Tracking: In Midnight 12.0, aura data is "secret" for arena opponents
+    -- Most of this will not work - we rely on Blizzard's built-in DR display
     local drModule = self:GetModule("drTracker")
     if drModule and self:IsModuleEnabled("drTracker") then
-        -- Try new API first
+        -- Try new API first - but spellId is likely secret
         if updateInfo and updateInfo.addedAuras then
             for _, auraInfo in ipairs(updateInfo.addedAuras) do
-                if auraInfo and auraInfo.spellId then
+                if auraInfo and auraInfo.spellId and type(auraInfo.spellId) == "number" then
                     drModule:OnAura(frame, auraInfo.spellId)
                 end
             end
         else
-            -- Fallback: Full debuff scan for DR spells
+            -- Fallback: Full debuff scan - also likely returns secret data
             self:ScanDebuffsForDR(frame, unit)
         end
     end
 
-    -- Notify Auras module
+    -- Notify Auras module - also affected by secret data
     local aurasModule = self:GetModule("auras")
     if aurasModule and self:IsModuleEnabled("auras") then
         aurasModule:OnAuraChange(frame)
@@ -894,6 +894,8 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
 end
 
 -- Scan all debuffs for DR spells (Midnight 12.0 fallback)
+-- NOTE: In Midnight 12.0, most aura data is "secret" for arena opponents
+-- This function will mostly not work - we rely on Blizzard's built-in DR display
 function GladiusMidnight:ScanDebuffsForDR(frame, unit)
     local drModule = self:GetModule("drTracker")
     if not drModule then return end
@@ -902,14 +904,15 @@ function GladiusMidnight:ScanDebuffsForDR(frame, unit)
     frame.lastDRScan = frame.lastDRScan or {}
     local currentDebuffs = {}
 
-    -- Scan all debuffs
+    -- Scan all debuffs - but in Midnight 12.0, spellId is often "secret"
     if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
         for i = 1, 40 do
             local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
             if not auraData then break end
 
+            -- In Midnight 12.0, spellId may be secret (nil or inaccessible)
             local spellId = auraData.spellId
-            if spellId then
+            if spellId and type(spellId) == "number" then
                 currentDebuffs[spellId] = true
 
                 -- Only process if this is a NEW debuff (not seen in last scan)

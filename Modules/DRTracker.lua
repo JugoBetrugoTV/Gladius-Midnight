@@ -534,8 +534,10 @@ function DRTracker:OnUpdate(frame)
 end
 
 -- Called when UNIT_AURA fires for arena units
+-- NOTE: In Midnight 12.0, spellID may be "secret" and inaccessible
 function DRTracker:OnAura(frame, spellID)
-    if not spellID then return end
+    -- In Midnight 12.0, spellID is often secret/nil for arena opponents
+    if not spellID or type(spellID) ~= "number" then return end
 
     -- Check if this is a DR spell
     if DR_SPELLS[spellID] then
