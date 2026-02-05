@@ -971,7 +971,9 @@ function GladiusMidnight:ScanExistingOpponents()
 
             -- Update and show frame
             self:UpdateFrame(frame)
-            frame:Show()
+            if not InCombatLockdown() then
+                frame:Show()
+            end
         end
     end
 
@@ -1079,7 +1081,10 @@ function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
         end
 
         self:UpdateFrame(frame)
-        frame:Show()
+        -- Only call Show outside combat to avoid taint
+        if not InCombatLockdown() then
+            frame:Show()
+        end
 
         -- Explicitly show UIParent-parented module containers now that frame is visible
         if frame.moduleFrames then
@@ -1105,7 +1110,9 @@ function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
 
         self:PositionFrames()
     elseif updateType == "destroyed" then
-        frame:Hide()
+        if not InCombatLockdown() then
+            frame:Hide()
+        end
         -- Hide UIParent-parented module containers
         if frame.moduleFrames then
             if frame.moduleFrames.drTracker then
@@ -1170,14 +1177,16 @@ function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
             end
 
             self:UpdateFrame(frame)
-            frame:Show()
+            if not InCombatLockdown() then
+                frame:Show()
+            end
         end
     end
 
     -- Hide frames that shouldn't be shown
     for i = numOpponents + 1, 3 do
         local frame = self.frames[i]
-        if frame then
+        if frame and not InCombatLockdown() then
             frame:Hide()
         end
     end
@@ -1395,8 +1404,10 @@ function GladiusMidnight:CheckArenaStatus()
             local frame = self.frames[i]
             if frame then
                 -- Re-register unit watch for normal operation
-                RegisterUnitWatch(frame)
-                frame:Hide()
+                if not InCombatLockdown() then
+                    RegisterUnitWatch(frame)
+                    frame:Hide()
+                end
                 self:ResetFrame(frame)
             end
         end
