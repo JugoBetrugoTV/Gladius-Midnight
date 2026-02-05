@@ -82,14 +82,34 @@ function ClassIcon:UpdateUnit(frame)
     if not container then return end
 
     local unit = frame.unit
-    if not UnitExists(unit) then return end
+    local index = frame.index
+    local class = nil
 
-    local _, class = UnitClass(unit)
+    -- Method 1: Try GetArenaOpponentSpec (works during prep phase before gates open)
+    if GetArenaOpponentSpec then
+        local specID = GetArenaOpponentSpec(index)
+        if specID and specID > 0 then
+            local _, specName, _, _, role, classFile = GetSpecializationInfoByID(specID)
+            if classFile then
+                class = classFile
+            end
+        end
+    end
+
+    -- Method 2: Fallback to UnitClass if unit exists
+    if not class and UnitExists(unit) then
+        local _, classFile = UnitClass(unit)
+        class = classFile
+    end
+
+    -- Update icon if we found a class
     if class then
         local coords = addon.Data.ClassIconCoords[class]
         if coords then
             container.icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
         end
+        -- Store class for other modules
+        frame.class = class
     end
 end
 

@@ -31,6 +31,11 @@ local defaults = {
         posX = 300,
         posY = 100,
 
+        -- Minimap
+        minimap = {
+            hide = false,
+        },
+
         -- Module toggles
         modules = {
             classIcon = true,
@@ -410,11 +415,26 @@ end
 function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
     if not self.db.profile.enabled or self.testMode then return end
 
-    for i = 1, self.arenaSize do
-        local frame = self.frames[i]
-        local unit = "arena" .. i
+    -- Detect arena size if not already detected
+    if self.arenaSize == 0 then
+        self:DetectArenaType()
+    end
 
-        if frame and UnitExists(unit) then
+    local numOpponents = GetNumArenaOpponentSpecs and GetNumArenaOpponentSpecs() or self.arenaSize
+
+    for i = 1, numOpponents do
+        local frame = self.frames[i]
+        if frame then
+            -- Get spec info before gates open
+            local specID = GetArenaOpponentSpec and GetArenaOpponentSpec(i)
+            if specID and specID > 0 then
+                local _, specName, _, _, role, classFile = GetSpecializationInfoByID(specID)
+                if classFile then
+                    frame.class = classFile
+                    frame.specID = specID
+                end
+            end
+
             self:UpdateFrame(frame)
             frame:Show()
         end

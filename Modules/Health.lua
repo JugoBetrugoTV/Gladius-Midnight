@@ -134,9 +134,13 @@ function Health:UpdateUnit(frame)
         end
     end
 
-    -- Class color
+    -- Class color (use stored class from frame or UnitClass)
     if db.colorByClass then
-        local _, class = UnitClass(unit)
+        local class = frame.class
+        if not class and UnitExists(unit) then
+            local _, classFile = UnitClass(unit)
+            class = classFile
+        end
         if class then
             local color = addon.Data.GetClassColor(class)
             healthBar:SetStatusBarColor(color.r, color.g, color.b)
