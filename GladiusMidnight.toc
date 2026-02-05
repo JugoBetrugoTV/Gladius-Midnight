@@ -21,6 +21,7 @@ Modules\Health.lua
 Modules\Power.lua
 Modules\Trinket.lua
 Modules\Racial.lua
+Modules\DRTracker.lua
 
 # Options (must be last)
 Options.lua

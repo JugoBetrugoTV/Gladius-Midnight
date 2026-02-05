@@ -290,6 +290,18 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
+                drTracker = {
+                    order = 6,
+                    type = "toggle",
+                    name = "DR Tracker",
+                    desc = "Zeigt Diminishing Returns für CC-Effekte",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.modules.drTracker end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.modules.drTracker = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
             },
         },
 

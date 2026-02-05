@@ -43,6 +43,7 @@ local defaults = {
             power = true,
             trinket = true,
             racial = true,
+            drTracker = true,
         },
 
         -- Module-specific settings
@@ -66,6 +67,10 @@ local defaults = {
         racial = {
             size = 26,
             position = "RIGHT",
+        },
+        drTracker = {
+            iconSize = 20,
+            showTimer = true,
         },
     }
 }
@@ -128,8 +133,9 @@ function GladiusMidnight:CreateArenaFrame(index)
     frame:SetBackdropColor(0.05, 0.05, 0.05, 0.9)
     frame:SetBackdropBorderColor(0, 0, 0, 1)
 
-    -- Secure targeting
-    frame:SetAttribute("type", "target")
+    -- Secure targeting (left-click = target, right-click = focus)
+    frame:SetAttribute("type1", "target")
+    frame:SetAttribute("type2", "focus")
     frame:SetAttribute("unit", unit)
     RegisterUnitWatch(frame)
 
@@ -368,6 +374,7 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_POWER_UPDATE")
     self:RegisterEvent("UNIT_MAXPOWER")
     self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    self:RegisterEvent("UNIT_AURA")
 
     -- Enable modules
     for name, module in pairs(self.modules) do
@@ -559,6 +566,26 @@ function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
     local racialModule = self:GetModule("racial")
     if racialModule and self:IsModuleEnabled("racial") then
         racialModule:OnSpellCast(self.frames[index], spellID)
+    end
+end
+
+function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
+    if self.testMode or not unit then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if not index or not self.frames[index] then return end
+
+    -- Check for DR-triggering auras using 12.0 API
+    local drModule = self:GetModule("drTracker")
+    if drModule and self:IsModuleEnabled("drTracker") and updateInfo then
+        -- Check added auras
+        if updateInfo.addedAuras then
+            for _, auraInfo in ipairs(updateInfo.addedAuras) do
+                if auraInfo.spellId then
+                    drModule:OnAura(self.frames[index], auraInfo.spellId)
+                end
+            end
+        end
     end
 end
 
