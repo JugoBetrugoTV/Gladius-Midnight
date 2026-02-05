@@ -193,3 +193,37 @@ end
 function addon.Data.GetPowerColor(powerType)
     return addon.Data.PowerColors[powerType] or addon.Data.PowerColors[Enum.PowerType.Mana]
 end
+
+-- ============================================================================
+-- Immunity Spells (ArenaCore style - Magic vs Total)
+-- ============================================================================
+
+-- Magic-Only Immunities (GREEN glow)
+addon.Data.MagicImmunities = {
+    [31224] = true,   -- Cloak of Shadows (Rogue)
+    [204018] = true,  -- Blessing of Spellwarding (Paladin)
+    [48707] = true,   -- Anti-Magic Shell (Death Knight)
+    [212295] = true,  -- Nether Ward (Warlock)
+    [47585] = true,   -- Dispersion (Priest - 90% reduction)
+    [213602] = true,  -- Greater Fade (Priest)
+    [204336] = true,  -- Grounding Totem (Shaman)
+}
+
+-- Total Immunities - Physical + Magic (WHITE glow)
+addon.Data.TotalImmunities = {
+    [642] = true,     -- Divine Shield (Paladin)
+    [45438] = true,   -- Ice Block (Mage)
+    [186265] = true,  -- Aspect of the Turtle (Hunter)
+    [196555] = true,  -- Netherwalk (Demon Hunter)
+    [1022] = true,    -- Blessing of Protection (Paladin - physical only but important)
+}
+
+-- Check if a spell is an immunity and what type
+function addon.Data.GetImmunityType(spellID)
+    if addon.Data.TotalImmunities[spellID] then
+        return "total"
+    elseif addon.Data.MagicImmunities[spellID] then
+        return "magic"
+    end
+    return nil
+end

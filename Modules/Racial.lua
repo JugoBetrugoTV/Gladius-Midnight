@@ -46,6 +46,9 @@ function Racial:CreateElements(frame)
     cooldown:SetDrawSwipe(true)
     cooldown:SetDrawEdge(false)
     cooldown:SetHideCountdownNumbers(true)  -- Use our own text
+    -- OmniCC exclusion (ArenaCore method)
+    cooldown.noCooldownCount = true
+    cooldown.noOCC = true
 
     -- Custom cooldown text
     local cdText = container:CreateFontString(nil, "OVERLAY")
@@ -77,6 +80,7 @@ function Racial:Update(frame, testData)
 
     local db = self.core.db.profile.racial
     local trinketDb = self.core.db.profile.trinket
+    local classIconDb = self.core.db.profile.classIcon
 
     -- Size and position (below trinket if both enabled)
     container:SetSize(db.size, db.size)
@@ -84,12 +88,22 @@ function Racial:Update(frame, testData)
 
     local trinketFrame = frame.moduleFrames.trinket
     if trinketFrame and self.core:IsModuleEnabled("trinket") then
+        -- Position below trinket
         container:SetPoint("TOP", trinketFrame, "BOTTOM", 0, -2)
     else
+        -- Position independently - account for class icon
         if db.position == "RIGHT" then
-            container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+            if classIconDb.position == "RIGHT" and self.core:IsModuleEnabled("classIcon") then
+                container:SetPoint("RIGHT", frame.moduleFrames.classIcon, "LEFT", -2, 0)
+            else
+                container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+            end
         else
-            container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+            if classIconDb.position == "LEFT" and self.core:IsModuleEnabled("classIcon") then
+                container:SetPoint("LEFT", frame.moduleFrames.classIcon, "RIGHT", 2, 0)
+            else
+                container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+            end
         end
     end
 

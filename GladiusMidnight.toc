@@ -24,7 +24,7 @@ Modules\Racial.lua
 Modules\DRTracker.lua
 Modules\CastBar.lua
 Modules\Auras.lua
-Modules\Kicks.lua
 
 # Options (must be last)
 Options.lua
+OptionsUI.lua

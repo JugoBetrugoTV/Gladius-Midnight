@@ -157,25 +157,25 @@ function Health:UpdateUnit(frame)
 
     -- For text display, use percentage API (12.0 safe)
     if db.showText then
-        -- Try 12.0 API first (returns actual percentage, not secret)
+        -- WoW 12.0 API: UnitHealthPercent with CurveConstants.ScaleTo100 for proper display
         if UnitHealthPercent then
-            local percent = UnitHealthPercent(unit)
-            -- Ensure percent is a valid number
-            if percent and type(percent) == "number" then
-                healthBar.text:SetText(math.floor(percent) .. "%")
-            elseif percent then
-                -- Try to convert to number (might be BigNumber)
-                local numPercent = tonumber(tostring(percent))
-                if numPercent then
-                    healthBar.text:SetText(math.floor(numPercent) .. "%")
+            -- Use CurveConstants.ScaleTo100 for proper percentage scaling (ArenaCore method)
+            local success, percent = pcall(function()
+                if CurveConstants and CurveConstants.ScaleTo100 then
+                    return UnitHealthPercent(unit, nil, CurveConstants.ScaleTo100)
                 else
-                    healthBar.text:SetText("100%")
+                    return UnitHealthPercent(unit)
                 end
+            end)
+
+            if success and percent and type(percent) == "number" then
+                healthBar.text:SetFormattedText("%d%%", math.floor(percent))
             else
+                -- Fallback if API call failed
                 healthBar.text:SetText("100%")
             end
         else
-            -- Fallback: Check if values are numbers (not secret)
+            -- Pre-12.0 fallback: Check if values are numbers (not secret)
             if type(health) == "number" and type(maxHealth) == "number" and maxHealth > 0 then
                 local percent = math.floor((health / maxHealth) * 100)
                 healthBar.text:SetText(percent .. "%")

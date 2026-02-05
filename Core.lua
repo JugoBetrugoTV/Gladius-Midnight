@@ -46,7 +46,6 @@ local defaults = {
             drTracker = true,
             castBar = true,
             auras = true,
-            kicks = true,
         },
 
         -- Visual settings
@@ -89,9 +88,6 @@ local defaults = {
         auras = {
             iconSize = 28,
             maxAuras = 4,
-        },
-        kicks = {
-            size = 22,
         },
     }
 }
@@ -142,6 +138,10 @@ function GladiusMidnight:CreateArenaFrame(index)
     frame:RegisterForClicks("AnyUp")
     frame:SetClampedToScreen(true)
 
+    -- IMPORTANT: Allow child frames to render outside parent bounds
+    -- This is needed for DR Tracker (left of frame) and Cast Bar (below frame)
+    frame:SetClipsChildren(false)
+
     frame.unit = unit
     frame.index = index
 
@@ -167,7 +167,7 @@ function GladiusMidnight:CreateArenaFrame(index)
     targetGlow:Hide()
     frame.targetGlow = targetGlow
 
-    -- Immunity glow (golden pulse)
+    -- Immunity glow - WHITE for total immunity, GREEN for magic-only (ArenaCore style)
     local immunityGlow = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     immunityGlow:SetPoint("TOPLEFT", -4, 4)
     immunityGlow:SetPoint("BOTTOMRIGHT", 4, -4)
@@ -175,11 +175,12 @@ function GladiusMidnight:CreateArenaFrame(index)
         edgeFile = "Interface\\Buttons\\WHITE8X8",
         edgeSize = 3,
     })
-    immunityGlow:SetBackdropBorderColor(1, 0.84, 0, 1)
+    immunityGlow:SetBackdropBorderColor(1, 1, 1, 1)  -- White = total immunity
     immunityGlow:SetFrameLevel(frame:GetFrameLevel() - 1)
     immunityGlow:Hide()
     frame.immunityGlow = immunityGlow
     frame.hasImmunity = false
+    frame.immunityType = nil  -- "total" or "magic"
 
     -- Arena number indicator (right side)
     local arenaNumber = CreateFrame("Frame", nil, frame, "BackdropTemplate")
@@ -218,20 +219,43 @@ function GladiusMidnight:CreateArenaFrame(index)
         f:StopMovingOrSizing()
         -- Only save position from frame 1 (other frames are positioned relative to it)
         if f.index == 1 then
-            -- Calculate frame center relative to UIParent center
+            -- Get the frame's current position relative to UIParent center
+            local scale = f:GetEffectiveScale()
+            local uiScale = UIParent:GetEffectiveScale()
             local centerX, centerY = f:GetCenter()
             local uiCenterX, uiCenterY = UIParent:GetCenter()
-            local scale = f:GetEffectiveScale() / UIParent:GetEffectiveScale()
 
             if centerX and uiCenterX then
-                local x = (centerX - uiCenterX) * scale
-                local y = (centerY - uiCenterY) * scale
-                GladiusMidnight.db.profile.posX = x
-                GladiusMidnight.db.profile.posY = y
+                -- Convert to UIParent-relative coordinates (accounting for frame's scale)
+                local x = (centerX - uiCenterX) * (scale / uiScale)
+                local y = (centerY - uiCenterY) * (scale / uiScale)
+
+                -- Account for the frame's own scale setting
+                local frameScale = GladiusMidnight.db.profile.scale or 1
+                GladiusMidnight.db.profile.posX = x / frameScale
+                GladiusMidnight.db.profile.posY = y / frameScale
             end
         end
-        -- Re-position all frames to maintain relative layout
-        GladiusMidnight:PositionFrames()
+        -- Re-position other frames relative to frame 1 (but don't reposition frame 1 itself)
+        local db = GladiusMidnight.db.profile
+        local prevFrame = GladiusMidnight.frames[1]
+        for i = 2, 3 do
+            local otherFrame = GladiusMidnight.frames[i]
+            if otherFrame and prevFrame then
+                otherFrame:ClearAllPoints()
+                local spacing = db.spacing
+                if db.growDirection == "DOWN" then
+                    otherFrame:SetPoint("TOP", prevFrame, "BOTTOM", 0, -spacing)
+                elseif db.growDirection == "UP" then
+                    otherFrame:SetPoint("BOTTOM", prevFrame, "TOP", 0, spacing)
+                elseif db.growDirection == "LEFT" then
+                    otherFrame:SetPoint("RIGHT", prevFrame, "LEFT", -spacing, 0)
+                else
+                    otherFrame:SetPoint("LEFT", prevFrame, "RIGHT", spacing, 0)
+                end
+                prevFrame = otherFrame
+            end
+        end
     end)
 
     -- Container for module elements
@@ -256,22 +280,48 @@ function GladiusMidnight:UpdateFrame(frame, testData)
     frame:SetSize(db.frameWidth, db.frameHeight)
     frame:SetScale(db.scale)
 
-    -- Update each enabled module
+    -- Update each module (show enabled, hide disabled)
     for name, module in pairs(self.modules) do
-        if self:IsModuleEnabled(name) and module.Update then
-            module:Update(frame, testData)
+        if self:IsModuleEnabled(name) then
+            if module.Update then
+                module:Update(frame, testData)
+            end
+        else
+            -- Hide disabled module's frame
+            if frame.moduleFrames and frame.moduleFrames[name] then
+                frame.moduleFrames[name]:Hide()
+            end
         end
     end
+
+    -- Update target highlight
+    self:UpdateTargetHighlight()
 end
 
 function GladiusMidnight:UpdateAllFrames()
+    -- Pass testData if in test mode
+    local testData = self.testMode and self:GetTestData() or nil
+
     for i = 1, 3 do
         local frame = self.frames[i]
         if frame then
-            self:UpdateFrame(frame)
+            self:UpdateFrame(frame, testData)
         end
     end
     self:PositionFrames()
+end
+
+-- Get test data for test mode
+function GladiusMidnight:GetTestData()
+    return {
+        class = "MAGE",
+        name = "TestPlayer",
+        health = 75,
+        maxHealth = 100,
+        power = 80,
+        maxPower = 100,
+        powerType = Enum.PowerType.Mana,
+    }
 end
 
 function GladiusMidnight:PositionFrames()
@@ -456,6 +506,9 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
 
+    -- Note: COMBAT_LOG_EVENT_UNFILTERED is BLOCKED in Midnight 12.0 during PvP
+    -- DR tracking uses full aura scan via UNIT_AURA instead
+
     -- Enable modules
     for name, module in pairs(self.modules) do
         if module.OnEnable then
@@ -568,16 +621,19 @@ function GladiusMidnight:PLAYER_TARGET_CHANGED()
 end
 
 function GladiusMidnight:UpdateTargetHighlight()
-    if not self.db.profile.targetHighlight then return end
-
     for i = 1, 3 do
         local frame = self.frames[i]
         if frame and frame.targetGlow then
-            if UnitIsUnit("target", frame.unit) then
+            if self.db.profile.targetHighlight and UnitIsUnit("target", frame.unit) then
                 frame.targetGlow:Show()
             else
                 frame.targetGlow:Hide()
             end
+        end
+        -- Also hide immunity glow if disabled
+        if frame and frame.immunityGlow and not self.db.profile.immunityGlow then
+            frame.immunityGlow:Hide()
+            frame.hasImmunity = false
         end
     end
 end
@@ -755,11 +811,6 @@ function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
     if racialModule and self:IsModuleEnabled("racial") then
         racialModule:OnSpellCast(self.frames[index], spellID)
     end
-
-    local kicksModule = self:GetModule("kicks")
-    if kicksModule and self:IsModuleEnabled("kicks") then
-        kicksModule:OnSpellCast(self.frames[index], spellID)
-    end
 end
 
 function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
@@ -768,24 +819,61 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
     local index = tonumber(unit:match("arena(%d)"))
     if not index or not self.frames[index] then return end
 
-    -- Check for DR-triggering auras using 12.0 API
+    local frame = self.frames[index]
+
+    -- DR Tracking: In Midnight 12.0, updateInfo may be restricted
+    -- Use full debuff scan as fallback
     local drModule = self:GetModule("drTracker")
-    if drModule and self:IsModuleEnabled("drTracker") and updateInfo then
-        -- Check added auras
-        if updateInfo.addedAuras then
+    if drModule and self:IsModuleEnabled("drTracker") then
+        -- Try new API first
+        if updateInfo and updateInfo.addedAuras then
             for _, auraInfo in ipairs(updateInfo.addedAuras) do
-                if auraInfo.spellId then
-                    drModule:OnAura(self.frames[index], auraInfo.spellId)
+                if auraInfo and auraInfo.spellId then
+                    drModule:OnAura(frame, auraInfo.spellId)
                 end
             end
+        else
+            -- Fallback: Full debuff scan for DR spells
+            self:ScanDebuffsForDR(frame, unit)
         end
     end
 
     -- Notify Auras module
     local aurasModule = self:GetModule("auras")
     if aurasModule and self:IsModuleEnabled("auras") then
-        aurasModule:OnAuraChange(self.frames[index])
+        aurasModule:OnAuraChange(frame)
     end
+end
+
+-- Scan all debuffs for DR spells (Midnight 12.0 fallback)
+function GladiusMidnight:ScanDebuffsForDR(frame, unit)
+    local drModule = self:GetModule("drTracker")
+    if not drModule then return end
+
+    -- Track which spells we've already processed this scan
+    frame.lastDRScan = frame.lastDRScan or {}
+    local currentDebuffs = {}
+
+    -- Scan all debuffs
+    if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
+        for i = 1, 40 do
+            local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
+            if not auraData then break end
+
+            local spellId = auraData.spellId
+            if spellId then
+                currentDebuffs[spellId] = true
+
+                -- Only process if this is a NEW debuff (not seen in last scan)
+                if not frame.lastDRScan[spellId] then
+                    drModule:OnAura(frame, spellId)
+                end
+            end
+        end
+    end
+
+    -- Update last scan
+    frame.lastDRScan = currentDebuffs
 end
 
 -- Cast Bar Events

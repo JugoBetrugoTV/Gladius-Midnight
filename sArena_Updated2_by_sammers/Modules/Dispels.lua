@@ -1,0 +1,2 @@
+-- Dispels module is disabled for Midnight (built-in dispel handling)
+-- This file is kept for backwards compatibility with the TOC file
