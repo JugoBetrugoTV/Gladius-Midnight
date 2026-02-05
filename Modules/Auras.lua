@@ -156,10 +156,14 @@ end
 -- ============================================================================
 
 function Auras:CreateElements(frame)
-    -- Container for aura icons (positioned below health/power within frame)
-    local container = CreateFrame("Frame", nil, frame)
+    -- Container for aura icons - PARENT TO UIParent to avoid clipping/overlap issues
+    local container = CreateFrame("Frame", "GladiusMidnightAuras" .. frame.index, UIParent)
     container:SetSize(150, 32)
-    container:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility above other elements
+    container:SetFrameStrata("MEDIUM")
+    container:SetFrameLevel(10)
+
+    -- Store reference to parent arena frame
+    container.arenaFrame = frame
 
     -- Create aura icon frames
     container.icons = {}
@@ -239,16 +243,15 @@ function Auras:Update(frame, testData)
     container:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, yOffset)
     container:SetSize(iconSize * 5 + 8, iconSize)
 
-    -- Update icon sizes and frame levels
+    -- Update icon sizes
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
         iconFrame:ClearAllPoints()
         iconFrame:SetPoint("LEFT", container, "LEFT", (i - 1) * (iconSize + 2), 0)
-        iconFrame:SetFrameLevel(container:GetFrameLevel() + 1)
     end
 
-    -- Always show container first, then populate
-    container:Show()
+    -- Match visibility to parent arena frame, then populate
+    container:SetShown(frame:IsShown())
 
     if testData then
         -- Test mode - show sample auras

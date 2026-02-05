@@ -237,10 +237,15 @@ end
 -- ============================================================================
 
 function DRTracker:CreateElements(frame)
-    -- Container for DR icons (positioned to LEFT of frame)
-    local container = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    -- Container for DR icons - PARENT TO UIParent to avoid clipping issues
+    -- Position relative to arena frame but render independently
+    local container = CreateFrame("Frame", "GladiusMidnightDR" .. frame.index, UIParent, "BackdropTemplate")
     container:SetSize(100, 20)
-    container:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility above frame
+    container:SetFrameStrata("MEDIUM")
+    container:SetFrameLevel(10)
+
+    -- Store reference to parent arena frame
+    container.arenaFrame = frame
 
     -- Store DR tracking data
     container.drData = {}  -- [category] = { level = 1-4, expireTime = time }
@@ -293,6 +298,7 @@ function DRTracker:CreateElements(frame)
         container.icons[i] = iconFrame
     end
 
+    container:Hide()  -- Start hidden
     frame.moduleFrames.drTracker = container
 end
 
@@ -307,15 +313,17 @@ function DRTracker:Update(frame, testData)
     local db = self.core.db.profile.drTracker
     local iconSize = db.iconSize or 24
 
-    -- Position to the LEFT of the frame (ArenaCore style)
+    -- Position to the LEFT of the arena frame (container is parented to UIParent)
     container:ClearAllPoints()
     container:SetPoint("RIGHT", frame, "LEFT", -4, 0)
     container:SetSize(iconSize * 5 + 10, iconSize)
 
-    -- Update icon sizes and ensure they have proper frame level
+    -- Match visibility to parent arena frame
+    container:SetShown(frame:IsShown())
+
+    -- Update icon sizes
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
-        iconFrame:SetFrameLevel(container:GetFrameLevel() + 1)
     end
 
     if testData then

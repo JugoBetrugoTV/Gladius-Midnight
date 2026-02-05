@@ -23,13 +23,18 @@ end
 -- ============================================================================
 
 function CastBar:CreateElements(frame)
-    -- Cast bar container (positioned BELOW the main frame)
-    local castBar = CreateFrame("StatusBar", nil, frame, "BackdropTemplate")
+    -- Cast bar container - PARENT TO UIParent to avoid clipping issues
+    -- Positioned BELOW the main arena frame
+    local castBar = CreateFrame("StatusBar", "GladiusMidnightCastBar" .. frame.index, UIParent, "BackdropTemplate")
     castBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     castBar:SetStatusBarColor(1, 0.7, 0)
     castBar:SetMinMaxValues(0, 1)
     castBar:SetValue(0)
-    castBar:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility
+    castBar:SetFrameStrata("MEDIUM")
+    castBar:SetFrameLevel(10)
+
+    -- Store reference to parent arena frame
+    castBar.arenaFrame = frame
 
     -- Background
     castBar:SetBackdrop({
@@ -99,7 +104,7 @@ function CastBar:Update(frame, testData)
 
     local db = self.core.db.profile.castBar
 
-    -- Size and position (below the main frame)
+    -- Size and position (below the main arena frame - castBar is parented to UIParent)
     local height = db.height or 16
     local iconSize = height
 
@@ -108,11 +113,10 @@ function CastBar:Update(frame, testData)
     castBar:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -2)
     castBar:SetHeight(height)
 
-    -- Icon position and frame level
+    -- Icon position
     castBar.iconFrame:SetSize(iconSize, iconSize)
     castBar.iconFrame:ClearAllPoints()
     castBar.iconFrame:SetPoint("TOPRIGHT", castBar, "TOPLEFT", -2, 0)
-    castBar.iconFrame:SetFrameLevel(castBar:GetFrameLevel() + 1)
 
     if testData then
         -- Test mode - show a sample cast
