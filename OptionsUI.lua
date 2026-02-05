@@ -517,7 +517,6 @@ function OptionsUI:CreateSidebar(parent)
         { text = "DR Tracker", page = "drTracker" },
         { text = "Cast Bar", page = "castBar" },
         { text = "Auras / CC", page = "auras" },
-        { text = "Kick Tracker", page = "kicks" },
     }
 
     self.navButtons = {}
@@ -581,7 +580,6 @@ function OptionsUI:CreateContentArea(parent)
     self:CreateDRTrackerPage()
     self:CreateCastBarPage()
     self:CreateAurasPage()
-    self:CreateKicksPage()
 
     -- Show default page
     self:ShowPage("general")
@@ -782,7 +780,6 @@ function OptionsUI:CreateModulesPage()
         { key = "drTracker", label = "DR Tracker" },
         { key = "castBar", label = "Cast Bar" },
         { key = "auras", label = "Auras / CC Anzeige" },
-        { key = "kicks", label = "Kick Tracker" },
     }
 
     local y = -40
@@ -1163,35 +1160,6 @@ function OptionsUI:CreateAurasPage()
     maxSlider:SetPoint("TOPLEFT", 15, y)
 
     self.pages["auras"] = page
-end
-
-function OptionsUI:CreateKicksPage()
-    local page = CreateFrame("Frame", nil, self.scrollChild)
-    page:SetPoint("TOPLEFT", 0, 0)
-    page:SetPoint("TOPRIGHT", 0, 0)
-    page:SetHeight(130)
-    page:Hide()
-
-    local section = CreateSectionBox(page, "KICK TRACKER", 110)
-    section:SetPoint("TOPLEFT", 0, 0)
-    section:SetPoint("TOPRIGHT", 0, 0)
-
-    local y = -40
-
-    -- Icon size
-    local sizeLabel = CreateStyledText(section, "Icon Grosse", 12, COLORS.TEXT, "OVERLAY")
-    sizeLabel:SetPoint("TOPLEFT", 15, y)
-    local sizeValue = CreateStyledText(section, tostring(GladiusMidnight.db.profile.kicks.size), 11, COLORS.TEXT_DIM, "OVERLAY")
-    sizeValue:SetPoint("TOPRIGHT", -15, y)
-    y = y - 25
-    local sizeSlider = CreateStyledSlider(section, 300, 16, 40, GladiusMidnight.db.profile.kicks.size, 2, function(val)
-        GladiusMidnight.db.profile.kicks.size = val
-        sizeValue:SetText(tostring(math.floor(val)))
-        GladiusMidnight:UpdateAllFrames()
-    end)
-    sizeSlider:SetPoint("TOPLEFT", 15, y)
-
-    self.pages["kicks"] = page
 end
 
 -- ============================================================================

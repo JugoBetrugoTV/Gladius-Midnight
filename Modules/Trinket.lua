@@ -6,26 +6,20 @@
 local addonName, addon = ...
 local Trinket = {}
 
--- PvP Trinket spell IDs (comprehensive list for all expansions)
+-- PvP Trinket spell IDs (Patch 12.0 Midnight - 90 second cooldown)
 local TRINKET_SPELLS = {
-    -- Current (Midnight 12.0)
-    [336126] = 120,   -- Gladiator's Medallion
-    [336135] = 120,   -- Adaptation
-
-    -- The War Within / Dragonflight
-    [363117] = 120,   -- Gladiator's Medallion (DF)
-    [370613] = 120,   -- Precognition Immunity
-
-    -- Shadowlands
-    [208683] = 120,   -- Gladiator's Medallion (SL)
-
-    -- Legacy
-    [195710] = 120,   -- Honorable Medallion
-    [42292] = 120,    -- PvP Trinket (generic)
+    -- Current (Midnight 12.0) - 90 second cooldown
+    [336126] = 90,    -- Gladiator's Medallion
+    [336135] = 90,    -- Adaptation
+    [363117] = 90,    -- Gladiator's Medallion (DF/TWW)
+    [370613] = 90,    -- Precognition Immunity
+    [208683] = 90,    -- Gladiator's Medallion (SL)
+    [195710] = 90,    -- Honorable Medallion
+    [42292] = 90,     -- PvP Trinket (generic)
 
     -- Racial CC-breaks (also trigger trinket CD)
-    [59752] = 120,    -- Every Man for Himself (Human) - shares CD
-    [7744] = 30,      -- Will of the Forsaken (Undead) - own CD but affects trinket
+    [59752] = 90,     -- Every Man for Himself (Human) - shares CD
+    [7744] = 30,      -- Will of the Forsaken (Undead) - own CD
 }
 
 -- ============================================================================
@@ -147,9 +141,9 @@ function Trinket:TriggerCooldown(frame, duration)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
-    -- Validate duration (trinkets are 120s max, not days)
-    if duration > 300 then
-        duration = 120  -- Default to 2 minutes if invalid
+    -- Validate duration (trinkets are 90s in Patch 12.0)
+    if duration > 180 or duration <= 0 then
+        duration = 90  -- Default to 90 seconds (Patch 12.0)
     end
 
     container.startTime = GetTime()

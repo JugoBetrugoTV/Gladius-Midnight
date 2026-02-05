@@ -434,10 +434,12 @@ function DRTracker:RefreshDisplay(frame)
     local now = GetTime()
     local drData = container.drData
     local index = 1
+    local hasActiveDR = false
 
     -- Show active DRs
     for category, data in pairs(drData) do
         if data.expireTime > now and index <= 5 then
+            hasActiveDR = true
             local iconFrame = container.icons[index]
             local info = DR_CATEGORY_INFO[category]
 
@@ -472,6 +474,13 @@ function DRTracker:RefreshDisplay(frame)
                 index = index + 1
             end
         end
+    end
+
+    -- Show or hide container based on active DRs
+    if hasActiveDR then
+        container:Show()
+    else
+        container:Hide()
     end
 end
 

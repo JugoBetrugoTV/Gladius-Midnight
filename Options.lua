@@ -326,18 +326,6 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
-                kicks = {
-                    order = 9,
-                    type = "toggle",
-                    name = "Kick Tracker",
-                    desc = "Zeigt Interrupt-Cooldowns der Gegner",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.kicks end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.kicks = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
             },
         },
 
@@ -668,27 +656,6 @@ local options = {
                     get = function() return GladiusMidnight.db.profile.auras.maxAuras end,
                     set = function(_, val)
                         GladiusMidnight.db.profile.auras.maxAuras = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-            },
-        },
-
-        -- Kicks Tracker Settings
-        kicksSettings = {
-            order = 12,
-            type = "group",
-            name = "Kick Tracker",
-            args = {
-                size = {
-                    order = 1,
-                    type = "range",
-                    name = "Icon Größe",
-                    min = 16, max = 40, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.kicks.size end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.kicks.size = val
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },

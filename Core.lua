@@ -46,7 +46,6 @@ local defaults = {
             drTracker = true,
             castBar = true,
             auras = true,
-            kicks = true,
         },
 
         -- Visual settings
@@ -89,9 +88,6 @@ local defaults = {
         auras = {
             iconSize = 28,
             maxAuras = 4,
-        },
-        kicks = {
-            size = 22,
         },
     }
 }
@@ -755,11 +751,6 @@ function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
     local racialModule = self:GetModule("racial")
     if racialModule and self:IsModuleEnabled("racial") then
         racialModule:OnSpellCast(self.frames[index], spellID)
-    end
-
-    local kicksModule = self:GetModule("kicks")
-    if kicksModule and self:IsModuleEnabled("kicks") then
-        kicksModule:OnSpellCast(self.frames[index], spellID)
     end
 end
 
