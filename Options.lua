@@ -326,14 +326,70 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
+                kicks = {
+                    order = 9,
+                    type = "toggle",
+                    name = "Kick Tracker",
+                    desc = "Zeigt Interrupt-Cooldowns der Gegner",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.modules.kicks end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.modules.kicks = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+            },
+        },
+
+        -- Visual Settings
+        visualSettings = {
+            order = 4,
+            type = "group",
+            name = "Visuelle Effekte",
+            args = {
+                targetHighlight = {
+                    order = 1,
+                    type = "toggle",
+                    name = "Target Highlight",
+                    desc = "Zeigt einen Rahmen um das aktuelle Ziel",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.targetHighlight end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.targetHighlight = val
+                        GladiusMidnight:UpdateTargetHighlight()
+                    end,
+                },
+                immunityGlow = {
+                    order = 2,
+                    type = "toggle",
+                    name = "Immunity Glow",
+                    desc = "Goldener Glow wenn Gegner immun ist (Ice Block, Bubble, etc.)",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.immunityGlow end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.immunityGlow = val
+                    end,
+                },
+                hideBlizzardFrames = {
+                    order = 3,
+                    type = "toggle",
+                    name = "Blizzard Frames verstecken",
+                    desc = "Versteckt die Standard-Arena-Frames von Blizzard",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.hideBlizzardFrames end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.hideBlizzardFrames = val
+                        GladiusMidnight:HideBlizzardFrames()
+                    end,
+                },
             },
         },
 
         -- Class Icon Settings
         classIconSettings = {
-            order = 4,
+            order = 5,
             type = "group",
-            name = "Klassen Icon",
+            name = "Klassen/Spec Icon",
             args = {
                 size = {
                     order = 1,
@@ -347,8 +403,20 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
-                position = {
+                showSpec = {
                     order = 2,
+                    type = "toggle",
+                    name = "Spec Icon anzeigen",
+                    desc = "Zeigt Spezialisierungs-Icon statt Klassen-Icon",
+                    width = "full",
+                    get = function() return GladiusMidnight.db.profile.classIcon.showSpec end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.classIcon.showSpec = val
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
+                },
+                position = {
+                    order = 3,
                     type = "select",
                     name = "Position",
                     values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },

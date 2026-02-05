@@ -126,6 +126,19 @@ local PRIORITY_AURAS = {
     [319952] = 4,    -- Surrender to Madness
 }
 
+-- Immunity spells (for glow effect)
+local IMMUNITY_SPELLS = {
+    [45438] = true,  -- Ice Block
+    [642] = true,    -- Divine Shield
+    [186265] = true, -- Aspect of the Turtle
+    [196555] = true, -- Netherwalk
+    [1022] = true,   -- Blessing of Protection
+    [204018] = true, -- Blessing of Spellwarding
+    [710] = true,    -- Banish (self-immunity if used on self)
+    [31224] = true,  -- Cloak of Shadows (magic immunity)
+    [212182] = true, -- Smoke Bomb (untargetable)
+}
+
 -- ============================================================================
 -- Module Registration
 -- ============================================================================
@@ -298,13 +311,19 @@ function Auras:RefreshAuras(frame)
         end
     end
 
-    -- Also scan important buffs (defensive CDs)
+    -- Also scan important buffs (defensive CDs) and check for immunities
+    local hasImmunity = false
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetBuffDataByIndex(unit, i)
         if not auraData then break end
 
         local spellId = auraData.spellId
         local priority = PRIORITY_AURAS[spellId]
+
+        -- Check for immunity
+        if IMMUNITY_SPELLS[spellId] then
+            hasImmunity = true
+        end
 
         if priority then
             table.insert(auras, {
@@ -319,6 +338,9 @@ function Auras:RefreshAuras(frame)
             })
         end
     end
+
+    -- Update immunity glow on frame
+    self:UpdateImmunityGlow(frame, hasImmunity)
 
     -- Sort by priority (highest first)
     table.sort(auras, function(a, b)
@@ -408,6 +430,47 @@ function Auras:OnAuraChange(frame)
     end
 end
 
+function Auras:UpdateImmunityGlow(frame, hasImmunity)
+    if not self.core.db.profile.immunityGlow then return end
+
+    if frame.immunityGlow then
+        if hasImmunity and not frame.hasImmunity then
+            -- Start immunity glow
+            frame.immunityGlow:Show()
+            frame.hasImmunity = true
+
+            -- Start pulse animation
+            if not frame.immunityGlow.pulseAnim then
+                local ag = frame.immunityGlow:CreateAnimationGroup()
+                ag:SetLooping("REPEAT")
+
+                local fadeOut = ag:CreateAnimation("Alpha")
+                fadeOut:SetFromAlpha(1)
+                fadeOut:SetToAlpha(0.3)
+                fadeOut:SetDuration(0.5)
+                fadeOut:SetOrder(1)
+
+                local fadeIn = ag:CreateAnimation("Alpha")
+                fadeIn:SetFromAlpha(0.3)
+                fadeIn:SetToAlpha(1)
+                fadeIn:SetDuration(0.5)
+                fadeIn:SetOrder(2)
+
+                frame.immunityGlow.pulseAnim = ag
+            end
+            frame.immunityGlow.pulseAnim:Play()
+
+        elseif not hasImmunity and frame.hasImmunity then
+            -- Stop immunity glow
+            if frame.immunityGlow.pulseAnim then
+                frame.immunityGlow.pulseAnim:Stop()
+            end
+            frame.immunityGlow:Hide()
+            frame.hasImmunity = false
+        end
+    end
+end
+
 function Auras:Reset(frame)
     local container = frame.moduleFrames.auras
     if container then
@@ -418,6 +481,15 @@ function Auras:Reset(frame)
             iconFrame.cooldown:Clear()
             iconFrame.expirationTime = nil
         end
+    end
+
+    -- Reset immunity glow
+    if frame.immunityGlow then
+        if frame.immunityGlow.pulseAnim then
+            frame.immunityGlow.pulseAnim:Stop()
+        end
+        frame.immunityGlow:Hide()
+        frame.hasImmunity = false
     end
 end
 

@@ -46,12 +46,19 @@ local defaults = {
             drTracker = true,
             castBar = true,
             auras = true,
+            kicks = true,
         },
+
+        -- Visual settings
+        targetHighlight = true,
+        immunityGlow = true,
+        hideBlizzardFrames = false,
 
         -- Module-specific settings
         classIcon = {
             size = 50,
             position = "LEFT",
+            showSpec = true,  -- Show spec icon instead of class
         },
         health = {
             height = 28,
@@ -81,6 +88,9 @@ local defaults = {
         auras = {
             iconSize = 28,
             maxAuras = 4,
+        },
+        kicks = {
+            size = 22,
         },
     }
 }
@@ -142,6 +152,33 @@ function GladiusMidnight:CreateArenaFrame(index)
     })
     frame:SetBackdropColor(0.05, 0.05, 0.05, 0.9)
     frame:SetBackdropBorderColor(0, 0, 0, 1)
+
+    -- Target highlight glow
+    local targetGlow = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    targetGlow:SetPoint("TOPLEFT", -3, 3)
+    targetGlow:SetPoint("BOTTOMRIGHT", 3, -3)
+    targetGlow:SetBackdrop({
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 2,
+    })
+    targetGlow:SetBackdropBorderColor(1, 1, 1, 1)
+    targetGlow:SetFrameLevel(frame:GetFrameLevel() - 1)
+    targetGlow:Hide()
+    frame.targetGlow = targetGlow
+
+    -- Immunity glow (golden pulse)
+    local immunityGlow = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    immunityGlow:SetPoint("TOPLEFT", -4, 4)
+    immunityGlow:SetPoint("BOTTOMRIGHT", 4, -4)
+    immunityGlow:SetBackdrop({
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 3,
+    })
+    immunityGlow:SetBackdropBorderColor(1, 0.84, 0, 1)
+    immunityGlow:SetFrameLevel(frame:GetFrameLevel() - 1)
+    immunityGlow:Hide()
+    frame.immunityGlow = immunityGlow
+    frame.hasImmunity = false
 
     -- Secure targeting (left-click = target, right-click = focus)
     frame:SetAttribute("type1", "target")
@@ -367,8 +404,9 @@ function GladiusMidnight:OnInitialize()
     -- Register slash commands
     self:RegisterChatCommand("gladius", "SlashCommand")
     self:RegisterChatCommand("gm", "SlashCommand")
+    self:RegisterChatCommand("gg", "SurrenderArena")
 
-    self:Print("Geladen - |cFF00FF00/gladius test|r zum Testen")
+    self:Print("Geladen - |cFF00FF00/gladius test|r zum Testen, |cFFFF6600/gg|r zum Aufgeben")
 end
 
 function GladiusMidnight:OnEnable()
@@ -377,6 +415,9 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
     self:RegisterEvent("PLAYER_ENTERING_WORLD")
     self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+
+    -- Target events
+    self:RegisterEvent("PLAYER_TARGET_CHANGED")
 
     -- Unit events
     self:RegisterEvent("UNIT_HEALTH")
@@ -437,6 +478,54 @@ end
 function GladiusMidnight:PLAYER_ENTERING_WORLD()
     self:DetectArenaType()
     self:CheckArenaStatus()
+    self:UpdateTargetHighlight()
+    self:HideBlizzardFrames()
+end
+
+function GladiusMidnight:PLAYER_TARGET_CHANGED()
+    self:UpdateTargetHighlight()
+end
+
+function GladiusMidnight:UpdateTargetHighlight()
+    if not self.db.profile.targetHighlight then return end
+
+    for i = 1, 3 do
+        local frame = self.frames[i]
+        if frame and frame.targetGlow then
+            if UnitIsUnit("target", frame.unit) then
+                frame.targetGlow:Show()
+            else
+                frame.targetGlow:Hide()
+            end
+        end
+    end
+end
+
+function GladiusMidnight:HideBlizzardFrames()
+    if not self.db.profile.hideBlizzardFrames then return end
+
+    -- Hide default arena frames
+    for i = 1, 5 do
+        local frameName = "ArenaEnemyFrame" .. i
+        local frame = _G[frameName]
+        if frame then
+            frame:UnregisterAllEvents()
+            frame:Hide()
+            frame:SetScript("OnShow", function(self) self:Hide() end)
+        end
+
+        -- Also hide the newer compact arena frames
+        local compactFrame = _G["CompactArenaFrame" .. i]
+        if compactFrame then
+            compactFrame:UnregisterAllEvents()
+            compactFrame:Hide()
+        end
+    end
+
+    -- Hide arena prep frames
+    if ArenaEnemyPrepFramesContainer then
+        ArenaEnemyPrepFramesContainer:Hide()
+    end
 end
 
 function GladiusMidnight:ZONE_CHANGED_NEW_AREA()
@@ -584,6 +673,11 @@ function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
     local racialModule = self:GetModule("racial")
     if racialModule and self:IsModuleEnabled("racial") then
         racialModule:OnSpellCast(self.frames[index], spellID)
+    end
+
+    local kicksModule = self:GetModule("kicks")
+    if kicksModule and self:IsModuleEnabled("kicks") then
+        kicksModule:OnSpellCast(self.frames[index], spellID)
     end
 end
 
@@ -744,6 +838,23 @@ function GladiusMidnight:SlashCommand(input)
         self:Print("  |cFF00FF00/gladius lock|r - Frames fixieren")
         self:Print("  |cFF00FF00/gladius unlock|r - Frames entsperren")
         self:Print("  |cFF00FF00/gladius reset|r - Zurücksetzen")
+        self:Print("  |cFF00FF00/gg|r - Arena aufgeben")
+    end
+end
+
+function GladiusMidnight:SurrenderArena()
+    local _, instanceType = IsInInstance()
+    if instanceType == "arena" then
+        if C_PvP and C_PvP.RequestCrowdControlSpell then
+            -- Try to leave arena
+            LeaveBattlefield()
+            self:Print("|cFFFF0000Arena aufgegeben|r")
+        else
+            LeaveBattlefield()
+            self:Print("|cFFFF0000Arena aufgegeben|r")
+        end
+    else
+        self:Print("Du bist nicht in einer Arena!")
     end
 end
 
