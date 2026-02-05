@@ -156,9 +156,10 @@ end
 -- ============================================================================
 
 function Auras:CreateElements(frame)
-    -- Container for aura icons
+    -- Container for aura icons (positioned below health/power within frame)
     local container = CreateFrame("Frame", nil, frame)
     container:SetSize(150, 32)
+    container:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility above other elements
 
     -- Create aura icon frames
     container.icons = {}
@@ -238,12 +239,16 @@ function Auras:Update(frame, testData)
     container:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, yOffset)
     container:SetSize(iconSize * 5 + 8, iconSize)
 
-    -- Update icon sizes
+    -- Update icon sizes and frame levels
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
         iconFrame:ClearAllPoints()
         iconFrame:SetPoint("LEFT", container, "LEFT", (i - 1) * (iconSize + 2), 0)
+        iconFrame:SetFrameLevel(container:GetFrameLevel() + 1)
     end
+
+    -- Always show container first, then populate
+    container:Show()
 
     if testData then
         -- Test mode - show sample auras
@@ -251,8 +256,6 @@ function Auras:Update(frame, testData)
     else
         self:RefreshAuras(frame)
     end
-
-    container:Show()
 end
 
 function Auras:ShowTestAuras(frame)

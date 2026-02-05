@@ -23,12 +23,13 @@ end
 -- ============================================================================
 
 function CastBar:CreateElements(frame)
-    -- Cast bar container
+    -- Cast bar container (positioned BELOW the main frame)
     local castBar = CreateFrame("StatusBar", nil, frame, "BackdropTemplate")
     castBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     castBar:SetStatusBarColor(1, 0.7, 0)
     castBar:SetMinMaxValues(0, 1)
     castBar:SetValue(0)
+    castBar:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility
 
     -- Background
     castBar:SetBackdrop({
@@ -107,10 +108,11 @@ function CastBar:Update(frame, testData)
     castBar:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -2)
     castBar:SetHeight(height)
 
-    -- Icon position
+    -- Icon position and frame level
     castBar.iconFrame:SetSize(iconSize, iconSize)
     castBar.iconFrame:ClearAllPoints()
     castBar.iconFrame:SetPoint("TOPRIGHT", castBar, "TOPLEFT", -2, 0)
+    castBar.iconFrame:SetFrameLevel(castBar:GetFrameLevel() + 1)
 
     if testData then
         -- Test mode - show a sample cast

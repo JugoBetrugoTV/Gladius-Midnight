@@ -237,9 +237,10 @@ end
 -- ============================================================================
 
 function DRTracker:CreateElements(frame)
-    -- Container for DR icons
-    local container = CreateFrame("Frame", nil, frame)
+    -- Container for DR icons (positioned to LEFT of frame)
+    local container = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     container:SetSize(100, 20)
+    container:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility above frame
 
     -- Store DR tracking data
     container.drData = {}  -- [category] = { level = 1-4, expireTime = time }
@@ -309,38 +310,40 @@ function DRTracker:Update(frame, testData)
     -- Position to the LEFT of the frame (ArenaCore style)
     container:ClearAllPoints()
     container:SetPoint("RIGHT", frame, "LEFT", -4, 0)
-    container:SetSize(iconSize * 6 + 12, iconSize)
+    container:SetSize(iconSize * 5 + 10, iconSize)
 
-    -- Update icon sizes
+    -- Update icon sizes and ensure they have proper frame level
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
+        iconFrame:SetFrameLevel(container:GetFrameLevel() + 1)
     end
 
     if testData then
         -- Test mode - show some sample DRs
         self:ShowTestDR(frame)
         container:Show()
-    else
-        -- Only show container if there are active DRs
-        local hasActiveDR = false
-        local now = GetTime()
-        for _, data in pairs(container.drData) do
-            if data.expireTime > now then
-                hasActiveDR = true
-                break
-            end
-        end
+        return  -- Early return in test mode
+    end
 
-        if hasActiveDR then
-            self:RefreshDisplay(frame)
-            container:Show()
-        else
-            -- Hide all icons and container when no active DRs
-            for i, iconFrame in ipairs(container.icons) do
-                iconFrame:Hide()
-            end
-            container:Hide()
+    -- Live mode: Only show container if there are active DRs
+    local hasActiveDR = false
+    local now = GetTime()
+    for _, data in pairs(container.drData) do
+        if data.expireTime > now then
+            hasActiveDR = true
+            break
         end
+    end
+
+    if hasActiveDR then
+        self:RefreshDisplay(frame)
+        container:Show()
+    else
+        -- Hide all icons and container when no active DRs
+        for i, iconFrame in ipairs(container.icons) do
+            iconFrame:Hide()
+        end
+        container:Hide()
     end
 end
 
