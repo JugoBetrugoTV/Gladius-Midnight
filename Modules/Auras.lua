@@ -192,6 +192,9 @@ function Auras:CreateElements(frame)
         cooldown:SetDrawSwipe(true)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
+        -- OmniCC exclusion (ArenaCore method)
+        cooldown.noCooldownCount = true
+        cooldown.noOCC = true
         iconFrame.cooldown = cooldown
 
         -- Stack count
@@ -318,7 +321,7 @@ function Auras:RefreshAuras(frame)
     end
 
     -- Also scan important buffs (defensive CDs) and check for immunities
-    local hasImmunity = false
+    local immunityType = nil  -- "total" or "magic" or nil
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetBuffDataByIndex(unit, i)
         if not auraData then break end
@@ -326,9 +329,19 @@ function Auras:RefreshAuras(frame)
         local spellId = auraData.spellId
         local priority = PRIORITY_AURAS[spellId]
 
-        -- Check for immunity
-        if IMMUNITY_SPELLS[spellId] then
-            hasImmunity = true
+        -- Check for immunity type (ArenaCore style - magic vs total)
+        local spellImmunityType = addon.Data.GetImmunityType(spellId)
+        if spellImmunityType then
+            -- Total immunity takes priority over magic immunity
+            if spellImmunityType == "total" then
+                immunityType = "total"
+            elseif not immunityType then
+                immunityType = "magic"
+            end
+        end
+        -- Fallback: Check old IMMUNITY_SPELLS table
+        if not immunityType and IMMUNITY_SPELLS[spellId] then
+            immunityType = "total"
         end
 
         if priority then
@@ -345,8 +358,8 @@ function Auras:RefreshAuras(frame)
         end
     end
 
-    -- Update immunity glow on frame
-    self:UpdateImmunityGlow(frame, hasImmunity)
+    -- Update immunity glow on frame (ArenaCore style - white/green)
+    self:UpdateImmunityGlow(frame, immunityType)
 
     -- Sort by priority (highest first)
     table.sort(auras, function(a, b)
@@ -436,14 +449,24 @@ function Auras:OnAuraChange(frame)
     end
 end
 
-function Auras:UpdateImmunityGlow(frame, hasImmunity)
+function Auras:UpdateImmunityGlow(frame, immunityType)
     if not self.core.db.profile.immunityGlow then return end
 
     if frame.immunityGlow then
-        if hasImmunity and not frame.hasImmunity then
+        if immunityType and not frame.hasImmunity then
+            -- Set color based on immunity type (ArenaCore style)
+            -- WHITE = Total immunity (Bubble, Ice Block, Turtle)
+            -- GREEN = Magic-only immunity (Cloak, AMS, Spellwarding)
+            if immunityType == "total" then
+                frame.immunityGlow:SetBackdropBorderColor(1, 1, 1, 1)  -- White
+            else
+                frame.immunityGlow:SetBackdropBorderColor(0, 1, 0, 1)  -- Green
+            end
+
             -- Start immunity glow
             frame.immunityGlow:Show()
             frame.hasImmunity = true
+            frame.immunityType = immunityType
 
             -- Start pulse animation
             if not frame.immunityGlow.pulseAnim then
@@ -453,26 +476,36 @@ function Auras:UpdateImmunityGlow(frame, hasImmunity)
                 local fadeOut = ag:CreateAnimation("Alpha")
                 fadeOut:SetFromAlpha(1)
                 fadeOut:SetToAlpha(0.3)
-                fadeOut:SetDuration(0.5)
+                fadeOut:SetDuration(0.4)  -- Faster pulse like ArenaCore
                 fadeOut:SetOrder(1)
 
                 local fadeIn = ag:CreateAnimation("Alpha")
                 fadeIn:SetFromAlpha(0.3)
                 fadeIn:SetToAlpha(1)
-                fadeIn:SetDuration(0.5)
+                fadeIn:SetDuration(0.4)
                 fadeIn:SetOrder(2)
 
                 frame.immunityGlow.pulseAnim = ag
             end
             frame.immunityGlow.pulseAnim:Play()
 
-        elseif not hasImmunity and frame.hasImmunity then
+        elseif immunityType and frame.hasImmunity and immunityType ~= frame.immunityType then
+            -- Immunity type changed - update color
+            if immunityType == "total" then
+                frame.immunityGlow:SetBackdropBorderColor(1, 1, 1, 1)
+            else
+                frame.immunityGlow:SetBackdropBorderColor(0, 1, 0, 1)
+            end
+            frame.immunityType = immunityType
+
+        elseif not immunityType and frame.hasImmunity then
             -- Stop immunity glow
             if frame.immunityGlow.pulseAnim then
                 frame.immunityGlow.pulseAnim:Stop()
             end
             frame.immunityGlow:Hide()
             frame.hasImmunity = false
+            frame.immunityType = nil
         end
     end
 end
@@ -496,6 +529,7 @@ function Auras:Reset(frame)
         end
         frame.immunityGlow:Hide()
         frame.hasImmunity = false
+        frame.immunityType = nil
     end
 end
 

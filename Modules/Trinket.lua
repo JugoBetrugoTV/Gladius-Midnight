@@ -68,6 +68,9 @@ function Trinket:CreateElements(frame)
     cooldown:SetDrawSwipe(true)
     cooldown:SetDrawEdge(false)
     cooldown:SetHideCountdownNumbers(true)  -- Hide default numbers, use our own
+    -- OmniCC exclusion (ArenaCore method - prevents OmniCC from overriding our display)
+    cooldown.noCooldownCount = true
+    cooldown.noOCC = true
 
     -- Custom cooldown text (more reliable than built-in)
     local cdText = container:CreateFontString(nil, "OVERLAY")

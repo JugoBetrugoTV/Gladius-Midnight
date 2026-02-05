@@ -167,7 +167,7 @@ function GladiusMidnight:CreateArenaFrame(index)
     targetGlow:Hide()
     frame.targetGlow = targetGlow
 
-    -- Immunity glow (golden pulse)
+    -- Immunity glow - WHITE for total immunity, GREEN for magic-only (ArenaCore style)
     local immunityGlow = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     immunityGlow:SetPoint("TOPLEFT", -4, 4)
     immunityGlow:SetPoint("BOTTOMRIGHT", 4, -4)
@@ -175,11 +175,12 @@ function GladiusMidnight:CreateArenaFrame(index)
         edgeFile = "Interface\\Buttons\\WHITE8X8",
         edgeSize = 3,
     })
-    immunityGlow:SetBackdropBorderColor(1, 0.84, 0, 1)
+    immunityGlow:SetBackdropBorderColor(1, 1, 1, 1)  -- White = total immunity
     immunityGlow:SetFrameLevel(frame:GetFrameLevel() - 1)
     immunityGlow:Hide()
     frame.immunityGlow = immunityGlow
     frame.hasImmunity = false
+    frame.immunityType = nil  -- "total" or "magic"
 
     -- Arena number indicator (right side)
     local arenaNumber = CreateFrame("Frame", nil, frame, "BackdropTemplate")

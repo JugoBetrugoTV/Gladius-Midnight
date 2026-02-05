@@ -18,126 +18,206 @@ local DR_CATEGORY = {
     KNOCKBACK = "knockback",
 }
 
--- DR Duration (18 seconds in PvP)
-local DR_DURATION = 18
+-- DR Duration (18.5 seconds in retail PvP - ArenaCore value)
+local DR_DURATION = 18.5
 
 -- DR Levels: 100% -> 50% -> 25% -> Immune
 local DR_LEVELS = { 1.0, 0.5, 0.25, 0 }
 
--- Spell ID to DR Category mapping (common PvP CCs)
+-- Spell ID to DR Category mapping (comprehensive list from ArenaCore)
 local DR_SPELLS = {
-    -- Stuns
-    [408] = DR_CATEGORY.STUN,       -- Kidney Shot
-    [1833] = DR_CATEGORY.STUN,      -- Cheap Shot
-    [853] = DR_CATEGORY.STUN,       -- Hammer of Justice
-    [5211] = DR_CATEGORY.STUN,      -- Mighty Bash
-    [22570] = DR_CATEGORY.STUN,     -- Maim
-    [30283] = DR_CATEGORY.STUN,     -- Shadowfury
-    [46968] = DR_CATEGORY.STUN,     -- Shockwave
-    [47481] = DR_CATEGORY.STUN,     -- Gnaw (Ghoul)
-    [88625] = DR_CATEGORY.STUN,     -- Holy Word: Chastise
-    [89766] = DR_CATEGORY.STUN,     -- Axe Toss (Felguard)
-    [91800] = DR_CATEGORY.STUN,     -- Gnaw
-    [108194] = DR_CATEGORY.STUN,    -- Asphyxiate
-    [119381] = DR_CATEGORY.STUN,    -- Leg Sweep
-    [179057] = DR_CATEGORY.STUN,    -- Chaos Nova
-    [192058] = DR_CATEGORY.STUN,    -- Capacitor Totem
-    [199804] = DR_CATEGORY.STUN,    -- Between the Eyes
-    [204399] = DR_CATEGORY.STUN,    -- Earthfury
-    [204437] = DR_CATEGORY.STUN,    -- Lightning Lasso
-    [211881] = DR_CATEGORY.STUN,    -- Fel Eruption
-    [221562] = DR_CATEGORY.STUN,    -- Asphyxiate (Blood)
-    [255723] = DR_CATEGORY.STUN,    -- Bull Rush
-    [287254] = DR_CATEGORY.STUN,    -- Dead of Winter
-    [389831] = DR_CATEGORY.STUN,    -- Snowdrift
+    -- =============================================
+    -- STUNS
+    -- =============================================
+    [408] = DR_CATEGORY.STUN,        -- Kidney Shot
+    [1833] = DR_CATEGORY.STUN,       -- Cheap Shot
+    [853] = DR_CATEGORY.STUN,        -- Hammer of Justice
+    [5211] = DR_CATEGORY.STUN,       -- Mighty Bash
+    [203123] = DR_CATEGORY.STUN,     -- Maim
+    [163505] = DR_CATEGORY.STUN,     -- Rake (from Prowl)
+    [30283] = DR_CATEGORY.STUN,      -- Shadowfury
+    [46968] = DR_CATEGORY.STUN,      -- Shockwave
+    [132168] = DR_CATEGORY.STUN,     -- Shockwave (Protection)
+    [132169] = DR_CATEGORY.STUN,     -- Storm Bolt
+    [89766] = DR_CATEGORY.STUN,      -- Axe Toss (Felguard)
+    [91800] = DR_CATEGORY.STUN,      -- Gnaw (Ghoul)
+    [91797] = DR_CATEGORY.STUN,      -- Monstrous Blow (Mutated Ghoul)
+    [108194] = DR_CATEGORY.STUN,     -- Asphyxiate (Unholy)
+    [221562] = DR_CATEGORY.STUN,     -- Asphyxiate (Blood)
+    [119381] = DR_CATEGORY.STUN,     -- Leg Sweep
+    [458605] = DR_CATEGORY.STUN,     -- Leg Sweep (2)
+    [179057] = DR_CATEGORY.STUN,     -- Chaos Nova
+    [211881] = DR_CATEGORY.STUN,     -- Fel Eruption
+    [200166] = DR_CATEGORY.STUN,     -- Metamorphosis stun
+    [205630] = DR_CATEGORY.STUN,     -- Illidan's Grasp
+    [208618] = DR_CATEGORY.STUN,     -- Illidan's Grasp (secondary)
+    [118905] = DR_CATEGORY.STUN,     -- Static Charge (Capacitor Totem)
+    [118345] = DR_CATEGORY.STUN,     -- Pulverize (Earth Elemental)
+    [305485] = DR_CATEGORY.STUN,     -- Lightning Lasso
+    [255941] = DR_CATEGORY.STUN,     -- Wake of Ashes
+    [64044] = DR_CATEGORY.STUN,      -- Psychic Horror
+    [200200] = DR_CATEGORY.STUN,     -- Holy Word: Chastise (Censure)
+    [117526] = DR_CATEGORY.STUN,     -- Binding Shot
+    [357021] = DR_CATEGORY.STUN,     -- Consecutive Concussion
+    [24394] = DR_CATEGORY.STUN,      -- Intimidation
+    [389831] = DR_CATEGORY.STUN,     -- Snowdrift
+    [171017] = DR_CATEGORY.STUN,     -- Meteor Strike (Infernal)
+    [171018] = DR_CATEGORY.STUN,     -- Meteor Strike (Abyssal)
+    [385954] = DR_CATEGORY.STUN,     -- Shield Charge
+    [199085] = DR_CATEGORY.STUN,     -- Warpath
+    [20549] = DR_CATEGORY.STUN,      -- War Stomp (Tauren)
+    [255723] = DR_CATEGORY.STUN,     -- Bull Rush (Highmountain)
+    [287254] = DR_CATEGORY.STUN,     -- Dead of Winter
+    [377048] = DR_CATEGORY.STUN,     -- Absolute Zero
+    [210141] = DR_CATEGORY.STUN,     -- Zombie Explosion
+    [202244] = DR_CATEGORY.STUN,     -- Overrun
+    [325321] = DR_CATEGORY.STUN,     -- Wild Hunt's Charge
+    [372245] = DR_CATEGORY.STUN,     -- Terror of the Skies
+    [408544] = DR_CATEGORY.STUN,     -- Seismic Slam
+    [202346] = DR_CATEGORY.STUN,     -- Double Barrel
 
-    -- Incapacitates
-    [6770] = DR_CATEGORY.INCAPACITATE,   -- Sap
-    [20066] = DR_CATEGORY.INCAPACITATE,  -- Repentance
-    [82691] = DR_CATEGORY.INCAPACITATE,  -- Ring of Frost
-    [99] = DR_CATEGORY.INCAPACITATE,     -- Incapacitating Roar
-    [115078] = DR_CATEGORY.INCAPACITATE, -- Paralysis
-    [118] = DR_CATEGORY.INCAPACITATE,    -- Polymorph
-    [1776] = DR_CATEGORY.INCAPACITATE,   -- Gouge
-    [28271] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Turtle)
-    [28272] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Pig)
-    [61025] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Serpent)
-    [61305] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Black Cat)
-    [61721] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Rabbit)
-    [61780] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Turkey)
-    [126819] = DR_CATEGORY.INCAPACITATE, -- Polymorph (Porcupine)
-    [161353] = DR_CATEGORY.INCAPACITATE, -- Polymorph (Polar Bear)
-    [161354] = DR_CATEGORY.INCAPACITATE, -- Polymorph (Monkey)
-    [161355] = DR_CATEGORY.INCAPACITATE, -- Polymorph (Penguin)
-    [161372] = DR_CATEGORY.INCAPACITATE, -- Polymorph (Peacock)
-    [277787] = DR_CATEGORY.INCAPACITATE, -- Polymorph (Direhorn)
-    [277792] = DR_CATEGORY.INCAPACITATE, -- Polymorph (Bumblebee)
-    [197214] = DR_CATEGORY.INCAPACITATE, -- Sundering
-    [200196] = DR_CATEGORY.INCAPACITATE, -- Holy Word: Chastise (Talent)
-    [9484] = DR_CATEGORY.INCAPACITATE,   -- Shackle Undead
-    [710] = DR_CATEGORY.INCAPACITATE,    -- Banish
-    [6358] = DR_CATEGORY.INCAPACITATE,   -- Seduction
-    [187650] = DR_CATEGORY.INCAPACITATE, -- Freezing Trap
-    [213691] = DR_CATEGORY.INCAPACITATE, -- Scatter Shot
-    [360806] = DR_CATEGORY.INCAPACITATE, -- Sleep Walk
+    -- =============================================
+    -- INCAPACITATES
+    -- =============================================
+    [6770] = DR_CATEGORY.INCAPACITATE,    -- Sap
+    [1776] = DR_CATEGORY.INCAPACITATE,    -- Gouge
+    [20066] = DR_CATEGORY.INCAPACITATE,   -- Repentance
+    [82691] = DR_CATEGORY.INCAPACITATE,   -- Ring of Frost
+    [99] = DR_CATEGORY.INCAPACITATE,      -- Incapacitating Roar
+    [2637] = DR_CATEGORY.INCAPACITATE,    -- Hibernate
+    [115078] = DR_CATEGORY.INCAPACITATE,  -- Paralysis
+    [357768] = DR_CATEGORY.INCAPACITATE,  -- Paralysis (2)
+    -- Polymorph variants
+    [118] = DR_CATEGORY.INCAPACITATE,     -- Polymorph
+    [28271] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Turtle)
+    [28272] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Pig)
+    [61025] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Snake)
+    [61305] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Black Cat)
+    [61721] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Rabbit)
+    [61780] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Turkey)
+    [126819] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Porcupine)
+    [161353] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Polar Bear)
+    [161354] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Monkey)
+    [161355] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Penguin)
+    [161372] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Peacock)
+    [277787] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Direhorn)
+    [277792] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Bumblebee)
+    [321395] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Mawrat)
+    [391622] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Duck)
+    [460396] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Mosswool)
+    [383121] = DR_CATEGORY.INCAPACITATE,  -- Mass Polymorph
+    -- Hex variants
+    [51514] = DR_CATEGORY.INCAPACITATE,   -- Hex
+    [196942] = DR_CATEGORY.INCAPACITATE,  -- Hex (Voodoo Totem)
+    [210873] = DR_CATEGORY.INCAPACITATE,  -- Hex (Raptor)
+    [211004] = DR_CATEGORY.INCAPACITATE,  -- Hex (Spider)
+    [211010] = DR_CATEGORY.INCAPACITATE,  -- Hex (Snake)
+    [211015] = DR_CATEGORY.INCAPACITATE,  -- Hex (Cockroach)
+    [269352] = DR_CATEGORY.INCAPACITATE,  -- Hex (Skeletal Hatchling)
+    [309328] = DR_CATEGORY.INCAPACITATE,  -- Hex (Living Honey)
+    [277778] = DR_CATEGORY.INCAPACITATE,  -- Hex (Zandalari Tendonripper)
+    [277784] = DR_CATEGORY.INCAPACITATE,  -- Hex (Wicker Mongrel)
+    -- Other incaps
+    [197214] = DR_CATEGORY.INCAPACITATE,  -- Sundering
+    [200196] = DR_CATEGORY.INCAPACITATE,  -- Holy Word: Chastise
+    [9484] = DR_CATEGORY.INCAPACITATE,    -- Shackle Undead
+    [710] = DR_CATEGORY.INCAPACITATE,     -- Banish
+    [6789] = DR_CATEGORY.INCAPACITATE,    -- Mortal Coil
+    [6358] = DR_CATEGORY.INCAPACITATE,    -- Seduction
+    [261589] = DR_CATEGORY.INCAPACITATE,  -- Seduction (Grimoire)
+    [3355] = DR_CATEGORY.INCAPACITATE,    -- Freezing Trap
+    [203337] = DR_CATEGORY.INCAPACITATE,  -- Freezing Trap (Honor)
+    [213691] = DR_CATEGORY.INCAPACITATE,  -- Scatter Shot
+    [360806] = DR_CATEGORY.INCAPACITATE,  -- Sleep Walk
+    [217832] = DR_CATEGORY.INCAPACITATE,  -- Imprison
+    [221527] = DR_CATEGORY.INCAPACITATE,  -- Imprison (Honor)
+    [378441] = DR_CATEGORY.INCAPACITATE,  -- Time Stop
+    [107079] = DR_CATEGORY.INCAPACITATE,  -- Quaking Palm (Pandaren)
 
-    -- Disorients
-    [2094] = DR_CATEGORY.DISORIENT,  -- Blind
-    [5246] = DR_CATEGORY.DISORIENT,  -- Intimidating Shout
-    [8122] = DR_CATEGORY.DISORIENT,  -- Psychic Scream
-    [31661] = DR_CATEGORY.DISORIENT, -- Dragon's Breath
+    -- =============================================
+    -- DISORIENTS
+    -- =============================================
+    [2094] = DR_CATEGORY.DISORIENT,   -- Blind
+    [5246] = DR_CATEGORY.DISORIENT,   -- Intimidating Shout
+    [316593] = DR_CATEGORY.DISORIENT, -- Intimidating Shout (Menace main)
+    [316595] = DR_CATEGORY.DISORIENT, -- Intimidating Shout (Menace other)
+    [8122] = DR_CATEGORY.DISORIENT,   -- Psychic Scream
+    [31661] = DR_CATEGORY.DISORIENT,  -- Dragon's Breath
+    [353084] = DR_CATEGORY.DISORIENT, -- Ring of Fire
     [105421] = DR_CATEGORY.DISORIENT, -- Blinding Light
     [207167] = DR_CATEGORY.DISORIENT, -- Blinding Sleet
+    [207685] = DR_CATEGORY.DISORIENT, -- Sigil of Misery
+    [33786] = DR_CATEGORY.DISORIENT,  -- Cyclone
     [198909] = DR_CATEGORY.DISORIENT, -- Song of Chi-ji
-    [202274] = DR_CATEGORY.DISORIENT, -- Incendiary Brew
-    [10326] = DR_CATEGORY.DISORIENT, -- Turn Evil
+    [202274] = DR_CATEGORY.DISORIENT, -- Hot Trub
+    [10326] = DR_CATEGORY.DISORIENT,  -- Turn Evil
+    [205364] = DR_CATEGORY.DISORIENT, -- Dominate Mind
+    [605] = DR_CATEGORY.DISORIENT,    -- Mind Control
+    [118699] = DR_CATEGORY.DISORIENT, -- Fear
+    [130616] = DR_CATEGORY.DISORIENT, -- Fear (Horrify)
+    [5484] = DR_CATEGORY.DISORIENT,   -- Howl of Terror
+    [1513] = DR_CATEGORY.DISORIENT,   -- Scare Beast
     [331866] = DR_CATEGORY.DISORIENT, -- Agent of Chaos
 
-    -- Silences
-    [15487] = DR_CATEGORY.SILENCE,   -- Silence
-    [19647] = DR_CATEGORY.SILENCE,   -- Spell Lock
-    [47476] = DR_CATEGORY.SILENCE,   -- Strangulate
-    [78675] = DR_CATEGORY.SILENCE,   -- Solar Beam
-    [183752] = DR_CATEGORY.SILENCE,  -- Disrupt
-    [202137] = DR_CATEGORY.SILENCE,  -- Sigil of Silence
-    [351338] = DR_CATEGORY.SILENCE,  -- Quell
+    -- =============================================
+    -- SILENCES
+    -- =============================================
+    [15487] = DR_CATEGORY.SILENCE,    -- Silence
+    [1330] = DR_CATEGORY.SILENCE,     -- Garrote
+    [47476] = DR_CATEGORY.SILENCE,    -- Strangulate
+    [374776] = DR_CATEGORY.SILENCE,   -- Tightening Grasp
+    [204490] = DR_CATEGORY.SILENCE,   -- Sigil of Silence
+    [410065] = DR_CATEGORY.SILENCE,   -- Reactive Resin
+    [202933] = DR_CATEGORY.SILENCE,   -- Spider Sting
+    [356727] = DR_CATEGORY.SILENCE,   -- Spider Venom
+    [354831] = DR_CATEGORY.SILENCE,   -- Wailing Arrow
+    [355596] = DR_CATEGORY.SILENCE,   -- Wailing Arrow (2)
+    [217824] = DR_CATEGORY.SILENCE,   -- Shield of Virtue
+    [196364] = DR_CATEGORY.SILENCE,   -- Unstable Affliction silence
 
-    -- Roots
-    [339] = DR_CATEGORY.ROOT,        -- Entangling Roots
-    [102359] = DR_CATEGORY.ROOT,     -- Mass Entanglement
-    [122] = DR_CATEGORY.ROOT,        -- Frost Nova
-    [33395] = DR_CATEGORY.ROOT,      -- Freeze (Water Elemental)
-    [45334] = DR_CATEGORY.ROOT,      -- Immobilized (Wild Charge)
-    [64695] = DR_CATEGORY.ROOT,      -- Earthgrab
-    [105771] = DR_CATEGORY.ROOT,     -- Charge
-    [116706] = DR_CATEGORY.ROOT,     -- Disable
-    [157997] = DR_CATEGORY.ROOT,     -- Ice Nova
-    [162480] = DR_CATEGORY.ROOT,     -- Steel Trap
-    [190925] = DR_CATEGORY.ROOT,     -- Harpoon
-    [198121] = DR_CATEGORY.ROOT,     -- Frostbite
-    [212638] = DR_CATEGORY.ROOT,     -- Tracker's Net
-    [228600] = DR_CATEGORY.ROOT,     -- Glacial Spike
-    [233582] = DR_CATEGORY.ROOT,     -- Entrenched in Flame
+    -- =============================================
+    -- ROOTS
+    -- =============================================
+    [339] = DR_CATEGORY.ROOT,         -- Entangling Roots
+    [235963] = DR_CATEGORY.ROOT,      -- Entangling Roots (Earthen Grasp)
+    [170855] = DR_CATEGORY.ROOT,      -- Entangling Roots (Nature's Grasp)
+    [102359] = DR_CATEGORY.ROOT,      -- Mass Entanglement
+    [355689] = DR_CATEGORY.ROOT,      -- Landslide
+    [122] = DR_CATEGORY.ROOT,         -- Frost Nova
+    [33395] = DR_CATEGORY.ROOT,       -- Freeze (Water Elemental)
+    [157997] = DR_CATEGORY.ROOT,      -- Ice Nova
+    [228600] = DR_CATEGORY.ROOT,      -- Glacial Spike root
+    [64695] = DR_CATEGORY.ROOT,       -- Earthgrab
+    [116706] = DR_CATEGORY.ROOT,      -- Disable
+    [162480] = DR_CATEGORY.ROOT,      -- Steel Trap
+    [212638] = DR_CATEGORY.ROOT,      -- Tracker's Net
+    [201158] = DR_CATEGORY.ROOT,      -- Super Sticky Tar
+    [393456] = DR_CATEGORY.ROOT,      -- Entrapment (Tar Trap)
+    [204085] = DR_CATEGORY.ROOT,      -- Deathchill (Chains of Ice)
+    [233395] = DR_CATEGORY.ROOT,      -- Deathchill (Remorseless Winter)
+    [454787] = DR_CATEGORY.ROOT,      -- Ice Prison
 
-    -- Disarms
-    [236077] = DR_CATEGORY.DISARM,   -- Disarm
+    -- =============================================
+    -- DISARMS
+    -- =============================================
+    [236077] = DR_CATEGORY.DISARM,    -- Disarm
 
-    -- Horrors
-    [5484] = DR_CATEGORY.HORROR,     -- Howl of Terror
-    [207685] = DR_CATEGORY.HORROR,   -- Sigil of Misery
-    [6789] = DR_CATEGORY.HORROR,     -- Mortal Coil
-    [87204] = DR_CATEGORY.HORROR,    -- Sin and Punishment
+    -- =============================================
+    -- KNOCKBACKS (new category from ArenaCore)
+    -- =============================================
+    [287712] = DR_CATEGORY.KNOCKBACK, -- Haymaker (Kul Tiran)
 }
 
--- Category display info
+-- Category display info (colors inspired by ArenaCore)
 local DR_CATEGORY_INFO = {
     [DR_CATEGORY.STUN] = { icon = "Interface\\Icons\\Spell_Holy_SealOfMight", color = {1, 0.5, 0} },
     [DR_CATEGORY.INCAPACITATE] = { icon = "Interface\\Icons\\Spell_Nature_Polymorph", color = {0.5, 0.5, 1} },
     [DR_CATEGORY.DISORIENT] = { icon = "Interface\\Icons\\Spell_Shadow_MindSteal", color = {1, 1, 0} },
     [DR_CATEGORY.SILENCE] = { icon = "Interface\\Icons\\Spell_Shadow_Impphaseshift", color = {1, 0, 1} },
-    [DR_CATEGORY.ROOT] = { icon = "Interface\\Icons\\Spell_Frost_FrostNova", color = {0, 0.5, 1} },
-    [DR_CATEGORY.DISARM] = { icon = "Interface\\Icons\\Ability_Warrior_Disarm", color = {0.5, 0.5, 0.5} },
+    [DR_CATEGORY.ROOT] = { icon = "Interface\\Icons\\Spell_Frost_FrostNova", color = {0, 0.7, 1} },
+    [DR_CATEGORY.DISARM] = { icon = "Interface\\Icons\\Ability_Warrior_Disarm", color = {0.6, 0.6, 0.6} },
     [DR_CATEGORY.HORROR] = { icon = "Interface\\Icons\\Spell_Shadow_DeathScream", color = {0.5, 0, 0.5} },
+    [DR_CATEGORY.KNOCKBACK] = { icon = "Interface\\Icons\\Ability_Druid_Typhoon", color = {0.4, 0.8, 0.4} },
 }
 
 -- ============================================================================
@@ -203,6 +283,9 @@ function DRTracker:CreateElements(frame)
         cooldown:SetDrawSwipe(true)
         cooldown:SetDrawEdge(false)
         cooldown:SetHideCountdownNumbers(true)
+        -- OmniCC exclusion (ArenaCore method)
+        cooldown.noCooldownCount = true
+        cooldown.noOCC = true
         iconFrame.cooldown = cooldown
 
         iconFrame:Hide()

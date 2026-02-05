@@ -46,6 +46,9 @@ function Racial:CreateElements(frame)
     cooldown:SetDrawSwipe(true)
     cooldown:SetDrawEdge(false)
     cooldown:SetHideCountdownNumbers(true)  -- Use our own text
+    -- OmniCC exclusion (ArenaCore method)
+    cooldown.noCooldownCount = true
+    cooldown.noOCC = true
 
     -- Custom cooldown text
     local cdText = container:CreateFontString(nil, "OVERLAY")
