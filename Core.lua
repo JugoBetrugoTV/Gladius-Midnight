@@ -609,62 +609,44 @@ function GladiusMidnight:InitializeBlizzardFrames()
         end
 
         -- =====================================================================
-        -- DR Tray Reparenting (SpellDiminishStatusTray)
+        -- DR Tracking - Hook Blizzard's DR frames to update our custom tracker
+        -- We use our own DRTracker with category icons (stun, silence, etc.)
+        -- instead of Blizzard's spell-specific icons
         -- =====================================================================
         if self:IsModuleEnabled("drTracker") then
             local drTray = blizzArenaFrame.SpellDiminishStatusTray
             if drTray then
-                -- Reparent Blizzard's DR tray to our frame
-                drTray:SetParent(ourFrame)
                 ourFrame.blizzDRTray = drTray
 
-                -- Get size from our settings
-                local db = self.db.profile.drTracker
-                local iconSize = db and db.iconSize or 24
-
-                -- Configure the DR tray
-                drTray:SetFrameStrata("MEDIUM")
-                drTray:SetFrameLevel(15)
+                -- Hide Blizzard's DR tray - we use our own with category icons
+                drTray:SetAlpha(0)
                 drTray:EnableMouse(false)
-                if drTray.SetMouseClickEnabled then
-                    drTray:SetMouseClickEnabled(false)
-                end
 
-                -- Scale the tray based on our icon size (Blizzard default is ~20-24)
-                local scale = iconSize / 20
-                drTray:SetScale(scale)
-
-                -- Position to the LEFT of our frame
-                drTray:ClearAllPoints()
-                drTray:SetPoint("RIGHT", ourFrame, "LEFT", -4, 0)
-
-                -- Get and configure individual DR frames
+                -- Hook Blizzard's DR frames to detect when DRs are applied
                 local drFrames = {drTray:GetChildren()}
                 ourFrame.blizzDRFrames = drFrames
 
                 for drIndex, drFrame in ipairs(drFrames) do
-                    if drFrame then
-                        drFrame:SetFrameStrata("MEDIUM")
-                        drFrame:SetFrameLevel(16)
-                        drFrame:SetAlpha(1)
-                        drFrame:EnableMouse(false)
-                        if drFrame.SetMouseClickEnabled then
-                            drFrame:SetMouseClickEnabled(false)
-                        end
+                    if drFrame and not drFrame.gladiusHooked then
+                        drFrame.gladiusHooked = true
 
-                        -- Try to resize the individual DR icons
-                        if drFrame.SetSize then
-                            drFrame:SetSize(iconSize, iconSize)
-                        end
-                        if drFrame.Icon then
-                            drFrame.Icon:SetSize(iconSize - 4, iconSize - 4)
-                        end
+                        -- Hook the Show event to detect DR applications
+                        drFrame:HookScript("OnShow", function(self)
+                            local drModule = GladiusMidnight:GetModule("drTracker")
+                            if drModule then
+                                -- Try to get the DR category from the frame
+                                local spellID = self.spellID or (self.GetSpellID and self:GetSpellID())
+                                if spellID then
+                                    drModule:OnBlizzardDR(ourFrame, spellID)
+                                end
+                            end
+                        end)
                     end
                 end
 
-                -- Hide our custom DR tracker (we're using Blizzard's now)
+                -- Make sure our custom DR tracker is visible
                 if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
-                    ourFrame.moduleFrames.drTracker:Hide()
+                    ourFrame.moduleFrames.drTracker:Show()
                 end
             end
         end
@@ -812,11 +794,9 @@ function GladiusMidnight:ResetBlizzardFrames()
         local ourFrame = self.frames[i]
         local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
 
-        -- Reset DR tray
+        -- Reset DR tray (restore visibility for non-arena use)
         if ourFrame and ourFrame.blizzDRTray then
-            if blizzArenaFrame then
-                ourFrame.blizzDRTray:SetParent(blizzArenaFrame)
-            end
+            ourFrame.blizzDRTray:SetAlpha(1)
             ourFrame.blizzDRTray = nil
             ourFrame.blizzDRFrames = nil
         end
@@ -853,32 +833,16 @@ function GladiusMidnight:ResetBlizzardDRFrames()
     self:ResetBlizzardFrames()
 end
 
--- Update Blizzard DR frame sizes when settings change
+-- Update DR tracker sizes when settings change
+-- Now updates our custom DRTracker with category icons
 function GladiusMidnight:UpdateBlizzardDRSize()
-    if not self.blizzFramesInitialized then return end
-
-    local db = self.db.profile.drTracker
-    local iconSize = db and db.iconSize or 24
-    local scale = iconSize / 20
-
-    for i = 1, 3 do
-        local ourFrame = self.frames[i]
-        if ourFrame and ourFrame.blizzDRTray then
-            -- Update scale
-            ourFrame.blizzDRTray:SetScale(scale)
-
-            -- Update individual DR frames
-            if ourFrame.blizzDRFrames then
-                for _, drFrame in ipairs(ourFrame.blizzDRFrames) do
-                    if drFrame then
-                        if drFrame.SetSize then
-                            drFrame:SetSize(iconSize, iconSize)
-                        end
-                        if drFrame.Icon then
-                            drFrame.Icon:SetSize(iconSize - 4, iconSize - 4)
-                        end
-                    end
-                end
+    -- Update our custom DR tracker
+    local drModule = self:GetModule("drTracker")
+    if drModule and self:IsModuleEnabled("drTracker") then
+        for i = 1, 3 do
+            local frame = self.frames[i]
+            if frame then
+                drModule:Update(frame)
             end
         end
     end

@@ -552,6 +552,21 @@ function DRTracker:OnAura(frame, spellID)
     end
 end
 
+-- Called when Blizzard's DR frame shows (hooked from Core.lua)
+-- This allows us to show our category icons when Blizzard detects a DR
+function DRTracker:OnBlizzardDR(frame, spellID)
+    if not spellID then return end
+
+    -- Use pcall to safely access the DR_SPELLS table
+    local success, category = pcall(function()
+        return DR_SPELLS[spellID]
+    end)
+
+    if success and category then
+        self:ApplyDR(frame, spellID)
+    end
+end
+
 function DRTracker:Reset(frame)
     local container = frame.moduleFrames.drTracker
     if container then
