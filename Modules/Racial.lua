@@ -85,10 +85,58 @@ function Racial:Update(frame, testData)
         end
     end
 
-    -- Keep current icon state
+    if testData then
+        -- Test mode - show a random racial icon
+        local races = {"Human", "Orc", "NightElf", "Tauren", "Dwarf", "Troll"}
+        local testRace = races[math.random(1, #races)]
+        local spellID = addon.Data.RaceToRacialSpell[testRace]
+        if spellID then
+            local iconTexture = addon.Data.GetSpellIcon(spellID)
+            if iconTexture then
+                container.icon:SetTexture(iconTexture)
+            end
+        end
+    else
+        -- Update icon based on opponent's race
+        self:UpdateRaceIcon(frame)
+    end
+
+    -- Keep current cooldown state
     container.icon:SetDesaturated(container.onCooldown)
 
     container:Show()
+end
+
+function Racial:UpdateRaceIcon(frame)
+    local container = frame.moduleFrames.racial
+    if not container then return end
+
+    local unit = frame.unit
+    local race = frame.race  -- Check if we already stored the race
+
+    -- Try to get race from unit if it exists
+    if not race and UnitExists(unit) then
+        local _, raceToken = UnitRace(unit)
+        if raceToken then
+            race = raceToken
+            frame.race = race  -- Store for later
+        end
+    end
+
+    -- If we have a race, look up and display the racial icon
+    if race then
+        local spellID = addon.Data.RaceToRacialSpell[race]
+        if spellID then
+            -- Only update icon if not on cooldown (cooldown keeps the used spell icon)
+            if not container.onCooldown then
+                local iconTexture = addon.Data.GetSpellIcon(spellID)
+                if iconTexture then
+                    container.icon:SetTexture(iconTexture)
+                end
+            end
+            container.racialSpellID = spellID
+        end
+    end
 end
 
 function Racial:OnSpellCast(frame, spellID)
@@ -126,10 +174,15 @@ end
 
 function Racial:OnUpdate(frame)
     local container = frame.moduleFrames.racial
-    if not container or not container.onCooldown then return end
+    if not container then return end
+
+    -- Try to detect race if we haven't yet (after gates open)
+    if not frame.race and UnitExists(frame.unit) then
+        self:UpdateRaceIcon(frame)
+    end
 
     -- Check if cooldown expired
-    if container.startTime > 0 and container.duration > 0 then
+    if container.onCooldown and container.startTime > 0 and container.duration > 0 then
         local elapsed = GetTime() - container.startTime
         if elapsed >= container.duration then
             container.onCooldown = false
@@ -144,6 +197,7 @@ function Racial:Reset(frame)
     local container = frame.moduleFrames.racial
     if container then
         container.spellID = nil
+        container.racialSpellID = nil
         container.startTime = 0
         container.duration = 0
         container.onCooldown = false
@@ -151,6 +205,8 @@ function Racial:Reset(frame)
         container.icon:SetDesaturated(false)
         container.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
     end
+    -- Clear stored race
+    frame.race = nil
 end
 
 -- Register module

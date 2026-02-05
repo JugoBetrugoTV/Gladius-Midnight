@@ -109,6 +109,43 @@ addon.Data.TrinketShareRacials = {
     [7744] = true,   -- Will of the Forsaken (Undead)
 }
 
+-- Race to Primary Racial SpellID (for displaying icon)
+-- Key is the race token returned by UnitRace (second return value)
+addon.Data.RaceToRacialSpell = {
+    -- Alliance
+    ["Human"] = 59752,           -- Will to Survive
+    ["Dwarf"] = 20594,           -- Stoneform
+    ["NightElf"] = 58984,        -- Shadowmeld
+    ["Gnome"] = 20589,           -- Escape Artist
+    ["Draenei"] = 28880,         -- Gift of the Naaru
+    ["Worgen"] = 68992,          -- Darkflight
+    ["VoidElf"] = 256948,        -- Spatial Rift
+    ["LightforgedDraenei"] = 255647, -- Light's Judgment
+    ["DarkIronDwarf"] = 265221,  -- Fireblood
+    ["KulTiran"] = 287712,       -- Haymaker
+    ["Mechagnome"] = 312924,     -- Emergency Failsafe
+
+    -- Horde
+    ["Orc"] = 33697,             -- Blood Fury
+    ["Scourge"] = 7744,          -- Will of the Forsaken (Undead)
+    ["Tauren"] = 20549,          -- War Stomp
+    ["Troll"] = 26297,           -- Berserking
+    ["BloodElf"] = 28730,        -- Arcane Torrent
+    ["Goblin"] = 69070,          -- Rocket Jump
+    ["Nightborne"] = 260364,     -- Arcane Pulse
+    ["HighmountainTauren"] = 255654, -- Bull Rush
+    ["MagharOrc"] = 274738,      -- Ancestral Call
+    ["ZandalariTroll"] = 291944, -- Regeneratin'
+    ["Vulpera"] = 312411,        -- Bag of Tricks
+
+    -- Neutral
+    ["Pandaren"] = 107079,       -- Quaking Palm
+    ["Dracthyr"] = 368970,       -- Tail Swipe
+
+    -- TWW
+    ["Earthen"] = 436343,        -- Azerite Surge
+}
+
 -- ============================================================================
 -- PvP Trinket Data
 -- ============================================================================
