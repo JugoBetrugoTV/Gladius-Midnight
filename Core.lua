@@ -437,6 +437,19 @@ function GladiusMidnight:ToggleTest()
                 frame.class = nil
                 -- Re-register unit watch for normal arena operation
                 RegisterUnitWatch(frame)
+
+                -- Hide UIParent-parented module frames (DR Tracker, Cast Bar, Auras)
+                if frame.moduleFrames then
+                    if frame.moduleFrames.drTracker then
+                        frame.moduleFrames.drTracker:Hide()
+                    end
+                    if frame.moduleFrames.castBar then
+                        frame.moduleFrames.castBar:Hide()
+                    end
+                    if frame.moduleFrames.auras then
+                        frame.moduleFrames.auras:Hide()
+                    end
+                end
             end
         end
     end
