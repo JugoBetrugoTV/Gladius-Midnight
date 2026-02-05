@@ -78,6 +78,7 @@ GladiusMidnight.frames = {}
 GladiusMidnight.modules = {}
 GladiusMidnight.testMode = false
 GladiusMidnight.arenaSize = 0
+GladiusMidnight.prepPhase = false
 
 -- ============================================================================
 -- Module Registration
@@ -427,6 +428,26 @@ function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
     local frame = self.frames[index]
 
     if updateType == "seen" or updateType == "cleared" then
+        -- Gates have opened - exit prep phase and re-register unit watch
+        if self.prepPhase then
+            self.prepPhase = false
+            self:Print("Arena gestartet!")
+            for i = 1, 3 do
+                local f = self.frames[i]
+                if f then
+                    RegisterUnitWatch(f)
+                end
+            end
+        end
+
+        -- Update class from actual unit now that they exist
+        if UnitExists(unit) then
+            local _, classFile = UnitClass(unit)
+            if classFile then
+                frame.class = classFile
+            end
+        end
+
         self:UpdateFrame(frame)
         frame:Show()
         self:PositionFrames()
@@ -444,7 +465,20 @@ function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
         self:DetectArenaType()
     end
 
+    -- Enter prep phase - unregister unit watch so we can show frames manually
+    self.prepPhase = true
+    for i = 1, 3 do
+        local frame = self.frames[i]
+        if frame then
+            UnregisterUnitWatch(frame)
+        end
+    end
+
     local numOpponents = GetNumArenaOpponentSpecs and GetNumArenaOpponentSpecs() or self.arenaSize
+    if numOpponents == 0 then numOpponents = self.arenaSize end
+    if numOpponents == 0 then numOpponents = 3 end -- Fallback
+
+    self:Print("Prep Phase - " .. numOpponents .. " Gegner erkannt")
 
     for i = 1, numOpponents do
         local frame = self.frames[i]
@@ -456,11 +490,22 @@ function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
                 if classFile then
                     frame.class = classFile
                     frame.specID = specID
+                    self:Print("Arena" .. i .. ": " .. classFile .. " (SpecID: " .. specID .. ")")
                 end
+            else
+                self:Print("Arena" .. i .. ": Spec nicht verfügbar")
             end
 
             self:UpdateFrame(frame)
             frame:Show()
+        end
+    end
+
+    -- Hide frames that shouldn't be shown
+    for i = numOpponents + 1, 3 do
+        local frame = self.frames[i]
+        if frame then
+            frame:Hide()
         end
     end
 
@@ -523,10 +568,17 @@ function GladiusMidnight:CheckArenaStatus()
     local _, instanceType = IsInInstance()
 
     if instanceType ~= "arena" or not self.db.profile.enabled then
+        -- Left arena - reset state
+        self.prepPhase = false
+        self.arenaSize = 0
+
         for i = 1, 3 do
-            if self.frames[i] then
-                self.frames[i]:Hide()
-                self:ResetFrame(self.frames[i])
+            local frame = self.frames[i]
+            if frame then
+                -- Re-register unit watch for normal operation
+                RegisterUnitWatch(frame)
+                frame:Hide()
+                self:ResetFrame(frame)
             end
         end
     end

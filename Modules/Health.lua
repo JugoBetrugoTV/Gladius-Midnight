@@ -103,9 +103,25 @@ function Health:UpdateUnit(frame)
     if not healthBar then return end
 
     local unit = frame.unit
-    if not UnitExists(unit) then return end
-
     local db = self.core.db.profile.health
+
+    -- During prep phase, unit doesn't exist yet - show full health with class color
+    if not UnitExists(unit) then
+        healthBar:SetMinMaxValues(0, 100)
+        healthBar:SetValue(100)
+        if db.showText then
+            healthBar.text:SetText("100%")
+        end
+
+        -- Apply class color if we have it from prep phase
+        if db.colorByClass and frame.class then
+            local color = addon.Data.GetClassColor(frame.class)
+            healthBar:SetStatusBarColor(color.r, color.g, color.b)
+        else
+            healthBar:SetStatusBarColor(0, 1, 0)
+        end
+        return
+    end
 
     -- Get health values (12.0 API supports secret values)
     local health = UnitHealth(unit)
@@ -137,7 +153,7 @@ function Health:UpdateUnit(frame)
     -- Class color (use stored class from frame or UnitClass)
     if db.colorByClass then
         local class = frame.class
-        if not class and UnitExists(unit) then
+        if not class then
             local _, classFile = UnitClass(unit)
             class = classFile
         end

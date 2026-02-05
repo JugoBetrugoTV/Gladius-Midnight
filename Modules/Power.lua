@@ -102,9 +102,20 @@ function Power:UpdateUnit(frame)
     if not powerBar then return end
 
     local unit = frame.unit
-    if not UnitExists(unit) then return end
-
     local db = self.core.db.profile.power
+
+    -- During prep phase, unit doesn't exist yet - show full power bar with mana color
+    if not UnitExists(unit) then
+        powerBar:SetMinMaxValues(0, 100)
+        powerBar:SetValue(100)
+        if db.showText then
+            powerBar.text:SetText("100%")
+        end
+        -- Default to mana color during prep
+        local color = addon.Data.GetPowerColor(Enum.PowerType.Mana)
+        powerBar:SetStatusBarColor(color.r, color.g, color.b)
+        return
+    end
 
     -- Get power values (12.0 API supports secret values)
     local power = UnitPower(unit)

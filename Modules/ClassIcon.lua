@@ -83,10 +83,10 @@ function ClassIcon:UpdateUnit(frame)
 
     local unit = frame.unit
     local index = frame.index
-    local class = nil
+    local class = frame.class  -- Use already stored class from prep phase
 
-    -- Method 1: Try GetArenaOpponentSpec (works during prep phase before gates open)
-    if GetArenaOpponentSpec then
+    -- Method 1: If no stored class, try GetArenaOpponentSpec (works during prep phase)
+    if not class and GetArenaOpponentSpec then
         local specID = GetArenaOpponentSpec(index)
         if specID and specID > 0 then
             local _, specName, _, _, role, classFile = GetSpecializationInfoByID(specID)
