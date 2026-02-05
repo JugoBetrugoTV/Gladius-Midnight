@@ -63,6 +63,7 @@ local defaults = {
         health = {
             height = 28,
             showText = true,
+            showName = true,
             colorByClass = true,
         },
         power = {
@@ -179,6 +180,26 @@ function GladiusMidnight:CreateArenaFrame(index)
     immunityGlow:Hide()
     frame.immunityGlow = immunityGlow
     frame.hasImmunity = false
+
+    -- Arena number indicator (right side)
+    local arenaNumber = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    arenaNumber:SetSize(28, 28)
+    arenaNumber:SetPoint("LEFT", frame, "RIGHT", 4, 0)
+    arenaNumber:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+    })
+    arenaNumber:SetBackdropColor(0.1, 0.1, 0.1, 0.9)
+    arenaNumber:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+
+    local numberText = arenaNumber:CreateFontString(nil, "OVERLAY")
+    numberText:SetFont("Fonts\\FRIZQT__.TTF", 16, "OUTLINE")
+    numberText:SetPoint("CENTER")
+    numberText:SetText(index)
+    numberText:SetTextColor(1, 1, 1)
+    arenaNumber.text = numberText
+    frame.arenaNumber = arenaNumber
 
     -- Secure targeting (left-click = target, right-click = focus)
     frame:SetAttribute("type1", "target")

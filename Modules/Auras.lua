@@ -220,14 +220,20 @@ function Auras:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.auras
+    local iconSize = db.iconSize or 22  -- Smaller icons like ArenaCore
 
-    -- Position next to class icon
+    -- Position BELOW the health/power bars (ArenaCore style)
     container:ClearAllPoints()
-    local iconSize = db.iconSize or 28
 
-    -- Position on the left side of the health bar
-    local classIconSize = self.core.db.profile.classIcon.size
-    container:SetPoint("LEFT", frame, "LEFT", classIconSize + 4, 0)
+    -- Calculate position - below power bar if enabled, otherwise below health
+    local healthHeight = self.core.db.profile.health.height or 28
+    local powerHeight = self.core:IsModuleEnabled("power") and (self.core.db.profile.power.height or 10) or 0
+    local yOffset = -(healthHeight + powerHeight + 6)
+
+    -- Position starting from left side, below the bars
+    local leftOffset = self.core.db.profile.classIcon.size + 4
+    container:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, yOffset)
+    container:SetSize(iconSize * 5 + 8, iconSize)
 
     -- Update icon sizes
     for i, iconFrame in ipairs(container.icons) do

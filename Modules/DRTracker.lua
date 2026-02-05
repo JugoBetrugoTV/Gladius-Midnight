@@ -183,12 +183,19 @@ function DRTracker:CreateElements(frame)
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.icon = icon
 
-        -- DR level text overlay
+        -- Duration text (top/center)
         local text = iconFrame:CreateFontString(nil, "OVERLAY")
-        text:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
-        text:SetPoint("CENTER")
+        text:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+        text:SetPoint("TOP", 0, -2)
         text:SetTextColor(1, 1, 1)
         iconFrame.text = text
+
+        -- DR level text (bottom - shows 1/3, 2/3, 3/3)
+        local drLevelText = iconFrame:CreateFontString(nil, "OVERLAY")
+        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+        drLevelText:SetPoint("BOTTOM", 0, 2)
+        drLevelText:SetTextColor(1, 0.8, 0)
+        iconFrame.drLevelText = drLevelText
 
         -- Cooldown spiral (optional)
         local cooldown = CreateFrame("Cooldown", nil, iconFrame, "CooldownFrameTemplate")
@@ -213,11 +220,18 @@ function DRTracker:Update(frame, testData)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
-    local db = self.core.db.profile
+    local db = self.core.db.profile.drTracker
+    local iconSize = db.iconSize or 24
 
-    -- Position below the frame
+    -- Position to the LEFT of the frame (ArenaCore style)
     container:ClearAllPoints()
-    container:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -2)
+    container:SetPoint("RIGHT", frame, "LEFT", -4, 0)
+    container:SetSize(iconSize * 6 + 12, iconSize)
+
+    -- Update icon sizes
+    for i, iconFrame in ipairs(container.icons) do
+        iconFrame:SetSize(iconSize, iconSize)
+    end
 
     if testData then
         -- Test mode - show some sample DRs
@@ -231,14 +245,18 @@ function DRTracker:ShowTestDR(frame)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
+    local db = self.core.db.profile.drTracker
+    local iconSize = db.iconSize or 24
+
     -- Clear existing
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()
     end
 
-    -- Show test DRs
-    local testCategories = { DR_CATEGORY.STUN, DR_CATEGORY.INCAPACITATE, DR_CATEGORY.ROOT }
-    local testLevels = { 2, 3, 4 }
+    -- Show test DRs (ArenaCore style: 1/3, 2/3, 3/3)
+    local testCategories = { DR_CATEGORY.STUN, DR_CATEGORY.INCAPACITATE, DR_CATEGORY.ROOT, DR_CATEGORY.SILENCE, DR_CATEGORY.DISORIENT }
+    local testLevels = { 2, 3, 4, 2, 3 }
+    local testDurations = { 5, 9, 17, 5, 17 }
 
     for i, category in ipairs(testCategories) do
         local iconFrame = container.icons[i]
@@ -248,19 +266,23 @@ function DRTracker:ShowTestDR(frame)
                 iconFrame.icon:SetTexture(info.icon)
                 iconFrame:SetBackdropBorderColor(info.color[1], info.color[2], info.color[3], 1)
 
+                -- ArenaCore style: show remaining time on top, DR level below
                 local level = testLevels[i]
+                iconFrame.text:SetText(testDurations[i])
+
                 if level == 2 then
-                    iconFrame.text:SetText("½")
+                    iconFrame.drLevelText:SetText("1/3")
                 elseif level == 3 then
-                    iconFrame.text:SetText("¼")
-                elseif level == 4 then
-                    iconFrame.text:SetText("0")
+                    iconFrame.drLevelText:SetText("2/3")
+                elseif level >= 4 then
+                    iconFrame.drLevelText:SetText("3/3")
                 else
-                    iconFrame.text:SetText("")
+                    iconFrame.drLevelText:SetText("")
                 end
 
+                -- Position from RIGHT to LEFT (so icons appear left of frame)
                 iconFrame:ClearAllPoints()
-                iconFrame:SetPoint("LEFT", container, "LEFT", (i - 1) * 22, 0)
+                iconFrame:SetPoint("RIGHT", container, "RIGHT", -(i - 1) * (iconSize + 2), 0)
                 iconFrame:Show()
             end
         end
@@ -297,9 +319,13 @@ function DRTracker:RefreshDisplay(frame)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
+    local db = self.core.db.profile.drTracker
+    local iconSize = db.iconSize or 24
+
     -- Hide all icons first
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()
+        iconFrame.icon:SetDesaturated(false)
     end
 
     local now = GetTime()
@@ -316,25 +342,28 @@ function DRTracker:RefreshDisplay(frame)
                 iconFrame.icon:SetTexture(info.icon)
                 iconFrame:SetBackdropBorderColor(info.color[1], info.color[2], info.color[3], 1)
 
-                -- Show DR level
+                -- Show remaining time as main text (ArenaCore style)
+                local remaining = data.expireTime - now
+                iconFrame.text:SetText(math.ceil(remaining))
+
+                -- Show DR level (1/3, 2/3, 3/3 style)
                 if data.level == 2 then
-                    iconFrame.text:SetText("½")
+                    iconFrame.drLevelText:SetText("1/3")
                 elseif data.level == 3 then
-                    iconFrame.text:SetText("¼")
+                    iconFrame.drLevelText:SetText("2/3")
                 elseif data.level >= 4 then
-                    iconFrame.text:SetText("0")
+                    iconFrame.drLevelText:SetText("3/3")
                     iconFrame.icon:SetDesaturated(true)
                 else
-                    iconFrame.text:SetText("")
-                    iconFrame.icon:SetDesaturated(false)
+                    iconFrame.drLevelText:SetText("")
                 end
 
                 -- Show cooldown timer
-                local remaining = data.expireTime - now
                 iconFrame.cooldown:SetCooldown(now - (DR_DURATION - remaining), DR_DURATION)
 
+                -- Position from RIGHT to LEFT
                 iconFrame:ClearAllPoints()
-                iconFrame:SetPoint("LEFT", container, "LEFT", (index - 1) * 22, 0)
+                iconFrame:SetPoint("RIGHT", container, "RIGHT", -(index - 1) * (iconSize + 2), 0)
                 iconFrame:Show()
 
                 index = index + 1
@@ -381,6 +410,8 @@ function DRTracker:Reset(frame)
         for i, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
             iconFrame.icon:SetDesaturated(false)
+            iconFrame.text:SetText("")
+            iconFrame.drLevelText:SetText("")
         end
     end
 end

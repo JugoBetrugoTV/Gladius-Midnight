@@ -37,10 +37,18 @@ function Health:CreateElements(frame)
     healthBar.bg:SetAllPoints()
     healthBar.bg:SetColorTexture(0.15, 0.15, 0.15, 1)
 
-    -- Health text
+    -- Player name text (left side)
+    healthBar.nameText = healthBar:CreateFontString(nil, "OVERLAY")
+    healthBar.nameText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+    healthBar.nameText:SetPoint("LEFT", 4, 0)
+    healthBar.nameText:SetJustifyH("LEFT")
+    healthBar.nameText:SetText("")
+
+    -- Health percentage text (right side)
     healthBar.text = healthBar:CreateFontString(nil, "OVERLAY")
     healthBar.text:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
-    healthBar.text:SetPoint("CENTER")
+    healthBar.text:SetPoint("RIGHT", -4, 0)
+    healthBar.text:SetJustifyH("RIGHT")
     healthBar.text:SetText("100%")
 
     frame.moduleFrames.health = healthBar
@@ -80,6 +88,9 @@ function Health:Update(frame, testData)
     -- Show/hide text
     healthBar.text:SetShown(db.showText)
 
+    -- Show/hide name
+    healthBar.nameText:SetShown(db.showName)
+
     if testData then
         -- Test mode
         local color = addon.Data.GetClassColor(testData.class)
@@ -91,6 +102,9 @@ function Health:Update(frame, testData)
         healthBar:SetMinMaxValues(0, testData.maxHealth)
         healthBar:SetValue(testData.health)
         healthBar.text:SetText(testData.health .. "%")
+        -- Test names
+        local testNames = {"Survivable", "Patymorph", "Easymodex", "Gladiator", "Shadowstep"}
+        healthBar.nameText:SetText(testNames[frame.index] or "Player")
     else
         self:UpdateUnit(frame)
     end
@@ -112,6 +126,8 @@ function Health:UpdateUnit(frame)
         if db.showText then
             healthBar.text:SetText("100%")
         end
+        -- Clear name during prep (we don't know it yet)
+        healthBar.nameText:SetText("")
 
         -- Apply class color if we have it from prep phase
         if db.colorByClass and frame.class then
@@ -121,6 +137,14 @@ function Health:UpdateUnit(frame)
             healthBar:SetStatusBarColor(0, 1, 0)
         end
         return
+    end
+
+    -- Update player name
+    if db.showName then
+        local name = UnitName(unit)
+        if name then
+            healthBar.nameText:SetText(name)
+        end
     end
 
     -- Get health values (12.0 API supports secret values)
@@ -170,6 +194,7 @@ function Health:Reset(frame)
         healthBar:SetMinMaxValues(0, 100)
         healthBar:SetValue(100)
         healthBar.text:SetText("100%")
+        healthBar.nameText:SetText("")
         healthBar:SetStatusBarColor(0, 1, 0)
     end
 end
