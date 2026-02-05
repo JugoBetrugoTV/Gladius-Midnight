@@ -684,51 +684,98 @@ function GladiusMidnight:InitializeBlizzardFrames()
         end
 
         -- =====================================================================
-        -- DebuffFrame Hooking (for main CC/Debuff display)
-        -- In Midnight 12.0, aura data is "secret" - we hook Blizzard's display
-        -- to show the most important CC on our aura slot
+        -- DebuffFrame Reparenting (Current CC Display)
+        -- In Midnight 12.0, this shows the most important CC on the target
+        -- We reparent it to overlay on our ClassIcon (like sArena)
         -- =====================================================================
-        if self:IsModuleEnabled("auras") then
-            local debuffFrame = blizzArenaFrame.DebuffFrame
-            if debuffFrame and debuffFrame.Icon then
-                ourFrame.blizzDebuffFrame = debuffFrame
+        local debuffFrame = blizzArenaFrame.DebuffFrame
+        if debuffFrame then
+            ourFrame.blizzDebuffFrame = debuffFrame
 
-                -- Store reference for this frame index
-                local frameIndex = i
+            -- Reparent to our frame
+            debuffFrame:SetParent(ourFrame)
+            debuffFrame:SetFrameStrata("HIGH")
+            debuffFrame:SetFrameLevel(25)
 
-                -- Hook SetTexture to catch when Blizzard updates the debuff icon
-                if not debuffFrame.gladiusHooked then
-                    hooksecurefunc(debuffFrame.Icon, "SetTexture", function(_, tex)
+            -- Position on top of ClassIcon (overlay style like sArena)
+            debuffFrame:ClearAllPoints()
+            local classIconSize = self.db.profile.classIcon.size or 50
+            debuffFrame:SetSize(classIconSize, classIconSize)
+            debuffFrame:SetPoint("TOPLEFT", ourFrame, "TOPLEFT", 2, -2)
+
+            -- Make sure it's visible
+            debuffFrame:SetAlpha(1)
+            debuffFrame:Show()
+
+            -- Store reference for hooks
+            local frameIndex = i
+
+            -- Hook SetTexture to also update our ClassIcon module
+            if not debuffFrame.gladiusHooked then
+                hooksecurefunc(debuffFrame.Icon, "SetTexture", function(_, tex)
+                    local frame = self.frames[frameIndex]
+                    if frame then
+                        -- Update ClassIcon overlay when in CC
+                        local classIconModule = self:GetModule("classIcon")
+                        if classIconModule and classIconModule.OnDebuffUpdate then
+                            classIconModule:OnDebuffUpdate(frame, tex)
+                        end
+                    end
+                end)
+
+                if debuffFrame.Cooldown then
+                    hooksecurefunc(debuffFrame.Cooldown, "SetCooldown", function(_, start, duration)
                         local frame = self.frames[frameIndex]
-                        if frame and frame.moduleFrames and frame.moduleFrames.auras then
-                            local aurasModule = self:GetModule("auras")
-                            if aurasModule and aurasModule.OnBlizzardDebuffUpdate then
-                                aurasModule:OnBlizzardDebuffUpdate(frame, tex)
+                        if frame then
+                            local classIconModule = self:GetModule("classIcon")
+                            if classIconModule and classIconModule.OnDebuffCooldown then
+                                classIconModule:OnDebuffCooldown(frame, start, duration)
                             end
                         end
                     end)
+                end
 
-                    -- Hook SetCooldown to catch cooldown updates
-                    if debuffFrame.Cooldown then
-                        hooksecurefunc(debuffFrame.Cooldown, "SetCooldown", function(_, start, duration)
+                debuffFrame.gladiusHooked = true
+            end
+        end
+
+        -- =====================================================================
+        -- CcRemoverFrame Hooking (Trinket Cooldown)
+        -- Blizzard's built-in trinket tracking for arena opponents
+        -- =====================================================================
+        if self:IsModuleEnabled("trinket") then
+            local trinketFrame = blizzArenaFrame.CcRemoverFrame
+            if trinketFrame then
+                ourFrame.blizzTrinketFrame = trinketFrame
+
+                -- Hide Blizzard's frame but keep it functional for hooks
+                trinketFrame:SetParent(ourFrame)
+                trinketFrame:SetAlpha(0)
+
+                local frameIndex = i
+
+                if not trinketFrame.gladiusHooked then
+                    -- Hook trinket cooldown
+                    if trinketFrame.Cooldown then
+                        hooksecurefunc(trinketFrame.Cooldown, "SetCooldown", function(_, start, duration)
                             local frame = self.frames[frameIndex]
-                            if frame and frame.moduleFrames and frame.moduleFrames.auras then
-                                local aurasModule = self:GetModule("auras")
-                                if aurasModule and aurasModule.OnBlizzardDebuffCooldown then
-                                    aurasModule:OnBlizzardDebuffCooldown(frame, start, duration)
+                            if frame then
+                                local trinketModule = self:GetModule("trinket")
+                                if trinketModule and trinketModule.OnBlizzardTrinketCooldown then
+                                    trinketModule:OnBlizzardTrinketCooldown(frame, start, duration)
                                 end
                             end
                         end)
                     end
 
-                    debuffFrame.gladiusHooked = true
+                    trinketFrame.gladiusHooked = true
                 end
             end
         end
     end
 
     self.blizzFramesInitialized = true
-    self:Print("Blizzard Frames initialisiert (DR + CastBar + Aura Hooks)")
+    self:Print("Blizzard Frames initialisiert (DR + CastBar + CC + Trinket)")
 end
 
 -- Legacy alias for backwards compatibility
@@ -759,6 +806,23 @@ function GladiusMidnight:ResetBlizzardFrames()
                 ourFrame.blizzCastBar:SetParent(blizzArenaFrame)
             end
             ourFrame.blizzCastBar = nil
+        end
+
+        -- Reset DebuffFrame (CC display)
+        if ourFrame and ourFrame.blizzDebuffFrame then
+            if blizzArenaFrame then
+                ourFrame.blizzDebuffFrame:SetParent(blizzArenaFrame)
+            end
+            ourFrame.blizzDebuffFrame = nil
+        end
+
+        -- Reset TrinketFrame
+        if ourFrame and ourFrame.blizzTrinketFrame then
+            if blizzArenaFrame then
+                ourFrame.blizzTrinketFrame:SetParent(blizzArenaFrame)
+                ourFrame.blizzTrinketFrame:SetAlpha(1)
+            end
+            ourFrame.blizzTrinketFrame = nil
         end
     end
 end

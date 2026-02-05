@@ -266,5 +266,37 @@ function Trinket:Reset(frame)
     end
 end
 
+-- ============================================================================
+-- Blizzard CcRemoverFrame Hook (Midnight 12.0)
+-- This is called when Blizzard updates trinket cooldown for arena opponents
+-- ============================================================================
+
+function Trinket:OnBlizzardTrinketCooldown(frame, start, duration)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.trinket
+    if not container then return end
+
+    -- Validate cooldown data
+    if not start or not duration or start <= 0 or duration <= 0 then
+        return
+    end
+
+    -- Validate duration (max 3 min for trinkets)
+    if duration > 180 then
+        return
+    end
+
+    -- Only update if this is new data
+    if start ~= container.startTime or duration ~= container.duration then
+        container.startTime = start
+        container.duration = duration
+        container.onCooldown = true
+        container.cooldown:SetCooldown(start, duration)
+        container.icon:SetDesaturated(true)
+        self:UpdateCooldownText(container)
+    end
+end
+
 -- Register module
 addon.Core:RegisterModule("trinket", Trinket)
