@@ -163,11 +163,13 @@ end
 
 function Racial:OnSpellCast(frame, spellID)
     -- In Midnight 12.0, spellID may be "secret" for arena opponents
-    if not spellID or type(spellID) ~= "number" then return end
+    if not spellID then return end
 
-    -- Check if it's a tracked racial
-    local cooldown = addon.Data.RacialCooldowns[spellID]
-    if not cooldown then return end
+    -- Use pcall for table access to handle secret values
+    local success, cooldown = pcall(function()
+        return addon.Data.RacialCooldowns[spellID]
+    end)
+    if not success or not cooldown then return end
 
     local container = frame.moduleFrames.racial
     if not container then return end
@@ -190,7 +192,10 @@ function Racial:OnSpellCast(frame, spellID)
     self:UpdateCooldownText(container)
 
     -- Also trigger trinket cooldown for certain racials
-    if addon.Data.TrinketShareRacials[spellID] then
+    local trinketSuccess, sharesTrinket = pcall(function()
+        return addon.Data.TrinketShareRacials[spellID]
+    end)
+    if trinketSuccess and sharesTrinket then
         local trinketModule = self.core:GetModule("trinket")
         if trinketModule and self.core:IsModuleEnabled("trinket") then
             trinketModule:TriggerCooldown(frame, 90)

@@ -145,6 +145,18 @@ function GladiusMidnight:CreateArenaFrame(index)
     frame.unit = unit
     frame.index = index
 
+    -- Add optionTable to prevent Blizzard CompactUnitFrame errors
+    -- Blizzard's code expects this field when updating auras on reparented frames
+    frame.optionTable = {
+        displayOnlyDispellableDebuffs = false,
+        displayDebuffs = true,
+        displayBuffs = true,
+        displayNonBossDebuffs = true,
+    }
+
+    -- Table for blocked aura instance IDs (used by Blizzard's aura code)
+    frame.blockedAuraInstanceIDsTable = frame.blockedAuraInstanceIDsTable or {}
+
     -- Background
     frame:SetBackdrop({
         bgFile = "Interface\\Buttons\\WHITE8X8",
