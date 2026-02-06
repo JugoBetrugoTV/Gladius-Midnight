@@ -619,9 +619,10 @@ function GladiusMidnight:PLAYER_ENTERING_WORLD()
 end
 
 -- ============================================================================
--- Blizzard DR Frame Reparenting (Midnight 12.0)
--- In Midnight 12.0, Blizzard provides built-in DR tracking via SpellDiminishStatusTray
--- We reparent these frames to our arena frames (like sArena does)
+-- Blizzard Arena Frame Handling (Midnight 12.0)
+-- In Midnight 12.0, we HIDE Blizzard's CompactArenaFrameMember frames entirely
+-- and use our own custom modules (DRTracker, CastBar, etc.)
+-- We do NOT reparent any Blizzard child frames - this causes errors!
 -- ============================================================================
 
 function GladiusMidnight:InitializeBlizzardFrames()
@@ -640,35 +641,54 @@ function GladiusMidnight:InitializeBlizzardFrames()
         end
 
         -- =====================================================================
-        -- DR Tracking - Hide Blizzard's DR tray and use our custom DRTracker
+        -- COMPLETELY HIDE Blizzard's arena frame
+        -- Do NOT reparent child frames - this causes CompactArenaFrame.lua errors
+        -- =====================================================================
+        blizzArenaFrame:SetAlpha(0)
+        blizzArenaFrame:EnableMouse(false)
+
+        -- Hide all child frames without reparenting
+        if blizzArenaFrame.CastingBarFrame then
+            blizzArenaFrame.CastingBarFrame:SetAlpha(0)
+        end
+        if blizzArenaFrame.DebuffFrame then
+            blizzArenaFrame.DebuffFrame:SetAlpha(0)
+        end
+        if blizzArenaFrame.CcRemoverFrame then
+            blizzArenaFrame.CcRemoverFrame:SetAlpha(0)
+        end
+        if blizzArenaFrame.SpellDiminishStatusTray then
+            blizzArenaFrame.SpellDiminishStatusTray:SetAlpha(0)
+        end
+
+        -- Store reference for later (but don't reparent!)
+        ourFrame.blizzArenaFrame = blizzArenaFrame
+
+        -- =====================================================================
+        -- DR Tracking - Hook Blizzard's DR detection for data only
         -- Our DRTracker shows category icons (Kidney Shot, Polymorph, etc.)
-        -- We hook into Blizzard's DR detection to trigger our custom display
         -- =====================================================================
         if self:IsModuleEnabled("drTracker") then
             local drTray = blizzArenaFrame.SpellDiminishStatusTray
             if drTray then
-                -- Store reference but HIDE Blizzard's DR tray
-                ourFrame.blizzDRTray = drTray
-                drTray:SetAlpha(0)  -- Hide it
-                drTray:EnableMouse(false)
-
-                -- Get individual DR frames for hooking
+                -- Get individual DR frames for hooking (NOT reparenting)
                 local drFrames = {drTray:GetChildren()}
-                ourFrame.blizzDRFrames = drFrames
 
-                -- Hook each DR frame to detect when Blizzard shows a DR
+                -- Hook each DR frame to detect when Blizzard detects a DR
                 for drIndex, drFrame in ipairs(drFrames) do
                     if drFrame and not drFrame.gladiusHooked then
                         drFrame.gladiusHooked = true
+                        local frameIndex = i
 
                         -- Hook the Show function to detect DR
                         hooksecurefunc(drFrame, "Show", function(self)
-                            -- When Blizzard shows a DR, trigger our DRTracker
+                            -- When Blizzard detects a DR, trigger our DRTracker
                             local drModule = GladiusMidnight:GetModule("drTracker")
-                            if drModule and self.auraData then
+                            local frame = GladiusMidnight.frames[frameIndex]
+                            if drModule and frame and self.auraData then
                                 local spellID = self.auraData.spellID
                                 if spellID then
-                                    drModule:OnBlizzardDR(ourFrame, spellID)
+                                    drModule:OnBlizzardDR(frame, spellID)
                                 end
                             end
                         end)
@@ -683,74 +703,31 @@ function GladiusMidnight:InitializeBlizzardFrames()
         end
 
         -- =====================================================================
-        -- CastBar Reparenting (CastingBarFrame)
-        -- In Midnight 12.0, cast data for arena opponents is "secret"
-        -- We reparent Blizzard's built-in cast bar instead
+        -- CastBar - Use our custom CastBar module
+        -- Our CastBar handles secret values properly
         -- =====================================================================
         if self:IsModuleEnabled("castBar") then
-            local blizzCastBar = blizzArenaFrame.CastingBarFrame
-            if blizzCastBar then
-                -- Reparent Blizzard's cast bar to our frame
-                blizzCastBar:SetParent(ourFrame)
-                ourFrame.blizzCastBar = blizzCastBar
-
-                -- Configure the cast bar
-                blizzCastBar:SetFrameStrata("HIGH")
-                blizzCastBar:SetFrameLevel(20)
-                blizzCastBar:EnableMouse(false)
-                if blizzCastBar.SetMouseClickEnabled then
-                    blizzCastBar:SetMouseClickEnabled(false)
-                end
-
-                -- Position BELOW our frame
-                local db = self.db.profile.castBar
-                local height = db and db.height or 16
-                blizzCastBar:ClearAllPoints()
-                blizzCastBar:SetPoint("TOPLEFT", ourFrame, "BOTTOMLEFT", 0, -2)
-                blizzCastBar:SetPoint("TOPRIGHT", ourFrame, "BOTTOMRIGHT", 0, -2)
-                blizzCastBar:SetHeight(height)
-
-                -- Hide our custom cast bar (we're using Blizzard's now)
-                if ourFrame.moduleFrames and ourFrame.moduleFrames.castBar then
-                    ourFrame.moduleFrames.castBar:Hide()
-                end
+            -- Show our custom cast bar
+            if ourFrame.moduleFrames and ourFrame.moduleFrames.castBar then
+                -- Will be shown when casting starts
             end
         end
 
         -- =====================================================================
-        -- DebuffFrame Reparenting (Current CC Display)
-        -- In Midnight 12.0, this shows the most important CC on the target
-        -- We reparent it to overlay on our ClassIcon (like sArena)
+        -- DebuffFrame - Hook for CC detection data only
+        -- We display CC overlay on our ClassIcon, not Blizzard's debuff frame
         -- =====================================================================
         local debuffFrame = blizzArenaFrame.DebuffFrame
         if debuffFrame then
-            ourFrame.blizzDebuffFrame = debuffFrame
-
-            -- Reparent to our frame
-            debuffFrame:SetParent(ourFrame)
-            debuffFrame:SetFrameStrata("HIGH")
-            debuffFrame:SetFrameLevel(25)
-
-            -- Position on top of ClassIcon (overlay style like sArena)
-            debuffFrame:ClearAllPoints()
-            local classIconSize = self.db.profile.classIcon.size or 50
-            debuffFrame:SetSize(classIconSize, classIconSize)
-            debuffFrame:SetPoint("TOPLEFT", ourFrame, "TOPLEFT", 2, -2)
-
-            -- Make sure it's visible
-            debuffFrame:SetAlpha(1)
-            debuffFrame:Show()
-
-            -- Store reference for hooks
             local frameIndex = i
 
-            -- Hook SetTexture to also update our ClassIcon module
-            if not debuffFrame.gladiusHooked then
+            -- Hook SetTexture to detect CC and update our ClassIcon module
+            if debuffFrame.Icon and not debuffFrame.gladiusHooked then
                 hooksecurefunc(debuffFrame.Icon, "SetTexture", function(_, tex)
-                    local frame = self.frames[frameIndex]
+                    local frame = GladiusMidnight.frames[frameIndex]
                     if frame then
                         -- Update ClassIcon overlay when in CC
-                        local classIconModule = self:GetModule("classIcon")
+                        local classIconModule = GladiusMidnight:GetModule("classIcon")
                         if classIconModule and classIconModule.OnDebuffUpdate then
                             classIconModule:OnDebuffUpdate(frame, tex)
                         end
@@ -759,9 +736,9 @@ function GladiusMidnight:InitializeBlizzardFrames()
 
                 if debuffFrame.Cooldown then
                     hooksecurefunc(debuffFrame.Cooldown, "SetCooldown", function(_, start, duration)
-                        local frame = self.frames[frameIndex]
+                        local frame = GladiusMidnight.frames[frameIndex]
                         if frame then
-                            local classIconModule = self:GetModule("classIcon")
+                            local classIconModule = GladiusMidnight:GetModule("classIcon")
                             if classIconModule and classIconModule.OnDebuffCooldown then
                                 classIconModule:OnDebuffCooldown(frame, start, duration)
                             end
@@ -774,42 +751,32 @@ function GladiusMidnight:InitializeBlizzardFrames()
         end
 
         -- =====================================================================
-        -- CcRemoverFrame Hooking (Trinket Cooldown)
-        -- Blizzard's built-in trinket tracking for arena opponents
+        -- CcRemoverFrame - Hook for Trinket detection data only
+        -- We display trinket cooldown on our custom Trinket module
         -- =====================================================================
         if self:IsModuleEnabled("trinket") then
             local trinketFrame = blizzArenaFrame.CcRemoverFrame
-            if trinketFrame then
-                ourFrame.blizzTrinketFrame = trinketFrame
-
-                -- Hide Blizzard's frame but keep it functional for hooks
-                trinketFrame:SetParent(ourFrame)
-                trinketFrame:SetAlpha(0)
-
+            if trinketFrame and trinketFrame.Cooldown and not trinketFrame.gladiusHooked then
                 local frameIndex = i
 
-                if not trinketFrame.gladiusHooked then
-                    -- Hook trinket cooldown
-                    if trinketFrame.Cooldown then
-                        hooksecurefunc(trinketFrame.Cooldown, "SetCooldown", function(_, start, duration)
-                            local frame = self.frames[frameIndex]
-                            if frame then
-                                local trinketModule = self:GetModule("trinket")
-                                if trinketModule and trinketModule.OnBlizzardTrinketCooldown then
-                                    trinketModule:OnBlizzardTrinketCooldown(frame, start, duration)
-                                end
-                            end
-                        end)
+                -- Hook trinket cooldown detection
+                hooksecurefunc(trinketFrame.Cooldown, "SetCooldown", function(_, start, duration)
+                    local frame = GladiusMidnight.frames[frameIndex]
+                    if frame then
+                        local trinketModule = GladiusMidnight:GetModule("trinket")
+                        if trinketModule and trinketModule.OnBlizzardTrinketCooldown then
+                            trinketModule:OnBlizzardTrinketCooldown(frame, start, duration)
+                        end
                     end
+                end)
 
-                    trinketFrame.gladiusHooked = true
-                end
+                trinketFrame.gladiusHooked = true
             end
         end
     end
 
     self.blizzFramesInitialized = true
-    self:Print("Blizzard Frames initialisiert (DR + CastBar + CC + Trinket)")
+    self:Print("Blizzard Frames versteckt - eigene Module aktiv")
 end
 
 -- Legacy alias for backwards compatibility
@@ -825,41 +792,29 @@ function GladiusMidnight:ResetBlizzardFrames()
         local ourFrame = self.frames[i]
         local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
 
-        -- Reset DR tray (restore visibility and reparent back to Blizzard)
-        if ourFrame and ourFrame.blizzDRTray then
-            if blizzArenaFrame then
-                ourFrame.blizzDRTray:SetParent(blizzArenaFrame)
-                ourFrame.blizzDRTray:SetScale(1)
-                ourFrame.blizzDRTray:ClearAllPoints()
+        -- Restore Blizzard frame visibility (we never reparented, just hid)
+        if blizzArenaFrame then
+            blizzArenaFrame:SetAlpha(1)
+            blizzArenaFrame:EnableMouse(true)
+
+            -- Restore child frame visibility
+            if blizzArenaFrame.CastingBarFrame then
+                blizzArenaFrame.CastingBarFrame:SetAlpha(1)
             end
-            ourFrame.blizzDRTray:SetAlpha(1)  -- Restore visibility
-            ourFrame.blizzDRTray = nil
-            ourFrame.blizzDRFrames = nil
+            if blizzArenaFrame.DebuffFrame then
+                blizzArenaFrame.DebuffFrame:SetAlpha(1)
+            end
+            if blizzArenaFrame.CcRemoverFrame then
+                blizzArenaFrame.CcRemoverFrame:SetAlpha(1)
+            end
+            if blizzArenaFrame.SpellDiminishStatusTray then
+                blizzArenaFrame.SpellDiminishStatusTray:SetAlpha(1)
+            end
         end
 
-        -- Reset Cast bar
-        if ourFrame and ourFrame.blizzCastBar then
-            if blizzArenaFrame then
-                ourFrame.blizzCastBar:SetParent(blizzArenaFrame)
-            end
-            ourFrame.blizzCastBar = nil
-        end
-
-        -- Reset DebuffFrame (CC display)
-        if ourFrame and ourFrame.blizzDebuffFrame then
-            if blizzArenaFrame then
-                ourFrame.blizzDebuffFrame:SetParent(blizzArenaFrame)
-            end
-            ourFrame.blizzDebuffFrame = nil
-        end
-
-        -- Reset TrinketFrame
-        if ourFrame and ourFrame.blizzTrinketFrame then
-            if blizzArenaFrame then
-                ourFrame.blizzTrinketFrame:SetParent(blizzArenaFrame)
-                ourFrame.blizzTrinketFrame:SetAlpha(1)
-            end
-            ourFrame.blizzTrinketFrame = nil
+        -- Clear stored reference
+        if ourFrame then
+            ourFrame.blizzArenaFrame = nil
         end
     end
 end
@@ -886,32 +841,30 @@ function GladiusMidnight:UpdateBlizzardDRSize()
     end
 end
 
--- Update Blizzard CastBar size when settings change
+-- Update CastBar size when settings change (our custom module)
 function GladiusMidnight:UpdateBlizzardCastBarSize()
-    if not self.blizzFramesInitialized then return end
-
-    local db = self.db.profile.castBar
-    local height = db and db.height or 16
-
-    for i = 1, 3 do
-        local ourFrame = self.frames[i]
-        if ourFrame and ourFrame.blizzCastBar then
-            ourFrame.blizzCastBar:SetHeight(height)
+    -- We use our custom CastBar module, so just update that
+    local castBarModule = self:GetModule("castBar")
+    if castBarModule then
+        for i = 1, 3 do
+            local ourFrame = self.frames[i]
+            if ourFrame then
+                castBarModule:Update(ourFrame, self.testMode and self:GetTestData(i) or nil)
+            end
         end
     end
 end
 
--- Update Blizzard DebuffFrame (CC) size when settings change
+-- Update ClassIcon/Debuff size when settings change (our custom module)
 function GladiusMidnight:UpdateBlizzardDebuffSize()
-    if not self.blizzFramesInitialized then return end
-
-    local db = self.db.profile.classIcon
-    local size = db and db.size or 50
-
-    for i = 1, 3 do
-        local ourFrame = self.frames[i]
-        if ourFrame and ourFrame.blizzDebuffFrame then
-            ourFrame.blizzDebuffFrame:SetSize(size, size)
+    -- We use our custom ClassIcon module with debuff overlay
+    local classIconModule = self:GetModule("classIcon")
+    if classIconModule then
+        for i = 1, 3 do
+            local ourFrame = self.frames[i]
+            if ourFrame then
+                classIconModule:Update(ourFrame, self.testMode and self:GetTestData(i) or nil)
+            end
         end
     end
 end
