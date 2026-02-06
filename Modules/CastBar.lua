@@ -1,23 +1,19 @@
 --[[
     Gladius Midnight - Cast Bar Module
     Displays cast bar for arena opponents
-    Updated for Midnight 12.0 API (C_DurationUtil, issecretvalue)
+    Updated for Midnight 12.0 API (secret values handling)
+
+    In Midnight 12.0, cast timing values (startTimeMS, endTimeMS) are "secret"
+    for arena opponents. We cannot perform arithmetic on these values.
+    When values are secret, we rely on Blizzard's reparented cast bar.
 ]]
 
 local addonName, addon = ...
 local CastBar = {}
 
--- Midnight 12.0 API: Duration object for cast timers
--- StatusBar:SetTimerDuration() handles secret duration values natively
-local function CreateCastDuration(startTime, endTime)
-    if C_DurationUtil and C_DurationUtil.CreateDuration then
-        local duration = C_DurationUtil.CreateDuration()
-        if duration and duration.SetTimeSpan then
-            duration:SetTimeSpan(startTime, endTime)
-            return duration
-        end
-    end
-    return nil
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
 end
 
 -- ============================================================================
@@ -103,6 +99,7 @@ function CastBar:CreateElements(frame)
     castBar.startTime = 0
     castBar.endTime = 0
     castBar.spellID = nil
+    castBar.hasSecretValues = false  -- Midnight 12.0: skip manual updates when true
 
     castBar:Hide()
     frame.moduleFrames.castBar = castBar
@@ -179,38 +176,34 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
     if not startTimeMS or not endTimeMS then return end
 
     -- Midnight 12.0 API: Check for secret values using issecretvalue()
-    local startTime, endTime
-    if issecretvalue and (issecretvalue(startTimeMS) or issecretvalue(endTimeMS)) then
-        -- Secret values - cannot perform arithmetic, but can pass to native APIs
-        -- For now, store the raw values and let the duration API handle it
-        startTime = startTimeMS  -- Will be handled by duration object
-        endTime = endTimeMS
-        castBar.usesDurationObject = true
-    else
-        -- Not secret - safe to perform arithmetic
-        startTime = startTimeMS / 1000
-        endTime = endTimeMS / 1000
-        castBar.usesDurationObject = false
-    end
+    local hasSecretValues = IsSecretValue(startTimeMS) or IsSecretValue(endTimeMS)
 
-    -- Setup cast bar
+    -- Setup cast bar state
     castBar.casting = not isChannel
     castBar.channeling = isChannel
-    castBar.startTime = startTime
-    castBar.endTime = endTime
     castBar.spellID = spellId or spellID
+    castBar.hasSecretValues = hasSecretValues
 
-    -- Midnight 12.0 API: Use C_DurationUtil for cast timer if available
-    if castBar.usesDurationObject then
-        local durationObj = CreateCastDuration(startTimeMS / 1000, endTimeMS / 1000)
-        if durationObj and castBar.SetTimerDuration then
-            -- Use native duration handling for secret values
-            local direction = isChannel and Enum.StatusBarFillDirection.Reverse or Enum.StatusBarFillDirection.Standard
-            castBar:SetTimerDuration(durationObj, direction)
-        end
+    if hasSecretValues then
+        -- Secret values - cannot perform arithmetic
+        -- Store 0 values and let Blizzard's reparented cast bar handle the timing
+        castBar.startTime = 0
+        castBar.endTime = 0
+        -- Still show the bar with spell name and icon (visual only, no progress)
+        castBar:SetMinMaxValues(0, 1)
+        castBar:SetValue(0.5)  -- Static position when we can't calculate
+        castBar.timeText:SetText("")  -- Can't display time
+        castBar.spark:Hide()  -- No spark when we can't track progress
     else
+        -- Not secret - safe to perform arithmetic
+        local startTime = startTimeMS / 1000
+        local endTime = endTimeMS / 1000
         local duration = endTime - startTime
+
+        castBar.startTime = startTime
+        castBar.endTime = endTime
         castBar:SetMinMaxValues(0, duration)
+        castBar.spark:Show()
     end
 
     -- Set color based on interruptibility
@@ -232,7 +225,6 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
         castBar.iconFrame.icon:SetTexture(texture)
     end
     castBar.iconFrame:Show()
-    castBar.spark:Show()
     castBar:Show()
 end
 
@@ -245,6 +237,7 @@ function CastBar:OnCastStop(frame)
     castBar.startTime = 0
     castBar.endTime = 0
     castBar.spellID = nil
+    castBar.hasSecretValues = false
     castBar.spark:Hide()
     castBar:Hide()
 end
@@ -285,11 +278,24 @@ function CastBar:OnUpdate(frame)
         return
     end
 
+    -- Midnight 12.0: Skip manual progress updates when values are secret
+    -- The cast bar will show with spell name/icon but no progress animation
+    if castBar.hasSecretValues then
+        return
+    end
+
     local now = GetTime()
+    local startTime = castBar.startTime
+    local endTime = castBar.endTime
+
+    -- Safety check - ensure we have valid numeric times
+    if not startTime or not endTime or startTime == 0 or endTime == 0 then
+        return
+    end
 
     if castBar.casting then
-        local elapsed = now - castBar.startTime
-        local duration = castBar.endTime - castBar.startTime
+        local elapsed = now - startTime
+        local duration = endTime - startTime
 
         if elapsed >= duration then
             self:OnCastStop(frame)
@@ -301,21 +307,21 @@ function CastBar:OnUpdate(frame)
 
         -- Update spark position
         local width = castBar:GetWidth()
-        if width > 0 then
+        if width > 0 and duration > 0 then
             local progress = elapsed / duration
             castBar.spark:ClearAllPoints()
             castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * progress, 0)
         end
 
     elseif castBar.channeling then
-        local remaining = castBar.endTime - now
+        local remaining = endTime - now
 
         if remaining <= 0 then
             self:OnCastStop(frame)
             return
         end
 
-        local duration = castBar.endTime - castBar.startTime
+        local duration = endTime - startTime
         castBar:SetValue(remaining)
         castBar.timeText:SetText(string.format("%.1fs", remaining))
 
@@ -337,6 +343,7 @@ function CastBar:Reset(frame)
         castBar.startTime = 0
         castBar.endTime = 0
         castBar.spellID = nil
+        castBar.hasSecretValues = false
         castBar:SetValue(0)
         castBar.spellText:SetText("")
         castBar.timeText:SetText("")
