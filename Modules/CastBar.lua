@@ -208,14 +208,14 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
 
     -- Set color based on interruptibility
     -- Midnight 12.0: notInterruptible may be a secret value
+    -- IMPORTANT: Check IsSecretValue FIRST before any boolean test
     local isNotInterruptible = false
-    if notInterruptible then
-        if IsSecretValue(notInterruptible) then
-            -- Secret value - assume interruptible (orange/blue)
-            isNotInterruptible = false
-        else
-            isNotInterruptible = notInterruptible
-        end
+    if IsSecretValue(notInterruptible) then
+        -- Secret value - assume interruptible (orange/blue)
+        isNotInterruptible = false
+    elseif notInterruptible then
+        -- Not secret and truthy - cast is not interruptible
+        isNotInterruptible = true
     end
 
     if isNotInterruptible then
