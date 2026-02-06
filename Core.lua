@@ -161,6 +161,9 @@ function GladiusMidnight:CreateArenaFrame(index)
         displayDebuffs = true,
         displayBuffs = true,
         displayNonBossDebuffs = true,
+        maxDispelDebuffs = 3,  -- Prevent "compare nil with number" error
+        maxDebuffs = 3,
+        maxBuffs = 3,
     }
 
     -- Table for blocked aura instance IDs (used by Blizzard's aura code)

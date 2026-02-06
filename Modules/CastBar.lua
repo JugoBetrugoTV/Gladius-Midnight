@@ -207,7 +207,18 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
     end
 
     -- Set color based on interruptibility
+    -- Midnight 12.0: notInterruptible may be a secret value
+    local isNotInterruptible = false
     if notInterruptible then
+        if IsSecretValue(notInterruptible) then
+            -- Secret value - assume interruptible (orange/blue)
+            isNotInterruptible = false
+        else
+            isNotInterruptible = notInterruptible
+        end
+    end
+
+    if isNotInterruptible then
         castBar:SetStatusBarColor(0.7, 0.7, 0.7)  -- Grey for non-interruptible
     else
         if isChannel then
