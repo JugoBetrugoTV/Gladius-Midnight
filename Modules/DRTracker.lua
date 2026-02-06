@@ -223,13 +223,13 @@ local DR_SPELLS = {
 
 -- Category display info (classic DR category icons)
 local DR_CATEGORY_INFO = {
-    [DR_CATEGORY.STUN] = { icon = "Interface\\Icons\\Spell_Holy_PrayerOfHealing", color = {1, 0.5, 0} },  -- Classic stun swirl
-    [DR_CATEGORY.INCAPACITATE] = { icon = "Interface\\Icons\\Spell_Nature_Polymorph", color = {0.5, 0.5, 1} },  -- Polymorph sheep
-    [DR_CATEGORY.DISORIENT] = { icon = "Interface\\Icons\\Spell_Shadow_PsychicScream", color = {1, 1, 0} },  -- Fear face
-    [DR_CATEGORY.SILENCE] = { icon = "Interface\\Icons\\Ability_Priest_Silence", color = {1, 0, 1} },  -- Silence mouth icon
+    [DR_CATEGORY.STUN] = { icon = "Interface\\Icons\\Ability_Rogue_KidneyShot", color = {1, 0.5, 0} },  -- Kidney Shot
+    [DR_CATEGORY.INCAPACITATE] = { icon = "Interface\\Icons\\Spell_Nature_Polymorph", color = {0.5, 0.5, 1} },  -- Polymorph
+    [DR_CATEGORY.DISORIENT] = { icon = "Interface\\Icons\\Spell_Shadow_MindSteal", color = {1, 1, 0} },  -- Blind
+    [DR_CATEGORY.SILENCE] = { icon = "Interface\\Icons\\Ability_Priest_Silence", color = {1, 0, 1} },  -- Priest Silence
     [DR_CATEGORY.ROOT] = { icon = "Interface\\Icons\\Spell_Frost_FrostNova", color = {0, 0.7, 1} },  -- Frost Nova
     [DR_CATEGORY.DISARM] = { icon = "Interface\\Icons\\Ability_Warrior_Disarm", color = {0.6, 0.6, 0.6} },  -- Disarm
-    [DR_CATEGORY.HORROR] = { icon = "Interface\\Icons\\Spell_Shadow_DeathCoil", color = {0.5, 0, 0.5} },  -- Horror/Death Coil
+    [DR_CATEGORY.HORROR] = { icon = "Interface\\Icons\\Spell_Shadow_Possession", color = {0.5, 0, 0.5} },  -- Warlock Fear
     [DR_CATEGORY.KNOCKBACK] = { icon = "Interface\\Icons\\Ability_Druid_Typhoon", color = {0.4, 0.8, 0.4} },  -- Knockback
 }
 
