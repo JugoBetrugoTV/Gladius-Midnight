@@ -1004,10 +1004,12 @@ function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
         if self.prepPhase then
             self.prepPhase = false
             self:Print("Arena gestartet!")
-            for i = 1, 3 do
-                local f = self.frames[i]
-                if f then
-                    RegisterUnitWatch(f)
+            if not InCombatLockdown() then
+                for i = 1, 3 do
+                    local f = self.frames[i]
+                    if f then
+                        RegisterUnitWatch(f)
+                    end
                 end
             end
         end
@@ -1087,10 +1089,12 @@ function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
 
     -- Enter prep phase - unregister unit watch so we can show frames manually
     self.prepPhase = true
-    for i = 1, 3 do
-        local frame = self.frames[i]
-        if frame then
-            UnregisterUnitWatch(frame)
+    if not InCombatLockdown() then
+        for i = 1, 3 do
+            local frame = self.frames[i]
+            if frame then
+                UnregisterUnitWatch(frame)
+            end
         end
     end
 
