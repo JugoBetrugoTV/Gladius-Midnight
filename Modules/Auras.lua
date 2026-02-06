@@ -1,10 +1,23 @@
 --[[
     Gladius Midnight - Auras Module
     Displays important CC/debuffs on arena opponents
+    Updated for Midnight 12.0 API (issecretvalue, C_UnitAuras)
 ]]
 
 local addonName, addon = ...
 local Auras = {}
+
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
+
+-- Midnight 12.0 API helper: Safe table access for potentially secret keys
+local function SafeTableAccess(tbl, key)
+    if not tbl or not key then return nil end
+    if IsSecretValue(key) then return nil end
+    return tbl[key]
+end
 
 -- Priority auras to track (higher number = higher priority)
 -- These are important PvP CC abilities that should be shown
@@ -310,27 +323,35 @@ function Auras:RefreshAuras(frame)
     local auras = {}
 
     -- Scan debuffs on the unit
-    -- NOTE: In Midnight 12.0, most aura data is "secret" for arena opponents
+    -- Midnight 12.0 API: C_UnitAuras with secret value handling
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
         if not auraData then break end
 
-        -- In Midnight 12.0, spellId and other fields may be secret
-        -- Use pcall to safely access potentially secret table indices
+        -- Midnight 12.0: spellId and other fields may be secret
         local spellId = auraData.spellId
-        local success, priority = pcall(function()
-            if spellId then return PRIORITY_AURAS[spellId] end
-            return nil
-        end)
 
-        if success and priority then
+        -- Use issecretvalue() to check if we can use the spellId as table key
+        local priority = SafeTableAccess(PRIORITY_AURAS, spellId)
+
+        if priority then
+            -- Midnight 12.0: Check individual fields for secret status
+            local duration = auraData.duration
+            local expirationTime = auraData.expirationTime
+            local applications = auraData.applications
+
+            -- Only use values if they're not secret (or use 0 as fallback)
+            local safeDuration = (not IsSecretValue(duration) and type(duration) == "number") and duration or 0
+            local safeExpiration = (not IsSecretValue(expirationTime) and type(expirationTime) == "number") and expirationTime or 0
+            local safeStacks = (not IsSecretValue(applications) and type(applications) == "number") and applications or 0
+
             table.insert(auras, {
                 spellId = spellId,
                 name = auraData.name,
                 icon = auraData.icon,
-                duration = (type(auraData.duration) == "number") and auraData.duration or 0,
-                expirationTime = (type(auraData.expirationTime) == "number") and auraData.expirationTime or 0,
-                stacks = (type(auraData.applications) == "number") and auraData.applications or 0,
+                duration = safeDuration,
+                expirationTime = safeExpiration,
+                stacks = safeStacks,
                 priority = priority,
                 isDebuff = true,
             })
@@ -338,51 +359,56 @@ function Auras:RefreshAuras(frame)
     end
 
     -- Also scan important buffs (defensive CDs) and check for immunities
-    -- NOTE: In Midnight 12.0, most aura data is "secret" for arena opponents
+    -- Midnight 12.0 API: C_UnitAuras with secret value handling
     local immunityType = nil  -- "total" or "magic" or nil
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetBuffDataByIndex(unit, i)
         if not auraData then break end
 
-        -- In Midnight 12.0, spellId and other fields may be secret
-        -- Use pcall to safely access potentially secret table indices
+        -- Midnight 12.0: spellId and other fields may be secret
         local spellId = auraData.spellId
-        local success, priority = pcall(function()
-            if spellId then return PRIORITY_AURAS[spellId] end
-            return nil
-        end)
 
-        if success then
+        -- Skip if spellId is secret (can't use as table key)
+        if not IsSecretValue(spellId) then
             -- Check for immunity type (ArenaCore style - magic vs total)
-            local immSuccess, spellImmunityType = pcall(function()
-                return addon.Data.GetImmunityType(spellId)
-            end)
-            if immSuccess and spellImmunityType then
-                -- Total immunity takes priority over magic immunity
-                if spellImmunityType == "total" then
-                    immunityType = "total"
-                elseif not immunityType then
-                    immunityType = "magic"
+            if addon.Data.GetImmunityType then
+                local spellImmunityType = addon.Data.GetImmunityType(spellId)
+                if spellImmunityType then
+                    -- Total immunity takes priority over magic immunity
+                    if spellImmunityType == "total" then
+                        immunityType = "total"
+                    elseif not immunityType then
+                        immunityType = "magic"
+                    end
                 end
             end
+
             -- Fallback: Check old IMMUNITY_SPELLS table
-            if not immunityType then
-                local immTableSuccess, isImmunity = pcall(function()
-                    return spellId and IMMUNITY_SPELLS[spellId]
-                end)
-                if immTableSuccess and isImmunity then
+            if not immunityType and spellId then
+                local isImmunity = IMMUNITY_SPELLS[spellId]
+                if isImmunity then
                     immunityType = "total"
                 end
             end
 
+            local priority = SafeTableAccess(PRIORITY_AURAS, spellId)
             if priority then
+                -- Midnight 12.0: Check individual fields for secret status
+                local duration = auraData.duration
+                local expirationTime = auraData.expirationTime
+                local applications = auraData.applications
+
+                local safeDuration = (not IsSecretValue(duration) and type(duration) == "number") and duration or 0
+                local safeExpiration = (not IsSecretValue(expirationTime) and type(expirationTime) == "number") and expirationTime or 0
+                local safeStacks = (not IsSecretValue(applications) and type(applications) == "number") and applications or 0
+
                 table.insert(auras, {
                     spellId = spellId,
                     name = auraData.name,
                     icon = auraData.icon,
-                    duration = (type(auraData.duration) == "number") and auraData.duration or 0,
-                    expirationTime = (type(auraData.expirationTime) == "number") and auraData.expirationTime or 0,
-                    stacks = (type(auraData.applications) == "number") and auraData.applications or 0,
+                    duration = safeDuration,
+                    expirationTime = safeExpiration,
+                    stacks = safeStacks,
                     priority = priority,
                     isDebuff = false,
                 })

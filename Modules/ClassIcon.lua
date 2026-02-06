@@ -1,10 +1,16 @@
 --[[
     Gladius Midnight - Class Icon Module
     Displays the class or spec icon for the arena opponent
+    Updated for Midnight 12.0 API (issecretvalue)
 ]]
 
 local addonName, addon = ...
 local ClassIcon = {}
+
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
 
 -- ============================================================================
 -- Module Registration
@@ -229,16 +235,20 @@ function ClassIcon:OnDebuffCooldown(frame, start, duration)
     local container = frame.moduleFrames.classIcon
     if not container or not container.debuffCooldown then return end
 
-    -- In Midnight 12.0, start/duration may be "secret" values
-    -- Use pcall for comparisons to handle secret values safely
+    -- Midnight 12.0 API: start/duration may be "secret" values
     if container.showingDebuff and start and duration then
-        local success, shouldShow = pcall(function()
-            return start > 0 and duration > 0
-        end)
-        if success and shouldShow then
+        -- Check for secret values using issecretvalue()
+        local isSecret = IsSecretValue(start) or IsSecretValue(duration)
+        if isSecret then
+            -- Secret values - Cooldown:SetCooldown may accept them in 12.0
             container.debuffCooldown:SetCooldown(start, duration)
         else
-            container.debuffCooldown:Clear()
+            -- Not secret - safe to perform comparisons
+            if start > 0 and duration > 0 then
+                container.debuffCooldown:SetCooldown(start, duration)
+            else
+                container.debuffCooldown:Clear()
+            end
         end
     else
         container.debuffCooldown:Clear()

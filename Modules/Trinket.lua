@@ -1,6 +1,7 @@
 --[[
     Gladius Midnight - Trinket Module
     Tracks PvP trinket usage and cooldown
+    Updated for Midnight 12.0 API (issecretvalue, C_DurationUtil)
 ]]
 
 local addonName, addon = ...
@@ -21,6 +22,18 @@ local TRINKET_SPELLS = {
     [59752] = 90,     -- Every Man for Himself (Human) - shares CD
     [7744] = 30,      -- Will of the Forsaken (Undead) - own CD
 }
+
+-- Midnight 12.0 API: Create duration object for cooldown display
+local function CreateCooldownDuration(startTime, duration)
+    if C_DurationUtil and C_DurationUtil.CreateDuration then
+        local durationObj = C_DurationUtil.CreateDuration()
+        if durationObj and durationObj.SetTimeFromStart then
+            durationObj:SetTimeFromStart(startTime, duration)
+            return durationObj
+        end
+    end
+    return nil
+end
 
 -- ============================================================================
 -- Module Registration
@@ -124,14 +137,19 @@ function Trinket:Update(frame, testData)
 end
 
 function Trinket:OnSpellCast(frame, spellID)
-    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    -- Midnight 12.0: spellID may be "secret" for arena opponents
     if not spellID then return end
 
-    -- Use pcall for table access to handle secret values
-    local success, cooldownDuration = pcall(function()
-        return TRINKET_SPELLS[spellID]
-    end)
-    if success and cooldownDuration then
+    -- Midnight 12.0 API: Check if spellID is a secret value
+    if issecretvalue and issecretvalue(spellID) then
+        -- Secret value - cannot use as table index
+        -- Rely on C_PvP.GetArenaCrowdControlInfo instead
+        return
+    end
+
+    -- Not secret - safe to use as table index
+    local cooldownDuration = TRINKET_SPELLS[spellID]
+    if cooldownDuration then
         -- Update icon to match the spell used
         local iconTexture = addon.Data.GetSpellIcon(spellID)
         if iconTexture then
@@ -146,11 +164,11 @@ function Trinket:OnSpellCast(frame, spellID)
     end
 
     -- Fallback: Check Data.lua trinket-sharing racials
-    local fallbackSuccess, isTrinketRacial = pcall(function()
-        return addon.Data.TrinketShareRacials[spellID]
-    end)
-    if fallbackSuccess and isTrinketRacial then
-        self:TriggerCooldown(frame, 90)
+    if addon.Data.TrinketShareRacials then
+        local isTrinketRacial = addon.Data.TrinketShareRacials[spellID]
+        if isTrinketRacial then
+            self:TriggerCooldown(frame, 90)
+        end
     end
 end
 
@@ -209,33 +227,44 @@ function Trinket:OnUpdate(frame)
 
     local now = GetTime()
 
-    -- Check C_PvP API for trinket cooldown (12.0)
+    -- Midnight 12.0 API: C_PvP.GetArenaCrowdControlInfo for trinket cooldown
     -- This API returns CC break ability info for arena opponents
     if C_PvP and C_PvP.GetArenaCrowdControlInfo and UnitExists(frame.unit) then
         local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(frame.unit)
 
-        -- In Midnight 12.0, values may be "secret" - use pcall for comparisons
+        -- Midnight 12.0 API: Check for secret values using issecretvalue()
         if spellID and startTime and duration then
-            local validateSuccess, isValid = pcall(function()
-                return duration > 0 and duration <= 180 and startTime > 0 and (now - startTime) < 300
-            end)
+            local isSecret = issecretvalue and (issecretvalue(startTime) or issecretvalue(duration))
 
-            if validateSuccess and isValid then
-                -- Check if this is new cooldown data
-                local checkSuccess, isNewData = pcall(function()
-                    return startTime ~= container.startTime or duration ~= container.duration
-                end)
-                if checkSuccess and isNewData then
-                    container.startTime = startTime
-                    container.duration = duration
-                    container.onCooldown = true
-                    container.cooldown:SetCooldown(startTime, duration)
-                    container.icon:SetDesaturated(true)
+            if isSecret then
+                -- Secret values - use native cooldown API that accepts secrets
+                if container.cooldown.SetCooldownFromDurationObject then
+                    local durationObj = CreateCooldownDuration(startTime, duration)
+                    if durationObj then
+                        container.cooldown:SetCooldownFromDurationObject(durationObj)
+                        container.onCooldown = true
+                        container.icon:SetDesaturated(true)
+                    end
+                end
+            else
+                -- Not secret - safe to perform comparisons
+                local isValid = duration > 0 and duration <= 180 and startTime > 0 and (now - startTime) < 300
+                if isValid then
+                    local isNewData = startTime ~= container.startTime or duration ~= container.duration
+                    if isNewData then
+                        container.startTime = startTime
+                        container.duration = duration
+                        container.onCooldown = true
+                        container.cooldown:SetCooldown(startTime, duration)
+                        container.icon:SetDesaturated(true)
 
-                    -- Update icon to match the spell used
-                    local iconTexture = addon.Data.GetSpellIcon(spellID)
-                    if iconTexture then
-                        container.icon:SetTexture(iconTexture)
+                        -- Update icon to match the spell used (spellID may be secret)
+                        if not (issecretvalue and issecretvalue(spellID)) then
+                            local iconTexture = addon.Data.GetSpellIcon(spellID)
+                            if iconTexture then
+                                container.icon:SetTexture(iconTexture)
+                            end
+                        end
                     end
                 end
             end
@@ -284,26 +313,41 @@ function Trinket:OnBlizzardTrinketCooldown(frame, start, duration)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
-    -- In Midnight 12.0, start/duration may be "secret" values
-    -- Use pcall for comparisons to handle secret values safely
+    -- Midnight 12.0: start/duration may be "secret" values
     if not start or not duration then return end
 
-    local validateSuccess, isValid = pcall(function()
-        return start > 0 and duration > 0 and duration <= 180
-    end)
-    if not validateSuccess or not isValid then return end
+    -- Midnight 12.0 API: Check for secret values using issecretvalue()
+    local isSecret = issecretvalue and (issecretvalue(start) or issecretvalue(duration))
 
-    -- Only update if this is new data
-    local checkSuccess, isNewData = pcall(function()
-        return start ~= container.startTime or duration ~= container.duration
-    end)
-    if checkSuccess and isNewData then
-        container.startTime = start
-        container.duration = duration
-        container.onCooldown = true
-        container.cooldown:SetCooldown(start, duration)
-        container.icon:SetDesaturated(true)
-        self:UpdateCooldownText(container)
+    if isSecret then
+        -- Secret values - use native cooldown API that accepts secrets
+        if container.cooldown.SetCooldownFromDurationObject then
+            local durationObj = CreateCooldownDuration(start, duration)
+            if durationObj then
+                container.cooldown:SetCooldownFromDurationObject(durationObj)
+                container.onCooldown = true
+                container.icon:SetDesaturated(true)
+            end
+        else
+            -- Fallback: SetCooldown may accept secret values in 12.0
+            container.cooldown:SetCooldown(start, duration)
+            container.onCooldown = true
+            container.icon:SetDesaturated(true)
+        end
+    else
+        -- Not secret - safe to perform comparisons
+        local isValid = start > 0 and duration > 0 and duration <= 180
+        if not isValid then return end
+
+        local isNewData = start ~= container.startTime or duration ~= container.duration
+        if isNewData then
+            container.startTime = start
+            container.duration = duration
+            container.onCooldown = true
+            container.cooldown:SetCooldown(start, duration)
+            container.icon:SetDesaturated(true)
+            self:UpdateCooldownText(container)
+        end
     end
 end
 

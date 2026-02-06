@@ -1,10 +1,23 @@
 --[[
     Gladius Midnight - Racial Module
     Tracks racial ability usage and cooldowns
+    Updated for Midnight 12.0 API (issecretvalue)
 ]]
 
 local addonName, addon = ...
 local Racial = {}
+
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
+
+-- Midnight 12.0 API helper: Safe table access for potentially secret keys
+local function SafeTableAccess(tbl, key)
+    if not tbl or not key then return nil end
+    if IsSecretValue(key) then return nil end
+    return tbl[key]
+end
 
 -- ============================================================================
 -- Module Registration
@@ -162,14 +175,12 @@ function Racial:UpdateRaceIcon(frame)
 end
 
 function Racial:OnSpellCast(frame, spellID)
-    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    -- Midnight 12.0: spellID may be "secret" for arena opponents
     if not spellID then return end
 
-    -- Use pcall for table access to handle secret values
-    local success, cooldown = pcall(function()
-        return addon.Data.RacialCooldowns[spellID]
-    end)
-    if not success or not cooldown then return end
+    -- Midnight 12.0 API: Check for secret values using issecretvalue()
+    local cooldown = SafeTableAccess(addon.Data.RacialCooldowns, spellID)
+    if not cooldown then return end
 
     local container = frame.moduleFrames.racial
     if not container then return end
@@ -179,10 +190,12 @@ function Racial:OnSpellCast(frame, spellID)
     container.duration = cooldown
     container.onCooldown = true
 
-    -- Update icon
-    local iconTexture = addon.Data.GetSpellIcon(spellID)
-    if iconTexture then
-        container.icon:SetTexture(iconTexture)
+    -- Update icon (only if spellID is not secret)
+    if not IsSecretValue(spellID) then
+        local iconTexture = addon.Data.GetSpellIcon(spellID)
+        if iconTexture then
+            container.icon:SetTexture(iconTexture)
+        end
     end
 
     container.cooldown:SetCooldown(container.startTime, cooldown)
@@ -192,10 +205,8 @@ function Racial:OnSpellCast(frame, spellID)
     self:UpdateCooldownText(container)
 
     -- Also trigger trinket cooldown for certain racials
-    local trinketSuccess, sharesTrinket = pcall(function()
-        return addon.Data.TrinketShareRacials[spellID]
-    end)
-    if trinketSuccess and sharesTrinket then
+    local sharesTrinket = SafeTableAccess(addon.Data.TrinketShareRacials, spellID)
+    if sharesTrinket then
         local trinketModule = self.core:GetModule("trinket")
         if trinketModule and self.core:IsModuleEnabled("trinket") then
             trinketModule:TriggerCooldown(frame, 90)

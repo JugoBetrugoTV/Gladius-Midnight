@@ -3,6 +3,14 @@
     Arena Unit Frames for WoW Midnight 12.0
 
     Modular architecture - each component is a separate module
+
+    Midnight 12.0 API Notes:
+    - Secret values: Use issecretvalue() to check before table index access
+    - StatusBar:SetValue() accepts secret values natively
+    - FontString:SetText() accepts secret strings natively
+    - C_CurveUtil.CreateColorCurve() for health bar coloring with secrets
+    - C_DurationUtil.CreateDuration() for timer displays with secrets
+    - Cooldown:SetCooldownFromDurationObject() for cooldown frames
 ]]
 
 local addonName, addon = ...
@@ -1283,8 +1291,8 @@ function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
 end
 
 -- Scan all debuffs for DR spells (Midnight 12.0 fallback)
--- NOTE: In Midnight 12.0, most aura data is "secret" for arena opponents
--- This function will mostly not work - we rely on Blizzard's built-in DR display
+-- Midnight 12.0: most aura data is "secret" for arena opponents
+-- This function relies on issecretvalue() to check before table access
 function GladiusMidnight:ScanDebuffsForDR(frame, unit)
     local drModule = self:GetModule("drTracker")
     if not drModule then return end
@@ -1293,26 +1301,21 @@ function GladiusMidnight:ScanDebuffsForDR(frame, unit)
     frame.lastDRScan = frame.lastDRScan or {}
     local currentDebuffs = {}
 
-    -- Scan all debuffs - but in Midnight 12.0, spellId is often "secret"
+    -- Scan all debuffs - Midnight 12.0 API with secret value handling
     if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
         for i = 1, 40 do
             local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
             if not auraData then break end
 
-            -- In Midnight 12.0, spellId may be secret - use pcall for table access
+            -- Midnight 12.0 API: Check for secret values using issecretvalue()
             local spellId = auraData.spellId
-            if spellId then
-                local success = pcall(function()
-                    currentDebuffs[spellId] = true
-                end)
-                if success then
-                    -- Only process if this is a NEW debuff (not seen in last scan)
-                    local checkSuccess, isNew = pcall(function()
-                        return not frame.lastDRScan[spellId]
-                    end)
-                    if checkSuccess and isNew then
-                        drModule:OnAura(frame, spellId)
-                    end
+            if spellId and not (issecretvalue and issecretvalue(spellId)) then
+                -- Not secret - safe to use as table key
+                currentDebuffs[spellId] = true
+
+                -- Only process if this is a NEW debuff (not seen in last scan)
+                if not frame.lastDRScan[spellId] then
+                    drModule:OnAura(frame, spellId)
                 end
             end
         end

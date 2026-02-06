@@ -1,10 +1,24 @@
 --[[
     Gladius Midnight - Cast Bar Module
     Displays cast bar for arena opponents
+    Updated for Midnight 12.0 API (C_DurationUtil, issecretvalue)
 ]]
 
 local addonName, addon = ...
 local CastBar = {}
+
+-- Midnight 12.0 API: Duration object for cast timers
+-- StatusBar:SetTimerDuration() handles secret duration values natively
+local function CreateCastDuration(startTime, endTime)
+    if C_DurationUtil and C_DurationUtil.CreateDuration then
+        local duration = C_DurationUtil.CreateDuration()
+        if duration and duration.SetTimeSpan then
+            duration:SetTimeSpan(startTime, endTime)
+            return duration
+        end
+    end
+    return nil
+end
 
 -- ============================================================================
 -- Module Registration
@@ -160,16 +174,24 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
         name, text, texture, startTimeMS, endTimeMS, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo(unit)
     end
 
-    -- In Midnight 12.0, cast data for arena opponents is "secret"
-    -- Check if we got valid data before proceeding
+    -- Midnight 12.0: Check if we got valid data before proceeding
     if not name then return end
     if not startTimeMS or not endTimeMS then return end
 
-    -- Use pcall for arithmetic on potentially secret values
-    local success, startTime = pcall(function() return startTimeMS / 1000 end)
-    if not success then return end
-    local success2, endTime = pcall(function() return endTimeMS / 1000 end)
-    if not success2 then return end
+    -- Midnight 12.0 API: Check for secret values using issecretvalue()
+    local startTime, endTime
+    if issecretvalue and (issecretvalue(startTimeMS) or issecretvalue(endTimeMS)) then
+        -- Secret values - cannot perform arithmetic, but can pass to native APIs
+        -- For now, store the raw values and let the duration API handle it
+        startTime = startTimeMS  -- Will be handled by duration object
+        endTime = endTimeMS
+        castBar.usesDurationObject = true
+    else
+        -- Not secret - safe to perform arithmetic
+        startTime = startTimeMS / 1000
+        endTime = endTimeMS / 1000
+        castBar.usesDurationObject = false
+    end
 
     -- Setup cast bar
     castBar.casting = not isChannel
@@ -178,7 +200,18 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
     castBar.endTime = endTime
     castBar.spellID = spellId or spellID
 
-    local duration = endTime - startTime
+    -- Midnight 12.0 API: Use C_DurationUtil for cast timer if available
+    if castBar.usesDurationObject then
+        local durationObj = CreateCastDuration(startTimeMS / 1000, endTimeMS / 1000)
+        if durationObj and castBar.SetTimerDuration then
+            -- Use native duration handling for secret values
+            local direction = isChannel and Enum.StatusBarFillDirection.Reverse or Enum.StatusBarFillDirection.Standard
+            castBar:SetTimerDuration(durationObj, direction)
+        end
+    else
+        local duration = endTime - startTime
+        castBar:SetMinMaxValues(0, duration)
+    end
 
     -- Set color based on interruptibility
     if notInterruptible then
@@ -191,10 +224,10 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
         end
     end
 
-    castBar:SetMinMaxValues(0, duration)
+    -- Midnight 12.0: FontString:SetText() accepts secret strings natively
     castBar.spellText:SetText(name)
 
-    -- Set icon
+    -- Set icon (texture may be secret but SetTexture accepts it)
     if texture then
         castBar.iconFrame.icon:SetTexture(texture)
     end

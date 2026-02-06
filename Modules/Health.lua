@@ -1,10 +1,42 @@
 --[[
     Gladius Midnight - Health Module
     Displays health bar with class-colored background
+    Updated for Midnight 12.0 API (secret values, C_CurveUtil)
 ]]
 
 local addonName, addon = ...
 local Health = {}
+
+-- ============================================================================
+-- Midnight 12.0 API: Color Curve for health percentage display
+-- Creates a smooth green->yellow->red gradient based on health %
+-- ============================================================================
+
+local healthColorCurve
+local function GetHealthColorCurve()
+    if not healthColorCurve and C_CurveUtil and C_CurveUtil.CreateColorCurve then
+        healthColorCurve = C_CurveUtil.CreateColorCurve()
+        healthColorCurve:SetType(Enum.LuaCurveType.Linear)
+        -- Green at 100%, Yellow at 50%, Red at 0%
+        healthColorCurve:AddPoint(0.0, CreateColor(1, 0, 0, 1))      -- Red at 0%
+        healthColorCurve:AddPoint(0.3, CreateColor(1, 0.5, 0, 1))   -- Orange at 30%
+        healthColorCurve:AddPoint(0.5, CreateColor(1, 1, 0, 1))     -- Yellow at 50%
+        healthColorCurve:AddPoint(1.0, CreateColor(0, 1, 0, 1))     -- Green at 100%
+    end
+    return healthColorCurve
+end
+
+-- Midnight 12.0 API: Curve for scaling percentage to 0-100 (for text display)
+local percentScaleCurve
+local function GetPercentScaleCurve()
+    if not percentScaleCurve and C_CurveUtil and C_CurveUtil.CreateCurve then
+        percentScaleCurve = C_CurveUtil.CreateCurve()
+        percentScaleCurve:SetType(Enum.LuaCurveType.Linear)
+        percentScaleCurve:AddPoint(0.0, 0)
+        percentScaleCurve:AddPoint(1.0, 100)
+    end
+    return percentScaleCurve
+end
 
 -- ============================================================================
 -- Module Registration
@@ -139,59 +171,62 @@ function Health:UpdateUnit(frame)
         return
     end
 
-    -- Update player name
+    -- Update player name (Midnight 12.0: FontString:SetText accepts secret strings)
     if db.showName then
         local name = UnitName(unit)
         if name then
+            -- In 12.0, SetText() accepts secret values and marks the fontstring
             healthBar.nameText:SetText(name)
         end
     end
 
-    -- Get health values (12.0 API supports secret values)
+    -- Get health values (Midnight 12.0: these may be secret values)
     local health = UnitHealth(unit)
     local maxHealth = UnitHealthMax(unit)
 
-    -- StatusBar:SetValue() accepts secret values in 12.0
+    -- Midnight 12.0 API: StatusBar:SetValue() accepts secret values natively
     healthBar:SetMinMaxValues(0, maxHealth)
     healthBar:SetValue(health)
 
-    -- For text display, use percentage API (12.0 safe)
+    -- For text display, use Midnight 12.0 API with curves
     if db.showText then
-        -- WoW 12.0 API: UnitHealthPercent with CurveConstants.ScaleTo100 for proper display
+        -- Midnight 12.0 API: UnitHealthPercent with curve for percentage scaling
         if UnitHealthPercent then
-            -- Use CurveConstants.ScaleTo100 for proper percentage scaling (ArenaCore method)
-            local success, percent = pcall(function()
-                if CurveConstants and CurveConstants.ScaleTo100 then
-                    return UnitHealthPercent(unit, nil, CurveConstants.ScaleTo100)
-                else
-                    return UnitHealthPercent(unit)
-                end
-            end)
+            local percentCurve = GetPercentScaleCurve()
+            local percent
+            if percentCurve then
+                -- Use curve to evaluate percentage (handles secret values)
+                percent = UnitHealthPercent(unit, false, percentCurve)
+            else
+                percent = UnitHealthPercent(unit)
+            end
 
-            if success and percent then
-                -- Use pcall for math.floor in case percent is a secret value
-                local floorSuccess, floorPercent = pcall(function()
-                    return math.floor(percent)
-                end)
-                if floorSuccess and floorPercent then
-                    healthBar.text:SetFormattedText("%d%%", floorPercent)
+            -- Check if percent is a secret value using Midnight 12.0 API
+            if percent then
+                if issecretvalue and issecretvalue(percent) then
+                    -- Secret value - use FontString which accepts secrets
+                    -- Create formatted text using SetFormattedText which may work with secrets
+                    healthBar.text:SetText("")  -- Clear for now, Blizzard handles display
                 else
-                    healthBar.text:SetText("100%")
+                    -- Not secret - safe to use math operations
+                    local floorPercent = math.floor(percent)
+                    healthBar.text:SetFormattedText("%d%%", floorPercent)
                 end
             else
-                -- Fallback if API call failed
                 healthBar.text:SetText("100%")
             end
         else
-            -- Pre-12.0 fallback: Use pcall for potentially secret values
-            local calcSuccess, calcPercent = pcall(function()
-                if health and maxHealth and maxHealth > 0 then
-                    return math.floor((health / maxHealth) * 100)
+            -- Pre-12.0 fallback
+            if health and maxHealth then
+                -- Check for secret values
+                if issecretvalue and (issecretvalue(health) or issecretvalue(maxHealth)) then
+                    healthBar.text:SetText("")  -- Can't calculate with secret values
+                elseif maxHealth > 0 then
+                    local calcPercent = math.floor((health / maxHealth) * 100)
+                    healthBar.text:SetText(calcPercent .. "%")
+                else
+                    healthBar.text:SetText("100%")
                 end
-                return nil
-            end)
-            if calcSuccess and calcPercent then
-                healthBar.text:SetText(calcPercent .. "%")
             else
                 healthBar.text:SetText("")
             end

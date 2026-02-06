@@ -1,10 +1,23 @@
 --[[
     Gladius Midnight - DR Tracker Module
     Tracks Diminishing Returns on arena opponents
+    Updated for Midnight 12.0 API (issecretvalue)
 ]]
 
 local addonName, addon = ...
 local DRTracker = {}
+
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
+
+-- Midnight 12.0 API helper: Safe table access for potentially secret keys
+local function SafeTableAccess(tbl, key)
+    if not tbl or not key then return nil end
+    if IsSecretValue(key) then return nil end
+    return tbl[key]
+end
 
 -- DR Categories
 local DR_CATEGORY = {
@@ -404,12 +417,9 @@ function DRTracker:ApplyDR(frame, spellID)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
-    -- In Midnight 12.0, spellID may be secret - use pcall for table access
-    local success, category = pcall(function()
-        if spellID then return DR_SPELLS[spellID] end
-        return nil
-    end)
-    if not success or not category then return end
+    -- Midnight 12.0 API: Check for secret values using issecretvalue()
+    local category = SafeTableAccess(DR_SPELLS, spellID)
+    if not category then return end
 
     local drData = container.drData
     local now = GetTime()
@@ -538,16 +548,13 @@ function DRTracker:OnUpdate(frame)
 end
 
 -- Called when UNIT_AURA fires for arena units
--- NOTE: In Midnight 12.0, spellID may be "secret" and inaccessible
+-- Midnight 12.0: spellID may be "secret" and inaccessible
 function DRTracker:OnAura(frame, spellID)
-    -- In Midnight 12.0, spellID is often secret for arena opponents
-    -- Use pcall for table index access to handle secret values
     if not spellID then return end
 
-    local success, isDRSpell = pcall(function()
-        return DR_SPELLS[spellID] ~= nil
-    end)
-    if success and isDRSpell then
+    -- Midnight 12.0 API: Check for secret values using issecretvalue()
+    local isDRSpell = SafeTableAccess(DR_SPELLS, spellID)
+    if isDRSpell then
         self:ApplyDR(frame, spellID)
     end
 end
@@ -557,12 +564,9 @@ end
 function DRTracker:OnBlizzardDR(frame, spellID)
     if not spellID then return end
 
-    -- Use pcall to safely access the DR_SPELLS table
-    local success, category = pcall(function()
-        return DR_SPELLS[spellID]
-    end)
-
-    if success and category then
+    -- Midnight 12.0 API: Check for secret values using issecretvalue()
+    local category = SafeTableAccess(DR_SPELLS, spellID)
+    if category then
         self:ApplyDR(frame, spellID)
     end
 end
