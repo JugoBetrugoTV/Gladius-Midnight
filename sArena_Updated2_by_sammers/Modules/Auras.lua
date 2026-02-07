@@ -1,2 +1,0 @@
--- Auras module is disabled for Midnight (built-in aura handling)
--- This file is kept for backwards compatibility with the TOC file

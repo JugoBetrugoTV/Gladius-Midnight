@@ -1,10 +1,35 @@
 --[[
     Gladius Midnight - Racial Module
     Tracks racial ability usage and cooldowns
+    Gladius style: Shows timer text below icon in "2m 54" format
+    Updated for Midnight 12.0 API
 ]]
 
 local addonName, addon = ...
 local Racial = {}
+
+-- Midnight 12.0 API helpers
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
+
+local function SafeTableAccess(tbl, key)
+    if not tbl or not key then return nil end
+    if IsSecretValue(key) then return nil end
+    return tbl[key]
+end
+
+-- Format cooldown as "2m'54" or "54" style (same format as Trinket)
+local function FormatCooldownText(seconds)
+    if seconds <= 0 then return "" end
+    if seconds >= 60 then
+        local mins = math.floor(seconds / 60)
+        local secs = math.floor(seconds % 60)
+        return string.format("%dm'%02d", mins, secs)
+    else
+        return tostring(math.floor(seconds))
+    end
+end
 
 -- ============================================================================
 -- Module Registration
@@ -45,18 +70,17 @@ function Racial:CreateElements(frame)
     cooldown:SetAllPoints(icon)
     cooldown:SetDrawSwipe(true)
     cooldown:SetDrawEdge(false)
-    cooldown:SetHideCountdownNumbers(true)  -- Use our own text
-    -- OmniCC exclusion (ArenaCore method)
+    cooldown:SetHideCountdownNumbers(true)
     cooldown.noCooldownCount = true
     cooldown.noOCC = true
 
-    -- Custom cooldown text
-    local cdText = container:CreateFontString(nil, "OVERLAY")
-    cdText:SetFont("Fonts\\FRIZQT__.TTF", 10, "OUTLINE")
-    cdText:SetPoint("CENTER", 0, 0)
-    cdText:SetTextColor(1, 1, 0)
-    cdText:SetJustifyH("CENTER")
-    container.cdText = cdText
+    -- Timer text BELOW icon (Gladius style: "2m 54")
+    local timerText = container:CreateFontString(nil, "OVERLAY")
+    timerText:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    timerText:SetPoint("TOP", container, "BOTTOM", 0, -1)
+    timerText:SetTextColor(1, 0.82, 0)  -- Gold color
+    timerText:SetJustifyH("CENTER")
+    container.timerText = timerText
 
     container.icon = icon
     container.cooldown = cooldown
@@ -80,31 +104,16 @@ function Racial:Update(frame, testData)
 
     local db = self.core.db.profile.racial
     local trinketDb = self.core.db.profile.trinket
-    local classIconDb = self.core.db.profile.classIcon
 
-    -- Size and position (below trinket if both enabled)
+    -- Size and position (RIGHT side, BELOW trinket)
     container:SetSize(db.size, db.size)
     container:ClearAllPoints()
 
     local trinketFrame = frame.moduleFrames.trinket
     if trinketFrame and self.core:IsModuleEnabled("trinket") then
-        -- Position below trinket
-        container:SetPoint("TOP", trinketFrame, "BOTTOM", 0, -2)
+        container:SetPoint("TOPRIGHT", trinketFrame, "BOTTOMRIGHT", 0, -2)
     else
-        -- Position independently - account for class icon
-        if db.position == "RIGHT" then
-            if classIconDb.position == "RIGHT" and self.core:IsModuleEnabled("classIcon") then
-                container:SetPoint("RIGHT", frame.moduleFrames.classIcon, "LEFT", -2, 0)
-            else
-                container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
-            end
-        else
-            if classIconDb.position == "LEFT" and self.core:IsModuleEnabled("classIcon") then
-                container:SetPoint("LEFT", frame.moduleFrames.classIcon, "RIGHT", 2, 0)
-            else
-                container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
-            end
-        end
+        container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
     end
 
     if testData then
@@ -118,14 +127,12 @@ function Racial:Update(frame, testData)
                 container.icon:SetTexture(iconTexture)
             end
         end
+        container.timerText:SetText("2m'54")
     else
-        -- Update icon based on opponent's race
         self:UpdateRaceIcon(frame)
     end
 
-    -- Keep current cooldown state
     container.icon:SetDesaturated(container.onCooldown)
-
     container:Show()
 end
 
@@ -134,22 +141,19 @@ function Racial:UpdateRaceIcon(frame)
     if not container then return end
 
     local unit = frame.unit
-    local race = frame.race  -- Check if we already stored the race
+    local race = frame.race
 
-    -- Try to get race from unit if it exists
     if not race and UnitExists(unit) then
         local _, raceToken = UnitRace(unit)
         if raceToken then
             race = raceToken
-            frame.race = race  -- Store for later
+            frame.race = race
         end
     end
 
-    -- If we have a race, look up and display the racial icon
     if race then
         local spellID = addon.Data.RaceToRacialSpell[race]
         if spellID then
-            -- Only update icon if not on cooldown (cooldown keeps the used spell icon)
             if not container.onCooldown then
                 local iconTexture = addon.Data.GetSpellIcon(spellID)
                 if iconTexture then
@@ -163,9 +167,9 @@ end
 
 function Racial:OnSpellCast(frame, spellID)
     if not spellID then return end
+    if IsSecretValue(spellID) then return end
 
-    -- Check if it's a tracked racial
-    local cooldown = addon.Data.RacialCooldowns[spellID]
+    local cooldown = SafeTableAccess(addon.Data.RacialCooldowns, spellID)
     if not cooldown then return end
 
     local container = frame.moduleFrames.racial
@@ -176,7 +180,6 @@ function Racial:OnSpellCast(frame, spellID)
     container.duration = cooldown
     container.onCooldown = true
 
-    -- Update icon
     local iconTexture = addon.Data.GetSpellIcon(spellID)
     if iconTexture then
         container.icon:SetTexture(iconTexture)
@@ -185,11 +188,10 @@ function Racial:OnSpellCast(frame, spellID)
     container.cooldown:SetCooldown(container.startTime, cooldown)
     container.icon:SetDesaturated(true)
 
-    -- Update cooldown text
-    self:UpdateCooldownText(container)
+    self:UpdateTimerText(container)
 
-    -- Also trigger trinket cooldown for certain racials
-    if addon.Data.TrinketShareRacials[spellID] then
+    local sharesTrinket = SafeTableAccess(addon.Data.TrinketShareRacials, spellID)
+    if sharesTrinket then
         local trinketModule = self.core:GetModule("trinket")
         if trinketModule and self.core:IsModuleEnabled("trinket") then
             trinketModule:TriggerCooldown(frame, 90)
@@ -197,22 +199,16 @@ function Racial:OnSpellCast(frame, spellID)
     end
 end
 
-function Racial:UpdateCooldownText(container)
+function Racial:UpdateTimerText(container)
     if not container.onCooldown or container.startTime == 0 then
-        if container.cdText then
-            container.cdText:SetText("")
-        end
+        container.timerText:SetText("")
         return
     end
 
     local remaining = (container.startTime + container.duration) - GetTime()
 
-    -- Validate remaining time - racials max 3 minutes (180s)
     if remaining <= 0 or remaining > 200 then
-        if container.cdText then
-            container.cdText:SetText("")
-        end
-        -- If remaining is garbage, reset cooldown state
+        container.timerText:SetText("")
         if remaining > 200 then
             container.onCooldown = false
             container.startTime = 0
@@ -222,21 +218,14 @@ function Racial:UpdateCooldownText(container)
         return
     end
 
-    -- Format: show seconds if < 60, else show minutes
-    if container.cdText then
-        if remaining < 60 then
-            container.cdText:SetText(math.ceil(remaining))
-        else
-            container.cdText:SetText(math.ceil(remaining / 60) .. "m")
-        end
-    end
+    container.timerText:SetText(FormatCooldownText(remaining))
 end
 
 function Racial:OnUpdate(frame)
     local container = frame.moduleFrames.racial
     if not container then return end
 
-    -- Try to detect race if we haven't yet (after gates open)
+    -- Try to detect race if we haven't yet
     if not frame.race and UnitExists(frame.unit) then
         self:UpdateRaceIcon(frame)
     end
@@ -249,12 +238,9 @@ function Racial:OnUpdate(frame)
             container.icon:SetDesaturated(false)
             container.startTime = 0
             container.duration = 0
-            if container.cdText then
-                container.cdText:SetText("")
-            end
+            container.timerText:SetText("")
         else
-            -- Update cooldown text
-            self:UpdateCooldownText(container)
+            self:UpdateTimerText(container)
         end
     end
 end
@@ -270,11 +256,8 @@ function Racial:Reset(frame)
         container.cooldown:Clear()
         container.icon:SetDesaturated(false)
         container.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        if container.cdText then
-            container.cdText:SetText("")
-        end
+        container.timerText:SetText("")
     end
-    -- Clear stored race
     frame.race = nil
 end
 

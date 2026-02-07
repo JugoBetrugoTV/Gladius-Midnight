@@ -1,10 +1,20 @@
 --[[
     Gladius Midnight - Cast Bar Module
     Displays cast bar for arena opponents
+    Updated for Midnight 12.0 API (secret values handling)
+
+    In Midnight 12.0, cast timing values (startTimeMS, endTimeMS) are "secret"
+    for arena opponents. We cannot perform arithmetic on these values.
+    When values are secret, we rely on Blizzard's reparented cast bar.
 ]]
 
 local addonName, addon = ...
 local CastBar = {}
+
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
 
 -- ============================================================================
 -- Module Registration
@@ -23,13 +33,18 @@ end
 -- ============================================================================
 
 function CastBar:CreateElements(frame)
-    -- Cast bar container (positioned BELOW the main frame)
-    local castBar = CreateFrame("StatusBar", nil, frame, "BackdropTemplate")
+    -- Cast bar container - PARENT TO UIParent to avoid clipping issues
+    -- Positioned BELOW the main arena frame
+    local castBar = CreateFrame("StatusBar", "GladiusMidnightCastBar" .. frame.index, UIParent, "BackdropTemplate")
     castBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
     castBar:SetStatusBarColor(1, 0.7, 0)
     castBar:SetMinMaxValues(0, 1)
     castBar:SetValue(0)
-    castBar:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility
+    castBar:SetFrameStrata("MEDIUM")
+    castBar:SetFrameLevel(10)
+
+    -- Store reference to parent arena frame
+    castBar.arenaFrame = frame
 
     -- Background
     castBar:SetBackdrop({
@@ -84,6 +99,7 @@ function CastBar:CreateElements(frame)
     castBar.startTime = 0
     castBar.endTime = 0
     castBar.spellID = nil
+    castBar.hasSecretValues = false  -- Midnight 12.0: skip manual updates when true
 
     castBar:Hide()
     frame.moduleFrames.castBar = castBar
@@ -99,7 +115,7 @@ function CastBar:Update(frame, testData)
 
     local db = self.core.db.profile.castBar
 
-    -- Size and position (below the main frame)
+    -- Size and position (below the main arena frame - castBar is parented to UIParent)
     local height = db.height or 16
     local iconSize = height
 
@@ -108,11 +124,10 @@ function CastBar:Update(frame, testData)
     castBar:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -2)
     castBar:SetHeight(height)
 
-    -- Icon position and frame level
+    -- Icon position
     castBar.iconFrame:SetSize(iconSize, iconSize)
     castBar.iconFrame:ClearAllPoints()
     castBar.iconFrame:SetPoint("TOPRIGHT", castBar, "TOPLEFT", -2, 0)
-    castBar.iconFrame:SetFrameLevel(castBar:GetFrameLevel() + 1)
 
     if testData then
         -- Test mode - show a sample cast
@@ -156,19 +171,54 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
         name, text, texture, startTimeMS, endTimeMS, isTradeSkill, castID, notInterruptible, spellId = UnitCastingInfo(unit)
     end
 
+    -- Midnight 12.0: Check if we got valid data before proceeding
     if not name then return end
+    if not startTimeMS or not endTimeMS then return end
 
-    -- Setup cast bar
+    -- Midnight 12.0 API: Check for secret values using issecretvalue()
+    local hasSecretValues = IsSecretValue(startTimeMS) or IsSecretValue(endTimeMS)
+
+    -- Setup cast bar state
     castBar.casting = not isChannel
     castBar.channeling = isChannel
-    castBar.startTime = startTimeMS / 1000
-    castBar.endTime = endTimeMS / 1000
     castBar.spellID = spellId or spellID
+    castBar.hasSecretValues = hasSecretValues
 
-    local duration = castBar.endTime - castBar.startTime
+    if hasSecretValues then
+        -- Secret values - cannot perform arithmetic
+        -- Store 0 values and let Blizzard's reparented cast bar handle the timing
+        castBar.startTime = 0
+        castBar.endTime = 0
+        -- Still show the bar with spell name and icon (visual only, no progress)
+        castBar:SetMinMaxValues(0, 1)
+        castBar:SetValue(0.5)  -- Static position when we can't calculate
+        castBar.timeText:SetText("")  -- Can't display time
+        castBar.spark:Hide()  -- No spark when we can't track progress
+    else
+        -- Not secret - safe to perform arithmetic
+        local startTime = startTimeMS / 1000
+        local endTime = endTimeMS / 1000
+        local duration = endTime - startTime
+
+        castBar.startTime = startTime
+        castBar.endTime = endTime
+        castBar:SetMinMaxValues(0, duration)
+        castBar.spark:Show()
+    end
 
     -- Set color based on interruptibility
-    if notInterruptible then
+    -- Midnight 12.0: notInterruptible may be a secret value
+    -- IMPORTANT: Check IsSecretValue FIRST before any boolean test
+    local isNotInterruptible = false
+    if IsSecretValue(notInterruptible) then
+        -- Secret value - assume interruptible (orange/blue)
+        isNotInterruptible = false
+    elseif notInterruptible then
+        -- Not secret and truthy - cast is not interruptible
+        isNotInterruptible = true
+    end
+
+    if isNotInterruptible then
         castBar:SetStatusBarColor(0.7, 0.7, 0.7)  -- Grey for non-interruptible
     else
         if isChannel then
@@ -178,15 +228,14 @@ function CastBar:OnCastStart(frame, unit, spellID, isChannel)
         end
     end
 
-    castBar:SetMinMaxValues(0, duration)
+    -- Midnight 12.0: FontString:SetText() accepts secret strings natively
     castBar.spellText:SetText(name)
 
-    -- Set icon
+    -- Set icon (texture may be secret but SetTexture accepts it)
     if texture then
         castBar.iconFrame.icon:SetTexture(texture)
     end
     castBar.iconFrame:Show()
-    castBar.spark:Show()
     castBar:Show()
 end
 
@@ -199,6 +248,7 @@ function CastBar:OnCastStop(frame)
     castBar.startTime = 0
     castBar.endTime = 0
     castBar.spellID = nil
+    castBar.hasSecretValues = false
     castBar.spark:Hide()
     castBar:Hide()
 end
@@ -239,11 +289,24 @@ function CastBar:OnUpdate(frame)
         return
     end
 
+    -- Midnight 12.0: Skip manual progress updates when values are secret
+    -- The cast bar will show with spell name/icon but no progress animation
+    if castBar.hasSecretValues then
+        return
+    end
+
     local now = GetTime()
+    local startTime = castBar.startTime
+    local endTime = castBar.endTime
+
+    -- Safety check - ensure we have valid numeric times
+    if not startTime or not endTime or startTime == 0 or endTime == 0 then
+        return
+    end
 
     if castBar.casting then
-        local elapsed = now - castBar.startTime
-        local duration = castBar.endTime - castBar.startTime
+        local elapsed = now - startTime
+        local duration = endTime - startTime
 
         if elapsed >= duration then
             self:OnCastStop(frame)
@@ -255,21 +318,21 @@ function CastBar:OnUpdate(frame)
 
         -- Update spark position
         local width = castBar:GetWidth()
-        if width > 0 then
+        if width > 0 and duration > 0 then
             local progress = elapsed / duration
             castBar.spark:ClearAllPoints()
             castBar.spark:SetPoint("CENTER", castBar, "LEFT", width * progress, 0)
         end
 
     elseif castBar.channeling then
-        local remaining = castBar.endTime - now
+        local remaining = endTime - now
 
         if remaining <= 0 then
             self:OnCastStop(frame)
             return
         end
 
-        local duration = castBar.endTime - castBar.startTime
+        local duration = endTime - startTime
         castBar:SetValue(remaining)
         castBar.timeText:SetText(string.format("%.1fs", remaining))
 
@@ -291,6 +354,7 @@ function CastBar:Reset(frame)
         castBar.startTime = 0
         castBar.endTime = 0
         castBar.spellID = nil
+        castBar.hasSecretValues = false
         castBar:SetValue(0)
         castBar.spellText:SetText("")
         castBar.timeText:SetText("")

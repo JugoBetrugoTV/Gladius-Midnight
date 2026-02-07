@@ -71,7 +71,10 @@ function Trinkets:UpdateTrinket(frame)
     -- Check for trinket info using C_PvP API (12.0 compatible)
     local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(unit)
 
-    if spellID and spellID ~= 0 then
+    -- In Midnight 12.0, values may be "secret" - check types first
+    if spellID and type(spellID) == "number" and spellID ~= 0
+       and startTime and type(startTime) == "number"
+       and duration and type(duration) == "number" then
         -- Trinket has been used, show cooldown
         local cooldownData = self.cooldowns[unit]
 
@@ -118,7 +121,8 @@ end
 
 -- Called when a spell is cast by an arena opponent
 function Trinkets:OnSpellCast(frame, spellID)
-    if not frame or not spellID then
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not frame or not spellID or type(spellID) ~= "number" then
         return
     end
 

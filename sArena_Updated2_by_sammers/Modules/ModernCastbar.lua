@@ -1,2 +1,0 @@
--- ModernCastbar module is disabled for Midnight (built-in castbar handling)
--- This file is kept for backwards compatibility with the TOC file

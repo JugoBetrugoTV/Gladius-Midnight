@@ -1,10 +1,16 @@
 --[[
     Gladius Midnight - Class Icon Module
     Displays the class or spec icon for the arena opponent
+    Updated for Midnight 12.0 API (issecretvalue)
 ]]
 
 local addonName, addon = ...
 local ClassIcon = {}
+
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
 
 -- ============================================================================
 -- Module Registration
@@ -152,8 +158,101 @@ function ClassIcon:Reset(frame)
         container.icon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
         container.icon:SetTexCoord(0, 0.25, 0, 0.25)
         container.isSpecIcon = false
+        container.showingDebuff = false
+
+        -- Reset debuff overlay if exists
+        if container.debuffOverlay then
+            container.debuffOverlay:Hide()
+        end
+        if container.debuffCooldown then
+            container.debuffCooldown:Clear()
+        end
     end
     frame.specID = nil
+end
+
+-- ============================================================================
+-- Blizzard DebuffFrame Hooks (Midnight 12.0)
+-- Shows current CC as overlay on ClassIcon (like sArena)
+-- ============================================================================
+
+function ClassIcon:OnDebuffUpdate(frame, texture)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.classIcon
+    if not container then return end
+
+    -- Create debuff overlay if not exists
+    if not container.debuffOverlay then
+        local overlay = container:CreateTexture(nil, "OVERLAY", nil, 7)
+        overlay:SetAllPoints(container.icon)
+        overlay:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        container.debuffOverlay = overlay
+
+        -- Create cooldown for debuff
+        local cd = CreateFrame("Cooldown", nil, container, "CooldownFrameTemplate")
+        cd:SetAllPoints(container.icon)
+        cd:SetDrawSwipe(true)
+        cd:SetDrawEdge(false)
+        cd:SetHideCountdownNumbers(false)
+        cd:SetReverse(true)
+        cd.noCooldownCount = true
+        container.debuffCooldown = cd
+
+        -- Create border for debuff
+        local border = container:CreateTexture(nil, "OVERLAY", nil, 6)
+        border:SetPoint("TOPLEFT", -2, 2)
+        border:SetPoint("BOTTOMRIGHT", 2, -2)
+        border:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+        border:SetBlendMode("ADD")
+        border:SetVertexColor(1, 0, 0, 0.8)
+        border:Hide()
+        container.debuffBorder = border
+    end
+
+    -- Check if texture is valid (not placeholder)
+    if not texture or texture == "" or
+       texture == "INTERFACE\\ICONS\\INV_MISC_QUESTIONMARK.BLP" or
+       (type(texture) == "string" and texture:find("INV_MISC_QUESTIONMARK")) then
+        -- No valid debuff - hide overlay, show class/spec icon
+        container.debuffOverlay:Hide()
+        container.debuffBorder:Hide()
+        container.showingDebuff = false
+        self:UpdateUnit(frame)
+        return
+    end
+
+    -- Show debuff overlay
+    container.debuffOverlay:SetTexture(texture)
+    container.debuffOverlay:Show()
+    container.debuffBorder:Show()
+    container.showingDebuff = true
+end
+
+function ClassIcon:OnDebuffCooldown(frame, start, duration)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.classIcon
+    if not container or not container.debuffCooldown then return end
+
+    -- Midnight 12.0 API: start/duration may be "secret" values
+    if container.showingDebuff and start and duration then
+        -- Check for secret values using issecretvalue()
+        local isSecret = IsSecretValue(start) or IsSecretValue(duration)
+        if isSecret then
+            -- Secret values - Cooldown:SetCooldown may accept them in 12.0
+            container.debuffCooldown:SetCooldown(start, duration)
+        else
+            -- Not secret - safe to perform comparisons
+            if start > 0 and duration > 0 then
+                container.debuffCooldown:SetCooldown(start, duration)
+            else
+                container.debuffCooldown:Clear()
+            end
+        end
+    else
+        container.debuffCooldown:Clear()
+    end
 end
 
 -- Register module

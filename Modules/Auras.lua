@@ -1,10 +1,23 @@
 --[[
     Gladius Midnight - Auras Module
     Displays important CC/debuffs on arena opponents
+    Updated for Midnight 12.0 API (issecretvalue, C_UnitAuras)
 ]]
 
 local addonName, addon = ...
 local Auras = {}
+
+-- Midnight 12.0 API helper: Check if a value is secret
+local function IsSecretValue(value)
+    return issecretvalue and issecretvalue(value)
+end
+
+-- Midnight 12.0 API helper: Safe table access for potentially secret keys
+local function SafeTableAccess(tbl, key)
+    if not tbl or not key then return nil end
+    if IsSecretValue(key) then return nil end
+    return tbl[key]
+end
 
 -- Priority auras to track (higher number = higher priority)
 -- These are important PvP CC abilities that should be shown
@@ -156,16 +169,20 @@ end
 -- ============================================================================
 
 function Auras:CreateElements(frame)
-    -- Container for aura icons (positioned below health/power within frame)
-    local container = CreateFrame("Frame", nil, frame)
+    -- Container for aura icons - PARENT TO UIParent to avoid clipping/overlap issues
+    local container = CreateFrame("Frame", "GladiusMidnightAuras" .. frame.index, UIParent)
     container:SetSize(150, 32)
-    container:SetFrameLevel(frame:GetFrameLevel() + 10)  -- Ensure visibility above other elements
+    container:SetFrameStrata("MEDIUM")
+    container:SetFrameLevel(10)
+
+    -- Store reference to parent arena frame
+    container.arenaFrame = frame
 
     -- Create aura icon frames
     container.icons = {}
     for i = 1, 4 do
         local iconFrame = CreateFrame("Frame", nil, container, "BackdropTemplate")
-        iconFrame:SetSize(28, 28)
+        iconFrame:SetSize(20, 20)  -- Default size, updated by Update()
         iconFrame:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8X8",
             edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -224,36 +241,29 @@ function Auras:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.auras
-    local iconSize = db.iconSize or 22  -- Smaller icons like ArenaCore
+    local iconSize = db.iconSize or 20  -- Balanced size
 
-    -- Position BELOW the health/power bars (ArenaCore style)
+    -- Position BELOW the frame (clean layout)
     container:ClearAllPoints()
 
-    -- Calculate position - below power bar if enabled, otherwise below health
-    local healthHeight = self.core.db.profile.health.height or 28
-    local powerHeight = self.core:IsModuleEnabled("power") and (self.core.db.profile.power.height or 10) or 0
-    local yOffset = -(healthHeight + powerHeight + 6)
-
-    -- Position starting from left side, below the bars
+    -- Position starting from left side, below the frame
     local leftOffset = self.core.db.profile.classIcon.size + 4
-    container:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, yOffset)
-    container:SetSize(iconSize * 5 + 8, iconSize)
+    container:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", leftOffset, -2)
+    container:SetSize(iconSize * 4 + 6, iconSize)
 
-    -- Update icon sizes and frame levels
+    -- Update icon sizes
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
         iconFrame:ClearAllPoints()
         iconFrame:SetPoint("LEFT", container, "LEFT", (i - 1) * (iconSize + 2), 0)
-        iconFrame:SetFrameLevel(container:GetFrameLevel() + 1)
     end
-
-    -- Always show container first, then populate
-    container:Show()
 
     if testData then
         -- Test mode - show sample auras
         self:ShowTestAuras(frame)
+        container:Show()
     else
+        -- Live mode - RefreshAuras will show/hide based on content
         self:RefreshAuras(frame)
     end
 end
@@ -295,28 +305,48 @@ function Auras:RefreshAuras(frame)
         for i, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
         end
+        container.blizzDebuffShown = false
         return
     end
+
+    -- In Midnight 12.0 live arena, we rely on Blizzard hooks for the main debuff
+    -- The native aura scanning below may not work due to "secret" data
+    -- Keep the first slot reserved for Blizzard's hooked debuff if active
+    local startIndex = container.blizzDebuffShown and 2 or 1
 
     -- Collect auras with priority
     local auras = {}
 
     -- Scan debuffs on the unit
+    -- Midnight 12.0 API: C_UnitAuras with secret value handling
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
         if not auraData then break end
 
+        -- Midnight 12.0: spellId and other fields may be secret
         local spellId = auraData.spellId
-        local priority = PRIORITY_AURAS[spellId]
+
+        -- Use issecretvalue() to check if we can use the spellId as table key
+        local priority = SafeTableAccess(PRIORITY_AURAS, spellId)
 
         if priority then
+            -- Midnight 12.0: Check individual fields for secret status
+            local duration = auraData.duration
+            local expirationTime = auraData.expirationTime
+            local applications = auraData.applications
+
+            -- Only use values if they're not secret (or use 0 as fallback)
+            local safeDuration = (not IsSecretValue(duration) and type(duration) == "number") and duration or 0
+            local safeExpiration = (not IsSecretValue(expirationTime) and type(expirationTime) == "number") and expirationTime or 0
+            local safeStacks = (not IsSecretValue(applications) and type(applications) == "number") and applications or 0
+
             table.insert(auras, {
                 spellId = spellId,
                 name = auraData.name,
                 icon = auraData.icon,
-                duration = auraData.duration or 0,
-                expirationTime = auraData.expirationTime or 0,
-                stacks = auraData.applications or 0,
+                duration = safeDuration,
+                expirationTime = safeExpiration,
+                stacks = safeStacks,
                 priority = priority,
                 isDebuff = true,
             })
@@ -324,40 +354,60 @@ function Auras:RefreshAuras(frame)
     end
 
     -- Also scan important buffs (defensive CDs) and check for immunities
+    -- Midnight 12.0 API: C_UnitAuras with secret value handling
     local immunityType = nil  -- "total" or "magic" or nil
     for i = 1, 40 do
         local auraData = C_UnitAuras.GetBuffDataByIndex(unit, i)
         if not auraData then break end
 
+        -- Midnight 12.0: spellId and other fields may be secret
         local spellId = auraData.spellId
-        local priority = PRIORITY_AURAS[spellId]
 
-        -- Check for immunity type (ArenaCore style - magic vs total)
-        local spellImmunityType = addon.Data.GetImmunityType(spellId)
-        if spellImmunityType then
-            -- Total immunity takes priority over magic immunity
-            if spellImmunityType == "total" then
-                immunityType = "total"
-            elseif not immunityType then
-                immunityType = "magic"
+        -- Skip if spellId is secret (can't use as table key)
+        if not IsSecretValue(spellId) then
+            -- Check for immunity type (ArenaCore style - magic vs total)
+            if addon.Data.GetImmunityType then
+                local spellImmunityType = addon.Data.GetImmunityType(spellId)
+                if spellImmunityType then
+                    -- Total immunity takes priority over magic immunity
+                    if spellImmunityType == "total" then
+                        immunityType = "total"
+                    elseif not immunityType then
+                        immunityType = "magic"
+                    end
+                end
             end
-        end
-        -- Fallback: Check old IMMUNITY_SPELLS table
-        if not immunityType and IMMUNITY_SPELLS[spellId] then
-            immunityType = "total"
-        end
 
-        if priority then
-            table.insert(auras, {
-                spellId = spellId,
-                name = auraData.name,
-                icon = auraData.icon,
-                duration = auraData.duration or 0,
-                expirationTime = auraData.expirationTime or 0,
-                stacks = auraData.applications or 0,
-                priority = priority,
-                isDebuff = false,
-            })
+            -- Fallback: Check old IMMUNITY_SPELLS table
+            if not immunityType and spellId then
+                local isImmunity = IMMUNITY_SPELLS[spellId]
+                if isImmunity then
+                    immunityType = "total"
+                end
+            end
+
+            local priority = SafeTableAccess(PRIORITY_AURAS, spellId)
+            if priority then
+                -- Midnight 12.0: Check individual fields for secret status
+                local duration = auraData.duration
+                local expirationTime = auraData.expirationTime
+                local applications = auraData.applications
+
+                local safeDuration = (not IsSecretValue(duration) and type(duration) == "number") and duration or 0
+                local safeExpiration = (not IsSecretValue(expirationTime) and type(expirationTime) == "number") and expirationTime or 0
+                local safeStacks = (not IsSecretValue(applications) and type(applications) == "number") and applications or 0
+
+                table.insert(auras, {
+                    spellId = spellId,
+                    name = auraData.name,
+                    icon = auraData.icon,
+                    duration = safeDuration,
+                    expirationTime = safeExpiration,
+                    stacks = safeStacks,
+                    priority = priority,
+                    isDebuff = false,
+                })
+            end
         end
     end
 
@@ -369,9 +419,11 @@ function Auras:RefreshAuras(frame)
         return a.priority > b.priority
     end)
 
-    -- Update icons
-    for i, iconFrame in ipairs(container.icons) do
-        local aura = auras[i]
+    -- Update icons (starting from startIndex to preserve Blizzard's hooked debuff)
+    local auraIndex = 1
+    for i = startIndex, #container.icons do
+        local iconFrame = container.icons[i]
+        local aura = auras[auraIndex]
         if aura then
             iconFrame.icon:SetTexture(aura.icon)
 
@@ -403,12 +455,20 @@ function Auras:RefreshAuras(frame)
             end
 
             iconFrame:Show()
+            auraIndex = auraIndex + 1
         else
             iconFrame:Hide()
         end
     end
 
     container.activeAuras = auras
+
+    -- Show container if there are auras to display or Blizzard debuff is shown
+    if #auras > 0 or container.blizzDebuffShown then
+        container:Show()
+    else
+        container:Hide()
+    end
 end
 
 function Auras:OnUpdate(frame)
@@ -444,6 +504,60 @@ end
 function Auras:OnAuraChange(frame)
     if not self.core.testMode then
         self:RefreshAuras(frame)
+    end
+end
+
+-- ============================================================================
+-- Blizzard DebuffFrame Hooks (Midnight 12.0)
+-- Since we can't read aura data directly, we hook into Blizzard's debuff display
+-- ============================================================================
+
+function Auras:OnBlizzardDebuffUpdate(frame, texture)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.auras
+    if not container then return end
+
+    -- Ignore placeholder textures
+    if not texture or texture == "" or
+       texture == "INTERFACE\\ICONS\\INV_MISC_QUESTIONMARK.BLP" or
+       texture:find("INV_MISC_QUESTIONMARK") then
+        -- No valid debuff - hide first icon if it was showing Blizzard debuff
+        if container.blizzDebuffShown and container.icons[1] then
+            container.icons[1]:Hide()
+            container.blizzDebuffShown = false
+        end
+        return
+    end
+
+    -- Show the first aura icon with Blizzard's debuff texture
+    local iconFrame = container.icons[1]
+    if iconFrame then
+        iconFrame.icon:SetTexture(texture)
+        iconFrame:SetBackdropBorderColor(1, 0, 0, 1)  -- Red for CC
+        iconFrame.stacks:SetText("")
+        iconFrame.duration:SetText("")
+        iconFrame:Show()
+        container.blizzDebuffShown = true
+        container:Show()
+    end
+end
+
+function Auras:OnBlizzardDebuffCooldown(frame, start, duration)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.auras
+    if not container then return end
+
+    local iconFrame = container.icons[1]
+    if iconFrame and container.blizzDebuffShown then
+        if start and duration and start > 0 and duration > 0 then
+            iconFrame.cooldown:SetCooldown(start, duration)
+            iconFrame.expirationTime = start + duration
+        else
+            iconFrame.cooldown:Clear()
+            iconFrame.expirationTime = nil
+        end
     end
 end
 
@@ -513,6 +627,7 @@ function Auras:Reset(frame)
     if container then
         container.activeAuras = {}
         container.lastRefresh = nil
+        container.blizzDebuffShown = false
         for i, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
             iconFrame.cooldown:Clear()

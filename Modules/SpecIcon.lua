@@ -72,16 +72,17 @@ function SpecIcon:Update(frame, testData)
     end
 
     if testData then
+        -- Test mode: show class icon
         local coords = addon.Data.ClassIconCoords[testData.class]
         if coords then
             container.icon:SetTexture("Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes")
             container.icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
         end
+        container:Show()
     else
+        -- Live mode: UpdateUnit handles showing/hiding based on spec availability
         self:UpdateUnit(frame)
     end
-
-    container:Show()
 end
 
 function SpecIcon:UpdateUnit(frame)
@@ -100,19 +101,19 @@ function SpecIcon:UpdateUnit(frame)
         if icon then
             container.icon:SetTexture(icon)
             container.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            container:Show()
             return
         end
     end
 
-    container.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-    container.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- Hide instead of showing question mark when spec is unknown
+    container:Hide()
 end
 
 function SpecIcon:Reset(frame)
     local container = frame.moduleFrames.specIcon
     if container then
-        container.icon:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
-        container.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        container:Hide()
     end
 end
 
