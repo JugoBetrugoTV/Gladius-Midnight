@@ -59,7 +59,7 @@ local defaults = {
         -- Visual settings
         targetHighlight = true,
         immunityGlow = true,
-        hideBlizzardFrames = false,
+        hideBlizzardFrames = true,
 
         -- Module-specific settings (Gladius style)
         classIcon = {
@@ -538,6 +538,14 @@ function GladiusMidnight:OnEnable()
                     end
                 end
             end
+
+            -- Ensure Blizzard frames stay hidden
+            if ShouldHideBlizzardFrames() then
+                local blizzFrame = _G["CompactArenaFrameMember" .. i]
+                if blizzFrame and blizzFrame:GetAlpha() > 0 then
+                    blizzFrame:SetAlpha(0)
+                end
+            end
         end
     end)
 end
@@ -580,6 +588,40 @@ end
 -- Blizzard Arena Frame Handling (Midnight 12.0)
 -- ============================================================================
 
+-- Helper function to check if we should hide Blizzard frames
+local function ShouldHideBlizzardFrames()
+    local _, instanceType = IsInInstance()
+    return instanceType == "arena" and GladiusMidnight.db and GladiusMidnight.db.profile and GladiusMidnight.db.profile.enabled
+end
+
+-- Helper function to permanently hide a frame
+local function PermanentlyHideFrame(frame)
+    if not frame then return end
+
+    -- Set alpha to 0
+    frame:SetAlpha(0)
+
+    -- Hook SetAlpha to prevent Blizzard from making it visible again
+    if not frame.gladiusAlphaHooked then
+        frame.gladiusAlphaHooked = true
+        hooksecurefunc(frame, "SetAlpha", function(self, alpha)
+            if ShouldHideBlizzardFrames() and alpha > 0 then
+                self:SetAlpha(0)
+            end
+        end)
+    end
+
+    -- Also hook Show to reset alpha when shown
+    if not frame.gladiusShowHooked then
+        frame.gladiusShowHooked = true
+        hooksecurefunc(frame, "Show", function(self)
+            if ShouldHideBlizzardFrames() then
+                self:SetAlpha(0)
+            end
+        end)
+    end
+end
+
 function GladiusMidnight:InitializeBlizzardFrames()
     if self.blizzFramesInitialized then return end
 
@@ -594,21 +636,25 @@ function GladiusMidnight:InitializeBlizzardFrames()
             return
         end
 
-        -- Hide Blizzard's arena frame visually but keep it functional
-        -- DO NOT use EnableMouse(false) - this breaks Blizzard UI settings
-        blizzArenaFrame:SetAlpha(0)
+        -- Permanently hide Blizzard's arena frame with hooks to prevent re-showing
+        PermanentlyHideFrame(blizzArenaFrame)
+        PermanentlyHideFrame(blizzArenaFrame.CastingBarFrame)
+        PermanentlyHideFrame(blizzArenaFrame.DebuffFrame)
+        PermanentlyHideFrame(blizzArenaFrame.CcRemoverFrame)
+        PermanentlyHideFrame(blizzArenaFrame.SpellDiminishStatusTray)
 
-        if blizzArenaFrame.CastingBarFrame then
-            blizzArenaFrame.CastingBarFrame:SetAlpha(0)
+        -- Also hide the health bar and other visual components
+        if blizzArenaFrame.healthBar then
+            PermanentlyHideFrame(blizzArenaFrame.healthBar)
         end
-        if blizzArenaFrame.DebuffFrame then
-            blizzArenaFrame.DebuffFrame:SetAlpha(0)
+        if blizzArenaFrame.HealthBar then
+            PermanentlyHideFrame(blizzArenaFrame.HealthBar)
         end
-        if blizzArenaFrame.CcRemoverFrame then
-            blizzArenaFrame.CcRemoverFrame:SetAlpha(0)
+        if blizzArenaFrame.manaBar then
+            PermanentlyHideFrame(blizzArenaFrame.manaBar)
         end
-        if blizzArenaFrame.SpellDiminishStatusTray then
-            blizzArenaFrame.SpellDiminishStatusTray:SetAlpha(0)
+        if blizzArenaFrame.PowerBar then
+            PermanentlyHideFrame(blizzArenaFrame.PowerBar)
         end
 
         ourFrame.blizzArenaFrame = blizzArenaFrame
@@ -867,9 +913,12 @@ function GladiusMidnight:UpdateTargetHighlight()
 end
 
 function GladiusMidnight:HideBlizzardFrames()
-    if not self.db.profile.hideBlizzardFrames then return end
+    -- Always hide Blizzard arena frames when our addon is enabled
+    local _, instanceType = IsInInstance()
+    if instanceType ~= "arena" then return end
 
     for i = 1, 5 do
+        -- Old arena frames
         local frameName = "ArenaEnemyFrame" .. i
         local frame = _G[frameName]
         if frame then
@@ -878,15 +927,46 @@ function GladiusMidnight:HideBlizzardFrames()
             frame:SetScript("OnShow", function(self) self:Hide() end)
         end
 
+        -- Compact arena frame container
         local compactFrame = _G["CompactArenaFrame" .. i]
         if compactFrame then
             compactFrame:UnregisterAllEvents()
             compactFrame:Hide()
         end
+
+        -- Compact arena frame members (the actual visible frames)
+        local memberFrame = _G["CompactArenaFrameMember" .. i]
+        if memberFrame then
+            PermanentlyHideFrame(memberFrame)
+            -- Hide all children recursively
+            for _, child in pairs({memberFrame:GetChildren()}) do
+                if child.SetAlpha then
+                    child:SetAlpha(0)
+                end
+            end
+        end
     end
 
+    -- Hide containers
     if ArenaEnemyPrepFramesContainer then
         ArenaEnemyPrepFramesContainer:Hide()
+    end
+
+    if CompactArenaFrame then
+        CompactArenaFrame:SetAlpha(0)
+        if not CompactArenaFrame.gladiusAlphaHooked then
+            CompactArenaFrame.gladiusAlphaHooked = true
+            hooksecurefunc(CompactArenaFrame, "SetAlpha", function(self, alpha)
+                if ShouldHideBlizzardFrames() and alpha > 0 then
+                    self:SetAlpha(0)
+                end
+            end)
+        end
+    end
+
+    -- Also check for EditModeArenaFrame or other variants
+    if EditModeManagerFrame and EditModeManagerFrame.AccountSettings then
+        -- Don't disable edit mode, just hide the actual frames
     end
 end
 
