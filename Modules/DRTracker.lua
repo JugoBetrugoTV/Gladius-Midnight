@@ -208,24 +208,29 @@ end
 
 function DRTracker:OnInitialize(core)
     self.core = core
-end
 
-function DRTracker:OnEnable(core)
-    self.core = core
-    -- Create combat log frame for event handling
+    -- Create combat log frame during initialization (safe, not in combat)
     if not self.combatLogFrame then
         self.combatLogFrame = CreateFrame("Frame")
         self.combatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-        self.combatLogFrame:SetScript("OnEvent", function()
-            self:OnCombatLogEvent()
+        self.combatLogFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+        self.combatLogFrame:SetScript("OnEvent", function(_, event, ...)
+            if event == "COMBAT_LOG_EVENT_UNFILTERED" then
+                DRTracker:OnCombatLogEvent()
+            elseif event == "PLAYER_ENTERING_WORLD" then
+                -- Re-register combat log event just in case
+                DRTracker.combatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+            end
         end)
     end
 end
 
+function DRTracker:OnEnable(core)
+    self.core = core
+end
+
 function DRTracker:OnDisable(core)
-    if self.combatLogFrame then
-        self.combatLogFrame:UnregisterAllEvents()
-    end
+    -- Don't unregister - keep listening for DR events
 end
 
 -- ============================================================================
