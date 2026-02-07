@@ -501,6 +501,12 @@ function GladiusMidnight:OnInitialize()
     self:Print("Geladen - |cFF00FF00/gladius test|r zum Testen, |cFFFF6600/gg|r zum Aufgeben")
 end
 
+-- Helper function to check if we should hide Blizzard frames (defined early for use in timer)
+local function ShouldHideBlizzardFrames()
+    local _, instanceType = IsInInstance()
+    return instanceType == "arena" and GladiusMidnight.db and GladiusMidnight.db.profile and GladiusMidnight.db.profile.enabled
+end
+
 function GladiusMidnight:OnEnable()
     self:RegisterEvent("ARENA_OPPONENT_UPDATE")
     self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
@@ -587,12 +593,6 @@ end
 -- ============================================================================
 -- Blizzard Arena Frame Handling (Midnight 12.0)
 -- ============================================================================
-
--- Helper function to check if we should hide Blizzard frames
-local function ShouldHideBlizzardFrames()
-    local _, instanceType = IsInInstance()
-    return instanceType == "arena" and GladiusMidnight.db and GladiusMidnight.db.profile and GladiusMidnight.db.profile.enabled
-end
 
 -- Helper function to permanently hide a frame
 local function PermanentlyHideFrame(frame)
