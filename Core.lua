@@ -594,9 +594,9 @@ function GladiusMidnight:InitializeBlizzardFrames()
             return
         end
 
-        -- Hide Blizzard's arena frame completely
+        -- Hide Blizzard's arena frame visually but keep it functional
+        -- DO NOT use EnableMouse(false) - this breaks Blizzard UI settings
         blizzArenaFrame:SetAlpha(0)
-        blizzArenaFrame:EnableMouse(false)
 
         if blizzArenaFrame.CastingBarFrame then
             blizzArenaFrame.CastingBarFrame:SetAlpha(0)
@@ -613,7 +613,7 @@ function GladiusMidnight:InitializeBlizzardFrames()
 
         ourFrame.blizzArenaFrame = blizzArenaFrame
 
-        -- DR Tracking hooks
+        -- DR Tracking hooks - hook multiple methods to ensure we catch DR events
         if self:IsModuleEnabled("drTracker") then
             local drTray = blizzArenaFrame.SpellDiminishStatusTray
             if drTray then
@@ -624,16 +624,34 @@ function GladiusMidnight:InitializeBlizzardFrames()
                         drFrame.gladiusHooked = true
                         local frameIndex = i
 
+                        -- Hook Show function
                         hooksecurefunc(drFrame, "Show", function(self)
                             local drModule = GladiusMidnight:GetModule("drTracker")
                             local frame = GladiusMidnight.frames[frameIndex]
-                            if drModule and frame and self.auraData then
-                                local spellID = self.auraData.spellID
-                                if spellID then
+                            if drModule and frame then
+                                -- Try to get spellID from auraData
+                                local spellID = self.auraData and self.auraData.spellID
+                                if spellID and not (issecretvalue and issecretvalue(spellID)) then
                                     drModule:OnBlizzardDR(frame, spellID)
                                 end
                             end
                         end)
+
+                        -- Also hook SetCooldown on the cooldown frame (backup method)
+                        if drFrame.Cooldown then
+                            hooksecurefunc(drFrame.Cooldown, "SetCooldown", function(_, start, duration)
+                                local drModule = GladiusMidnight:GetModule("drTracker")
+                                local frame = GladiusMidnight.frames[frameIndex]
+                                if drModule and frame and start and start > 0 and duration and duration > 0 then
+                                    -- DR was triggered - try to get category from parent's auraData
+                                    local parent = drFrame
+                                    local spellID = parent.auraData and parent.auraData.spellID
+                                    if spellID and not (issecretvalue and issecretvalue(spellID)) then
+                                        drModule:OnBlizzardDR(frame, spellID)
+                                    end
+                                end
+                            end)
+                        end
                     end
                 end
 
@@ -712,8 +730,8 @@ function GladiusMidnight:ResetBlizzardFrames()
         local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
 
         if blizzArenaFrame then
+            -- Restore visibility when leaving arena
             blizzArenaFrame:SetAlpha(1)
-            blizzArenaFrame:EnableMouse(true)
 
             if blizzArenaFrame.CastingBarFrame then
                 blizzArenaFrame.CastingBarFrame:SetAlpha(1)

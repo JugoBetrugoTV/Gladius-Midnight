@@ -460,10 +460,19 @@ end
 
 function DRTracker:OnUpdate(frame)
     local container = frame.moduleFrames.drTracker
-    if not container or not container:IsShown() then return end
+    if not container then return end
 
     local now = GetTime()
     local drData = container.drData
+
+    -- Fallback: Periodically scan auras to detect DRs (every 0.5s)
+    container.lastScan = container.lastScan or 0
+    if now - container.lastScan > 0.5 and UnitExists(frame.unit) then
+        container.lastScan = now
+        self:ScanForDRDebuffs(frame)
+    end
+
+    -- Update existing DR timers
     local needsRefresh = false
     local hasActiveDR = false
 
@@ -487,12 +496,63 @@ function DRTracker:OnUpdate(frame)
         self:RefreshDisplay(frame)
     end
 
-    if not hasActiveDR then
+    if hasActiveDR then
+        container:Show()
+    else
         for _, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
         end
         container:Hide()
     end
+end
+
+-- Scan debuffs on target to detect DR-causing spells
+function DRTracker:ScanForDRDebuffs(frame)
+    local container = frame.moduleFrames.drTracker
+    if not container then return end
+
+    local unit = frame.unit
+    if not UnitExists(unit) then return end
+
+    -- Track which spells we've seen this scan
+    container.seenSpells = container.seenSpells or {}
+    local currentSpells = {}
+
+    -- Scan debuffs using AuraUtil or direct API
+    local function CheckAura(auraData)
+        if not auraData then return end
+        local spellId = auraData.spellId
+        if not spellId then return end
+        if IsSecretValue(spellId) then return end
+
+        currentSpells[spellId] = true
+
+        -- Only trigger if this is a new debuff we haven't seen
+        if not container.seenSpells[spellId] then
+            local category = SafeTableAccess(DR_SPELLS, spellId)
+            if category then
+                self:ApplyDR(frame, spellId)
+            end
+        end
+    end
+
+    -- Use C_UnitAuras API (Midnight 12.0)
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        for i = 1, 40 do
+            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
+            if not auraData then break end
+            CheckAura(auraData)
+        end
+    elseif AuraUtil and AuraUtil.ForEachAura then
+        -- Fallback for older API
+        AuraUtil.ForEachAura(unit, "HARMFUL", nil, function(...)
+            local auraData = {spellId = select(10, ...)}
+            CheckAura(auraData)
+        end)
+    end
+
+    -- Update seen spells for next scan
+    container.seenSpells = currentSpells
 end
 
 function DRTracker:OnAura(frame, spellID)
