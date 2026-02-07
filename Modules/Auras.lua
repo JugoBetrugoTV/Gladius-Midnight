@@ -182,7 +182,7 @@ function Auras:CreateElements(frame)
     container.icons = {}
     for i = 1, 4 do
         local iconFrame = CreateFrame("Frame", nil, container, "BackdropTemplate")
-        iconFrame:SetSize(28, 28)
+        iconFrame:SetSize(20, 20)  -- Default size, updated by Update()
         iconFrame:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8X8",
             edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -241,7 +241,7 @@ function Auras:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.auras
-    local iconSize = db.iconSize or 28  -- Larger icons for better visibility
+    local iconSize = db.iconSize or 20  -- Balanced size
 
     -- Position BELOW the frame (clean layout)
     container:ClearAllPoints()

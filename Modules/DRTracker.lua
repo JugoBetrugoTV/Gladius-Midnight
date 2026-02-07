@@ -247,7 +247,7 @@ function DRTracker:CreateElements(frame)
     container.icons = {}
     for i = 1, 3 do
         local iconFrame = CreateFrame("Frame", nil, container, "BackdropTemplate")
-        iconFrame:SetSize(26, 26)
+        iconFrame:SetSize(22, 22)  -- Default size, updated by Update()
         iconFrame:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8X8",
             edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -262,9 +262,9 @@ function DRTracker:CreateElements(frame)
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.icon = icon
 
-        -- DR level text (centered, large) - shows ½, ¼, or X
+        -- DR level text (centered) - shows ½, ¼, or X
         local drLevelText = iconFrame:CreateFontString(nil, "OVERLAY")
-        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
+        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")  -- Smaller font
         drLevelText:SetPoint("CENTER", 0, 0)
         drLevelText:SetTextColor(1, 1, 1)
         iconFrame.drLevelText = drLevelText
@@ -296,7 +296,7 @@ function DRTracker:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.drTracker
-    local iconSize = db.iconSize or 26
+    local iconSize = db.iconSize or 22
 
     -- Position to the LEFT of the arena frame (vertical stack)
     container:ClearAllPoints()
@@ -343,7 +343,7 @@ function DRTracker:ShowTestDR(frame)
     if not container then return end
 
     local db = self.core.db.profile.drTracker
-    local iconSize = db.iconSize or 26
+    local iconSize = db.iconSize or 22
 
     for _, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()
@@ -414,7 +414,7 @@ function DRTracker:RefreshDisplay(frame)
     if not container then return end
 
     local db = self.core.db.profile.drTracker
-    local iconSize = db.iconSize or 26
+    local iconSize = db.iconSize or 22
 
     for _, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()

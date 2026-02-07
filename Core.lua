@@ -28,11 +28,11 @@ local defaults = {
         enabled = true,
         locked = true,
 
-        -- Frame settings (matches Gladius screenshot)
-        frameWidth = 250,
-        frameHeight = 60,
+        -- Frame settings (balanced proportions)
+        frameWidth = 220,
+        frameHeight = 50,
         scale = 1.0,
-        spacing = 2,
+        spacing = 40,  -- Space for auras/castbar between frames
         growDirection = "DOWN",
 
         -- Position
@@ -61,14 +61,14 @@ local defaults = {
         immunityGlow = true,
         hideBlizzardFrames = true,
 
-        -- Module-specific settings (Gladius style)
+        -- Module-specific settings (balanced sizes)
         classIcon = {
-            size = 50,
+            size = 42,
             position = "LEFT",
             showSpec = true,
         },
         health = {
-            height = 20,
+            height = 18,
             showText = true,
             showPercent = true,
             showAbsolute = true,
@@ -77,31 +77,31 @@ local defaults = {
             colorByClass = true,
         },
         power = {
-            height = 6,
+            height = 5,
             showText = false,
         },
         trinket = {
-            size = 32,
+            size = 24,
             position = "RIGHT",
             showTimer = true,
         },
         racial = {
-            size = 32,
+            size = 24,
             position = "RIGHT",
             showTimer = true,
         },
         drTracker = {
-            iconSize = 26,
+            iconSize = 22,
             showTimer = true,
             maxIcons = 3,
         },
         castBar = {
-            height = 14,
+            height = 12,
             showIcon = true,
             insideFrame = true,
         },
         auras = {
-            iconSize = 28,
+            iconSize = 20,
             maxAuras = 4,
         },
     }
