@@ -525,6 +525,7 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
+    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
     for name, module in pairs(self.modules) do
         if module.OnEnable then
@@ -1296,6 +1297,15 @@ function GladiusMidnight:UNIT_SPELLCAST_CHANNEL_STOP(_, unit)
     local castBarModule = self:GetModule("castBar")
     if castBarModule and self:IsModuleEnabled("castBar") then
         castBarModule:OnCastStop(self.frames[index])
+    end
+end
+
+function GladiusMidnight:COMBAT_LOG_EVENT_UNFILTERED()
+    if self.testMode then return end
+
+    local drModule = self:GetModule("drTracker")
+    if drModule and self:IsModuleEnabled("drTracker") then
+        drModule:OnCombatLogEvent()
     end
 end
 

@@ -198,15 +198,6 @@ local DR_CATEGORY_INFO = {
 -- Track GUIDs to arena unit mapping
 local guidToUnit = {}
 
--- Create combat log frame at FILE LOAD time (always safe, never in combat)
-local combatLogFrame = CreateFrame("Frame")
-combatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-combatLogFrame:SetScript("OnEvent", function()
-    if DRTracker.core then
-        DRTracker:OnCombatLogEvent()
-    end
-end)
-
 -- ============================================================================
 -- Module Registration
 -- ============================================================================
@@ -224,7 +215,6 @@ function DRTracker:OnEnable(core)
 end
 
 function DRTracker:OnDisable(core)
-    -- Keep listening for DR events
 end
 
 -- ============================================================================
