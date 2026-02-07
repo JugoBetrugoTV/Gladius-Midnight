@@ -60,12 +60,14 @@ function ClassIcon:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.classIcon
+    local mirrored = self.core.db.profile.mirrored
 
     -- Size and position
     container:SetSize(db.size, db.size)
     container:ClearAllPoints()
 
-    if db.position == "LEFT" then
+    -- Mirrored layout: Class icon on LEFT, otherwise on RIGHT
+    if mirrored then
         container:SetPoint("LEFT", frame, "LEFT", 2, 0)
     else
         container:SetPoint("RIGHT", frame, "RIGHT", -2, 0)

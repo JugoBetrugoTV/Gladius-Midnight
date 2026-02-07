@@ -35,6 +35,9 @@ local defaults = {
         spacing = 40,  -- Space for auras/castbar between frames
         growDirection = "DOWN",
 
+        -- Layout style (mirrored = class icon on LEFT, bars on RIGHT)
+        mirrored = true,  -- sArena Gladiuish style
+
         -- Position
         posX = 500,
         posY = 0,

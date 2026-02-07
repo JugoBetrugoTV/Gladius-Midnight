@@ -97,19 +97,20 @@ function Health:Update(frame, testData)
     if not healthBar then return end
 
     local db = self.core.db.profile.health
+    local mirrored = self.core.db.profile.mirrored
 
-    -- Position health bar (accounts for class icon on left, trinket/racial on right)
+    -- Position health bar (accounts for class icon and trinket/racial positioning)
     healthBar:ClearAllPoints()
 
-    local leftOffset = 2
-    local rightOffset = -2
+    local classIconOffset = 0
+    local trinketOffset = 0
 
-    -- Account for class icon on left
+    -- Calculate offsets for class icon
     if self.core:IsModuleEnabled("classIcon") then
-        leftOffset = self.core.db.profile.classIcon.size + 4
+        classIconOffset = self.core.db.profile.classIcon.size + 4
     end
 
-    -- Account for trinket + racial on right
+    -- Calculate offset for trinket + racial
     local rightIcons = 0
     if self.core:IsModuleEnabled("trinket") then
         rightIcons = rightIcons + 1
@@ -118,11 +119,19 @@ function Health:Update(frame, testData)
         rightIcons = rightIcons + 1
     end
     if rightIcons > 0 then
-        rightOffset = -(self.core.db.profile.trinket.size * rightIcons + (rightIcons * 2) + 4)
+        trinketOffset = self.core.db.profile.trinket.size * rightIcons + (rightIcons * 2) + 4
     end
 
-    healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, -2)
-    healthBar:SetPoint("RIGHT", frame, "RIGHT", rightOffset, 0)
+    if mirrored then
+        -- Mirrored layout: Class icon LEFT, Trinket/Racial RIGHT
+        healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", classIconOffset, -2)
+        healthBar:SetPoint("RIGHT", frame, "RIGHT", -trinketOffset, 0)
+    else
+        -- Normal layout: Trinket/Racial LEFT, Class icon RIGHT
+        healthBar:SetPoint("TOPLEFT", frame, "TOPLEFT", trinketOffset, -2)
+        healthBar:SetPoint("RIGHT", frame, "RIGHT", -classIconOffset, 0)
+    end
+
     healthBar:SetHeight(db.height)
 
     -- Show/hide elements based on settings

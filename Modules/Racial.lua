@@ -104,16 +104,25 @@ function Racial:Update(frame, testData)
 
     local db = self.core.db.profile.racial
     local trinketDb = self.core.db.profile.trinket
+    local mirrored = self.core.db.profile.mirrored
 
-    -- Size and position (RIGHT side, BELOW trinket)
+    -- Size and position (Mirrored: RIGHT side below trinket, Normal: LEFT side)
     container:SetSize(db.size, db.size)
     container:ClearAllPoints()
 
     local trinketFrame = frame.moduleFrames.trinket
     if trinketFrame and self.core:IsModuleEnabled("trinket") then
-        container:SetPoint("TOPRIGHT", trinketFrame, "BOTTOMRIGHT", 0, -2)
+        if mirrored then
+            container:SetPoint("TOPRIGHT", trinketFrame, "BOTTOMRIGHT", 0, -2)
+        else
+            container:SetPoint("TOPLEFT", trinketFrame, "BOTTOMLEFT", 0, -2)
+        end
     else
-        container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+        if mirrored then
+            container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+        else
+            container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+        end
     end
 
     if testData then

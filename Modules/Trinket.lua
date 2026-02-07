@@ -104,11 +104,16 @@ function Trinket:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.trinket
+    local mirrored = self.core.db.profile.mirrored
 
-    -- Size and position (RIGHT side of frame, stacked vertically)
+    -- Size and position (Mirrored: RIGHT side, Normal: LEFT side)
     container:SetSize(db.size, db.size)
     container:ClearAllPoints()
-    container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+    if mirrored then
+        container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+    else
+        container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
+    end
 
     -- Reset icon
     container.icon:SetTexture(addon.Data.TrinketIcon)
