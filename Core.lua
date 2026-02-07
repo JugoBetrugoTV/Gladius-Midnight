@@ -525,7 +525,15 @@ function GladiusMidnight:OnEnable()
     self:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
     self:RegisterEvent("UNIT_SPELLCAST_CHANNEL_STOP")
-    self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    self:RegisterEvent("PLAYER_REGEN_ENABLED")
+
+    -- Register combat log event only if not in combat (Midnight 12.0 protection)
+    if not InCombatLockdown() then
+        self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+        self.combatLogRegistered = true
+    else
+        self.combatLogRegistered = false
+    end
 
     for name, module in pairs(self.modules) do
         if module.OnEnable then
@@ -1306,6 +1314,14 @@ function GladiusMidnight:COMBAT_LOG_EVENT_UNFILTERED()
     local drModule = self:GetModule("drTracker")
     if drModule and self:IsModuleEnabled("drTracker") then
         drModule:OnCombatLogEvent()
+    end
+end
+
+function GladiusMidnight:PLAYER_REGEN_ENABLED()
+    -- Register combat log event after combat ends (if we couldn't during OnEnable)
+    if not self.combatLogRegistered then
+        self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+        self.combatLogRegistered = true
     end
 end
 
