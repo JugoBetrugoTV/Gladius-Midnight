@@ -19,13 +19,13 @@ local function SafeTableAccess(tbl, key)
     return tbl[key]
 end
 
--- Format cooldown as "2m 54" or "54" style (space instead of apostrophe for racial)
+-- Format cooldown as "2m'54" or "54" style (same format as Trinket)
 local function FormatCooldownText(seconds)
     if seconds <= 0 then return "" end
     if seconds >= 60 then
         local mins = math.floor(seconds / 60)
         local secs = math.floor(seconds % 60)
-        return string.format("%dm %02d", mins, secs)
+        return string.format("%dm'%02d", mins, secs)
     else
         return tostring(math.floor(seconds))
     end
@@ -127,7 +127,7 @@ function Racial:Update(frame, testData)
                 container.icon:SetTexture(iconTexture)
             end
         end
-        container.timerText:SetText("2m 54")
+        container.timerText:SetText("2m'54")
     else
         self:UpdateRaceIcon(frame)
     end

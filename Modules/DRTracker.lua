@@ -251,29 +251,22 @@ function DRTracker:CreateElements(frame)
         iconFrame:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8X8",
             edgeFile = "Interface\\Buttons\\WHITE8X8",
-            edgeSize = 1,
+            edgeSize = 2,
         })
         iconFrame:SetBackdropColor(0, 0, 0, 0.8)
         iconFrame:SetBackdropBorderColor(0, 0, 0, 1)
 
         local icon = iconFrame:CreateTexture(nil, "ARTWORK")
-        icon:SetPoint("TOPLEFT", 1, -1)
-        icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        icon:SetPoint("TOPLEFT", 2, -2)
+        icon:SetPoint("BOTTOMRIGHT", -2, 2)
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.icon = icon
 
-        -- Timer text (GREEN number like in screenshot)
-        local timerText = iconFrame:CreateFontString(nil, "OVERLAY")
-        timerText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
-        timerText:SetPoint("TOPLEFT", 2, -2)
-        timerText:SetTextColor(0, 1, 0)  -- Green
-        iconFrame.timerText = timerText
-
-        -- DR level text (bottom - 1/2, 1/4)
+        -- DR level text (centered, large) - shows ½, ¼, or X
         local drLevelText = iconFrame:CreateFontString(nil, "OVERLAY")
-        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
-        drLevelText:SetPoint("BOTTOMRIGHT", -2, 2)
-        drLevelText:SetTextColor(1, 0.8, 0)
+        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 14, "OUTLINE")
+        drLevelText:SetPoint("CENTER", 0, 0)
+        drLevelText:SetTextColor(1, 1, 1)
         iconFrame.drLevelText = drLevelText
 
         -- Cooldown spiral
@@ -357,9 +350,9 @@ function DRTracker:ShowTestDR(frame)
     end
 
     -- Show test DRs (stacked vertically)
+    -- DR levels: 2 = 50% (½), 3 = 25% (¼), 4 = immune (X)
     local testCategories = { DR_CATEGORY.STUN, DR_CATEGORY.INCAPACITATE, DR_CATEGORY.ROOT }
-    local testTimers = { 12, 12, 12 }
-    local testLevels = { "1/2", "1/4", "1/2" }
+    local testLevels = { 2, 3, 4 }  -- 50%, 25%, immune
 
     for i, category in ipairs(testCategories) do
         local iconFrame = container.icons[i]
@@ -367,10 +360,25 @@ function DRTracker:ShowTestDR(frame)
             local info = DR_CATEGORY_INFO[category]
             if info then
                 iconFrame.icon:SetTexture(info.icon)
-                iconFrame:SetBackdropBorderColor(info.color[1], info.color[2], info.color[3], 1)
 
-                iconFrame.timerText:SetText(testTimers[i])
-                iconFrame.drLevelText:SetText(testLevels[i])
+                -- Border color indicates DR level
+                local level = testLevels[i]
+                if level == 2 then
+                    iconFrame:SetBackdropBorderColor(0, 1, 0, 1)  -- Green = 50%
+                    iconFrame.drLevelText:SetText("½")
+                    iconFrame.drLevelText:SetTextColor(0, 1, 0)
+                    iconFrame.icon:SetDesaturated(false)
+                elseif level == 3 then
+                    iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)  -- Orange = 25%
+                    iconFrame.drLevelText:SetText("¼")
+                    iconFrame.drLevelText:SetTextColor(1, 0.5, 0)
+                    iconFrame.icon:SetDesaturated(false)
+                else
+                    iconFrame:SetBackdropBorderColor(1, 0, 0, 1)  -- Red = immune
+                    iconFrame.drLevelText:SetText("X")
+                    iconFrame.drLevelText:SetTextColor(1, 0, 0)
+                    iconFrame.icon:SetDesaturated(true)
+                end
 
                 iconFrame:Show()
             end
@@ -426,20 +434,27 @@ function DRTracker:RefreshDisplay(frame)
 
             if iconFrame and info then
                 iconFrame.icon:SetTexture(info.icon)
-                iconFrame:SetBackdropBorderColor(info.color[1], info.color[2], info.color[3], 1)
 
                 local remaining = data.expireTime - now
-                iconFrame.timerText:SetText(math.ceil(remaining))
 
-                -- DR level display (1/2, 1/4, FULL)
+                -- Border color and text indicate DR level
                 if data.level == 2 then
-                    iconFrame.drLevelText:SetText("1/2")
+                    iconFrame:SetBackdropBorderColor(0, 1, 0, 1)  -- Green = 50%
+                    iconFrame.drLevelText:SetText("½")
+                    iconFrame.drLevelText:SetTextColor(0, 1, 0)
+                    iconFrame.icon:SetDesaturated(false)
                 elseif data.level == 3 then
-                    iconFrame.drLevelText:SetText("1/4")
+                    iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)  -- Orange = 25%
+                    iconFrame.drLevelText:SetText("¼")
+                    iconFrame.drLevelText:SetTextColor(1, 0.5, 0)
+                    iconFrame.icon:SetDesaturated(false)
                 elseif data.level >= 4 then
-                    iconFrame.drLevelText:SetText("FULL")
+                    iconFrame:SetBackdropBorderColor(1, 0, 0, 1)  -- Red = immune
+                    iconFrame.drLevelText:SetText("X")
+                    iconFrame.drLevelText:SetTextColor(1, 0, 0)
                     iconFrame.icon:SetDesaturated(true)
                 else
+                    iconFrame:SetBackdropBorderColor(info.color[1], info.color[2], info.color[3], 1)
                     iconFrame.drLevelText:SetText("")
                 end
 
@@ -472,23 +487,16 @@ function DRTracker:OnUpdate(frame)
         self:ScanForDRDebuffs(frame)
     end
 
-    -- Update existing DR timers
+    -- Check for expired DRs
     local needsRefresh = false
     local hasActiveDR = false
 
-    local index = 1
     for category, data in pairs(drData) do
         if data.expireTime <= now then
             drData[category] = nil
             needsRefresh = true
         else
             hasActiveDR = true
-            local iconFrame = container.icons[index]
-            if iconFrame and iconFrame:IsShown() then
-                local remaining = data.expireTime - now
-                iconFrame.timerText:SetText(math.ceil(remaining))
-            end
-            index = index + 1
         end
     end
 
@@ -577,10 +585,10 @@ function DRTracker:Reset(frame)
     local container = frame.moduleFrames.drTracker
     if container then
         container.drData = {}
+        container.seenSpells = {}
         for _, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
             iconFrame.icon:SetDesaturated(false)
-            iconFrame.timerText:SetText("")
             iconFrame.drLevelText:SetText("")
         end
     end
