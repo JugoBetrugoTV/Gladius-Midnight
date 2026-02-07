@@ -517,6 +517,30 @@ function DRTracker:Reset(frame)
     end
 end
 
+-- ============================================================================
+-- External Callbacks (called from Core.lua)
+-- ============================================================================
+
+-- Called when Blizzard's DR frame triggers (backup method)
+function DRTracker:OnBlizzardDR(frame, spellID)
+    if not spellID or type(spellID) ~= "number" then return end
+
+    local category = DR_SPELLS[spellID]
+    if category then
+        self:ApplyDR(frame, category, spellID)
+    end
+end
+
+-- Called when an aura is detected via UNIT_AURA
+function DRTracker:OnAura(frame, spellID)
+    if not spellID or type(spellID) ~= "number" then return end
+
+    local category = DR_SPELLS[spellID]
+    if category then
+        self:ApplyDR(frame, category, spellID)
+    end
+end
+
 -- For external use
 addon.Data.DR_SPELLS = DR_SPELLS
 
