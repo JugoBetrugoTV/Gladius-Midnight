@@ -1,24 +1,12 @@
 --[[
     Gladius Midnight - DR Tracker Module
     Tracks Diminishing Returns on arena opponents
-    Gladius style: Icons positioned LEFT of frame, stacked vertically
-    Shows timer number and DR level (1/2, 1/4)
+    Uses COMBAT_LOG_EVENT_UNFILTERED for reliable detection (like sArena)
     Updated for Midnight 12.0 API
 ]]
 
 local addonName, addon = ...
 local DRTracker = {}
-
--- Midnight 12.0 API helpers
-local function IsSecretValue(value)
-    return issecretvalue and issecretvalue(value)
-end
-
-local function SafeTableAccess(tbl, key)
-    if not tbl or not key then return nil end
-    if IsSecretValue(key) then return nil end
-    return tbl[key]
-end
 
 -- DR Categories
 local DR_CATEGORY = {
@@ -28,15 +16,10 @@ local DR_CATEGORY = {
     SILENCE = "silence",
     ROOT = "root",
     DISARM = "disarm",
-    HORROR = "horror",
-    KNOCKBACK = "knockback",
 }
 
--- DR Duration (18.5 seconds in retail PvP)
-local DR_DURATION = 18.5
-
--- DR Levels: 100% -> 50% -> 25% -> Immune
-local DR_LEVELS = { 1.0, 0.5, 0.25, 0 }
+-- DR Duration (18 seconds in retail PvP)
+local DR_DURATION = 18
 
 -- Spell ID to DR Category mapping
 local DR_SPELLS = {
@@ -200,12 +183,9 @@ local DR_SPELLS = {
 
     -- DISARMS
     [236077] = DR_CATEGORY.DISARM,    -- Disarm
-
-    -- KNOCKBACKS
-    [287712] = DR_CATEGORY.KNOCKBACK, -- Haymaker (Kul Tiran)
 }
 
--- Category display info (Gladius style icons)
+-- Category display info
 local DR_CATEGORY_INFO = {
     [DR_CATEGORY.STUN] = { icon = "Interface\\Icons\\Ability_Rogue_KidneyShot", color = {1, 0.5, 0} },
     [DR_CATEGORY.INCAPACITATE] = { icon = "Interface\\Icons\\Spell_Nature_Polymorph", color = {0.5, 0.5, 1} },
@@ -213,9 +193,10 @@ local DR_CATEGORY_INFO = {
     [DR_CATEGORY.SILENCE] = { icon = "Interface\\Icons\\Ability_Priest_Silence", color = {1, 0, 1} },
     [DR_CATEGORY.ROOT] = { icon = "Interface\\Icons\\Spell_Frost_FrostNova", color = {0, 0.7, 1} },
     [DR_CATEGORY.DISARM] = { icon = "Interface\\Icons\\Ability_Warrior_Disarm", color = {0.6, 0.6, 0.6} },
-    [DR_CATEGORY.HORROR] = { icon = "Interface\\Icons\\Spell_Shadow_Possession", color = {0.5, 0, 0.5} },
-    [DR_CATEGORY.KNOCKBACK] = { icon = "Interface\\Icons\\Ability_Druid_Typhoon", color = {0.4, 0.8, 0.4} },
 }
+
+-- Track GUIDs to arena unit mapping
+local guidToUnit = {}
 
 -- ============================================================================
 -- Module Registration
@@ -229,8 +210,62 @@ function DRTracker:OnInitialize(core)
     self.core = core
 end
 
+function DRTracker:OnEnable(core)
+    self.core = core
+    -- Create combat log frame for event handling
+    if not self.combatLogFrame then
+        self.combatLogFrame = CreateFrame("Frame")
+        self.combatLogFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+        self.combatLogFrame:SetScript("OnEvent", function()
+            self:OnCombatLogEvent()
+        end)
+    end
+end
+
+function DRTracker:OnDisable(core)
+    if self.combatLogFrame then
+        self.combatLogFrame:UnregisterAllEvents()
+    end
+end
+
 -- ============================================================================
--- Create DR Tracker Elements (Gladius style - LEFT of frame, vertical stack)
+-- Combat Log Event Handler (sArena-style DR detection)
+-- ============================================================================
+
+function DRTracker:OnCombatLogEvent()
+    local _, subEvent, _, _, _, _, _, destGUID, _, _, _, spellID = CombatLogGetCurrentEventInfo()
+
+    -- Only care about aura applied events
+    if subEvent ~= "SPELL_AURA_APPLIED" and subEvent ~= "SPELL_AURA_REFRESH" then
+        return
+    end
+
+    -- Check if this spell is a DR spell
+    local category = DR_SPELLS[spellID]
+    if not category then return end
+
+    -- Find which arena unit this GUID belongs to
+    local arenaUnit = nil
+    for i = 1, 3 do
+        local unit = "arena" .. i
+        if UnitExists(unit) and UnitGUID(unit) == destGUID then
+            arenaUnit = i
+            break
+        end
+    end
+
+    if not arenaUnit then return end
+
+    -- Get our frame
+    local frame = self.core.frames[arenaUnit]
+    if not frame then return end
+
+    -- Apply DR
+    self:ApplyDR(frame, category, spellID)
+end
+
+-- ============================================================================
+-- Create DR Tracker Elements
 -- ============================================================================
 
 function DRTracker:CreateElements(frame)
@@ -247,7 +282,7 @@ function DRTracker:CreateElements(frame)
     container.icons = {}
     for i = 1, 3 do
         local iconFrame = CreateFrame("Frame", nil, container, "BackdropTemplate")
-        iconFrame:SetSize(22, 22)  -- Default size, updated by Update()
+        iconFrame:SetSize(22, 22)
         iconFrame:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8X8",
             edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -264,7 +299,7 @@ function DRTracker:CreateElements(frame)
 
         -- DR level text (centered) - shows ½, ¼, or X
         local drLevelText = iconFrame:CreateFontString(nil, "OVERLAY")
-        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")  -- Smaller font
+        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
         drLevelText:SetPoint("CENTER", 0, 0)
         drLevelText:SetTextColor(1, 1, 1)
         iconFrame.drLevelText = drLevelText
@@ -306,7 +341,6 @@ function DRTracker:Update(frame, testData)
     -- Update icon sizes
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
-        -- Position vertically (top to bottom)
         iconFrame:ClearAllPoints()
         iconFrame:SetPoint("TOP", container, "TOP", 0, -(i - 1) * (iconSize + 2))
     end
@@ -318,41 +352,20 @@ function DRTracker:Update(frame, testData)
     end
 
     -- Live mode: Show only if active DRs
-    local hasActiveDR = false
-    local now = GetTime()
-    for _, data in pairs(container.drData) do
-        if data.expireTime > now then
-            hasActiveDR = true
-            break
-        end
-    end
-
-    if hasActiveDR then
-        self:RefreshDisplay(frame)
-        container:Show()
-    else
-        for _, iconFrame in ipairs(container.icons) do
-            iconFrame:Hide()
-        end
-        container:Hide()
-    end
+    self:RefreshDisplay(frame)
 end
 
 function DRTracker:ShowTestDR(frame)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
-    local db = self.core.db.profile.drTracker
-    local iconSize = db.iconSize or 22
-
     for _, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()
     end
 
-    -- Show test DRs (stacked vertically)
-    -- DR levels: 2 = 50% (½), 3 = 25% (¼), 4 = immune (X)
+    -- Show test DRs
     local testCategories = { DR_CATEGORY.STUN, DR_CATEGORY.INCAPACITATE, DR_CATEGORY.ROOT }
-    local testLevels = { 2, 3, 4 }  -- 50%, 25%, immune
+    local testLevels = { 2, 3, 4 }
 
     for i, category in ipairs(testCategories) do
         local iconFrame = container.icons[i]
@@ -361,20 +374,19 @@ function DRTracker:ShowTestDR(frame)
             if info then
                 iconFrame.icon:SetTexture(info.icon)
 
-                -- Border color indicates DR level
                 local level = testLevels[i]
                 if level == 2 then
-                    iconFrame:SetBackdropBorderColor(0, 1, 0, 1)  -- Green = 50%
+                    iconFrame:SetBackdropBorderColor(0, 1, 0, 1)
                     iconFrame.drLevelText:SetText("½")
                     iconFrame.drLevelText:SetTextColor(0, 1, 0)
                     iconFrame.icon:SetDesaturated(false)
                 elseif level == 3 then
-                    iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)  -- Orange = 25%
+                    iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)
                     iconFrame.drLevelText:SetText("¼")
                     iconFrame.drLevelText:SetTextColor(1, 0.5, 0)
                     iconFrame.icon:SetDesaturated(false)
                 else
-                    iconFrame:SetBackdropBorderColor(1, 0, 0, 1)  -- Red = immune
+                    iconFrame:SetBackdropBorderColor(1, 0, 0, 1)
                     iconFrame.drLevelText:SetText("X")
                     iconFrame.drLevelText:SetTextColor(1, 0, 0)
                     iconFrame.icon:SetDesaturated(true)
@@ -386,23 +398,34 @@ function DRTracker:ShowTestDR(frame)
     end
 end
 
-function DRTracker:ApplyDR(frame, spellID)
+function DRTracker:ApplyDR(frame, category, spellID)
     local container = frame.moduleFrames.drTracker
     if not container then return end
-
-    local category = SafeTableAccess(DR_SPELLS, spellID)
-    if not category then return end
 
     local drData = container.drData
     local now = GetTime()
 
+    -- Get spell icon
+    local spellIcon = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(spellID)
+    if not spellIcon then
+        spellIcon = GetSpellTexture and GetSpellTexture(spellID)
+    end
+    if not spellIcon then
+        local info = DR_CATEGORY_INFO[category]
+        spellIcon = info and info.icon
+    end
+
     if drData[category] and drData[category].expireTime > now then
+        -- Existing DR - increment level
         drData[category].level = math.min(drData[category].level + 1, 4)
         drData[category].expireTime = now + DR_DURATION
+        drData[category].spellIcon = spellIcon or drData[category].spellIcon
     else
+        -- New DR
         drData[category] = {
-            level = 2,
+            level = 2,  -- First CC = 50% DR next time
             expireTime = now + DR_DURATION,
+            spellIcon = spellIcon,
         }
     end
 
@@ -412,9 +435,6 @@ end
 function DRTracker:RefreshDisplay(frame)
     local container = frame.moduleFrames.drTracker
     if not container then return end
-
-    local db = self.core.db.profile.drTracker
-    local iconSize = db.iconSize or 22
 
     for _, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()
@@ -433,23 +453,24 @@ function DRTracker:RefreshDisplay(frame)
             local info = DR_CATEGORY_INFO[category]
 
             if iconFrame and info then
-                iconFrame.icon:SetTexture(info.icon)
+                -- Use spell icon if available, otherwise category icon
+                iconFrame.icon:SetTexture(data.spellIcon or info.icon)
 
                 local remaining = data.expireTime - now
 
                 -- Border color and text indicate DR level
                 if data.level == 2 then
-                    iconFrame:SetBackdropBorderColor(0, 1, 0, 1)  -- Green = 50%
+                    iconFrame:SetBackdropBorderColor(0, 1, 0, 1)
                     iconFrame.drLevelText:SetText("½")
                     iconFrame.drLevelText:SetTextColor(0, 1, 0)
                     iconFrame.icon:SetDesaturated(false)
                 elseif data.level == 3 then
-                    iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)  -- Orange = 25%
+                    iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)
                     iconFrame.drLevelText:SetText("¼")
                     iconFrame.drLevelText:SetTextColor(1, 0.5, 0)
                     iconFrame.icon:SetDesaturated(false)
                 elseif data.level >= 4 then
-                    iconFrame:SetBackdropBorderColor(1, 0, 0, 1)  -- Red = immune
+                    iconFrame:SetBackdropBorderColor(1, 0, 0, 1)
                     iconFrame.drLevelText:SetText("X")
                     iconFrame.drLevelText:SetTextColor(1, 0, 0)
                     iconFrame.icon:SetDesaturated(true)
@@ -479,105 +500,18 @@ function DRTracker:OnUpdate(frame)
 
     local now = GetTime()
     local drData = container.drData
-
-    -- Fallback: Periodically scan auras to detect DRs (every 0.5s)
-    container.lastScan = container.lastScan or 0
-    if now - container.lastScan > 0.5 and UnitExists(frame.unit) then
-        container.lastScan = now
-        self:ScanForDRDebuffs(frame)
-    end
+    local needsRefresh = false
 
     -- Check for expired DRs
-    local needsRefresh = false
-    local hasActiveDR = false
-
     for category, data in pairs(drData) do
         if data.expireTime <= now then
             drData[category] = nil
             needsRefresh = true
-        else
-            hasActiveDR = true
         end
     end
 
     if needsRefresh then
         self:RefreshDisplay(frame)
-    end
-
-    if hasActiveDR then
-        container:Show()
-    else
-        for _, iconFrame in ipairs(container.icons) do
-            iconFrame:Hide()
-        end
-        container:Hide()
-    end
-end
-
--- Scan debuffs on target to detect DR-causing spells
-function DRTracker:ScanForDRDebuffs(frame)
-    local container = frame.moduleFrames.drTracker
-    if not container then return end
-
-    local unit = frame.unit
-    if not UnitExists(unit) then return end
-
-    -- Track which spells we've seen this scan
-    container.seenSpells = container.seenSpells or {}
-    local currentSpells = {}
-
-    -- Scan debuffs using AuraUtil or direct API
-    local function CheckAura(auraData)
-        if not auraData then return end
-        local spellId = auraData.spellId
-        if not spellId then return end
-        if IsSecretValue(spellId) then return end
-
-        currentSpells[spellId] = true
-
-        -- Only trigger if this is a new debuff we haven't seen
-        if not container.seenSpells[spellId] then
-            local category = SafeTableAccess(DR_SPELLS, spellId)
-            if category then
-                self:ApplyDR(frame, spellId)
-            end
-        end
-    end
-
-    -- Use C_UnitAuras API (Midnight 12.0)
-    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
-        for i = 1, 40 do
-            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HARMFUL")
-            if not auraData then break end
-            CheckAura(auraData)
-        end
-    elseif AuraUtil and AuraUtil.ForEachAura then
-        -- Fallback for older API
-        AuraUtil.ForEachAura(unit, "HARMFUL", nil, function(...)
-            local auraData = {spellId = select(10, ...)}
-            CheckAura(auraData)
-        end)
-    end
-
-    -- Update seen spells for next scan
-    container.seenSpells = currentSpells
-end
-
-function DRTracker:OnAura(frame, spellID)
-    if not spellID then return end
-
-    local isDRSpell = SafeTableAccess(DR_SPELLS, spellID)
-    if isDRSpell then
-        self:ApplyDR(frame, spellID)
-    end
-end
-
-function DRTracker:OnBlizzardDR(frame, spellID)
-    if not spellID then return end
-
-    local category = SafeTableAccess(DR_SPELLS, spellID)
-    if category then
-        self:ApplyDR(frame, spellID)
     end
 end
 
@@ -585,16 +519,16 @@ function DRTracker:Reset(frame)
     local container = frame.moduleFrames.drTracker
     if container then
         container.drData = {}
-        container.seenSpells = {}
         for _, iconFrame in ipairs(container.icons) do
             iconFrame:Hide()
             iconFrame.icon:SetDesaturated(false)
             iconFrame.drLevelText:SetText("")
         end
+        container:Hide()
     end
 end
 
--- Expose for external use
+-- For external use
 addon.Data.DR_SPELLS = DR_SPELLS
 
 -- Register module
