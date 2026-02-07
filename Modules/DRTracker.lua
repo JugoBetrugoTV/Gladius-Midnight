@@ -1,14 +1,15 @@
 --[[
     Gladius Midnight - DR Tracker Module
     Tracks Diminishing Returns on arena opponents
-    Uses COMBAT_LOG_EVENT_UNFILTERED for reliable detection (like sArena)
-    Updated for Midnight 12.0 API
+
+    For Midnight 12.0: Uses Blizzard's SpellDiminishStatusTray by reparenting it
+    (same approach as sArena_Reloaded - secret values are handled by Blizzard's frames)
 ]]
 
 local addonName, addon = ...
 local DRTracker = {}
 
--- DR Categories
+-- DR Categories (for test mode and fallback)
 local DR_CATEGORY = {
     STUN = "stun",
     INCAPACITATE = "incapacitate",
@@ -21,171 +22,50 @@ local DR_CATEGORY = {
 -- DR Duration (18 seconds in retail PvP)
 local DR_DURATION = 18
 
--- Spell ID to DR Category mapping
+-- Spell ID to DR Category mapping (used for fallback/test mode)
 local DR_SPELLS = {
     -- STUNS
     [408] = DR_CATEGORY.STUN,        -- Kidney Shot
     [1833] = DR_CATEGORY.STUN,       -- Cheap Shot
     [853] = DR_CATEGORY.STUN,        -- Hammer of Justice
     [5211] = DR_CATEGORY.STUN,       -- Mighty Bash
-    [203123] = DR_CATEGORY.STUN,     -- Maim
-    [163505] = DR_CATEGORY.STUN,     -- Rake (from Prowl)
-    [30283] = DR_CATEGORY.STUN,      -- Shadowfury
-    [46968] = DR_CATEGORY.STUN,      -- Shockwave
-    [132168] = DR_CATEGORY.STUN,     -- Shockwave (Protection)
-    [132169] = DR_CATEGORY.STUN,     -- Storm Bolt
-    [89766] = DR_CATEGORY.STUN,      -- Axe Toss (Felguard)
-    [91800] = DR_CATEGORY.STUN,      -- Gnaw (Ghoul)
-    [91797] = DR_CATEGORY.STUN,      -- Monstrous Blow
-    [108194] = DR_CATEGORY.STUN,     -- Asphyxiate (Unholy)
-    [221562] = DR_CATEGORY.STUN,     -- Asphyxiate (Blood)
     [119381] = DR_CATEGORY.STUN,     -- Leg Sweep
-    [458605] = DR_CATEGORY.STUN,     -- Leg Sweep (2)
     [179057] = DR_CATEGORY.STUN,     -- Chaos Nova
-    [211881] = DR_CATEGORY.STUN,     -- Fel Eruption
-    [200166] = DR_CATEGORY.STUN,     -- Metamorphosis stun
-    [205630] = DR_CATEGORY.STUN,     -- Illidan's Grasp
-    [208618] = DR_CATEGORY.STUN,     -- Illidan's Grasp (secondary)
-    [118905] = DR_CATEGORY.STUN,     -- Static Charge
-    [118345] = DR_CATEGORY.STUN,     -- Pulverize
-    [305485] = DR_CATEGORY.STUN,     -- Lightning Lasso
+    [46968] = DR_CATEGORY.STUN,      -- Shockwave
     [255941] = DR_CATEGORY.STUN,     -- Wake of Ashes
-    [64044] = DR_CATEGORY.STUN,      -- Psychic Horror
-    [200200] = DR_CATEGORY.STUN,     -- Holy Word: Chastise (Censure)
-    [117526] = DR_CATEGORY.STUN,     -- Binding Shot
-    [357021] = DR_CATEGORY.STUN,     -- Consecutive Concussion
-    [24394] = DR_CATEGORY.STUN,      -- Intimidation
-    [389831] = DR_CATEGORY.STUN,     -- Snowdrift
-    [171017] = DR_CATEGORY.STUN,     -- Meteor Strike (Infernal)
-    [171018] = DR_CATEGORY.STUN,     -- Meteor Strike (Abyssal)
-    [385954] = DR_CATEGORY.STUN,     -- Shield Charge
-    [199085] = DR_CATEGORY.STUN,     -- Warpath
-    [20549] = DR_CATEGORY.STUN,      -- War Stomp (Tauren)
-    [255723] = DR_CATEGORY.STUN,     -- Bull Rush (Highmountain)
-    [287254] = DR_CATEGORY.STUN,     -- Dead of Winter
-    [377048] = DR_CATEGORY.STUN,     -- Absolute Zero
-    [210141] = DR_CATEGORY.STUN,     -- Zombie Explosion
-    [202244] = DR_CATEGORY.STUN,     -- Overrun
-    [325321] = DR_CATEGORY.STUN,     -- Wild Hunt's Charge
-    [372245] = DR_CATEGORY.STUN,     -- Terror of the Skies
-    [408544] = DR_CATEGORY.STUN,     -- Seismic Slam
-    [202346] = DR_CATEGORY.STUN,     -- Double Barrel
+    [20549] = DR_CATEGORY.STUN,      -- War Stomp
 
     -- INCAPACITATES
     [6770] = DR_CATEGORY.INCAPACITATE,    -- Sap
-    [1776] = DR_CATEGORY.INCAPACITATE,    -- Gouge
-    [20066] = DR_CATEGORY.INCAPACITATE,   -- Repentance
-    [82691] = DR_CATEGORY.INCAPACITATE,   -- Ring of Frost
-    [99] = DR_CATEGORY.INCAPACITATE,      -- Incapacitating Roar
-    [2637] = DR_CATEGORY.INCAPACITATE,    -- Hibernate
-    [115078] = DR_CATEGORY.INCAPACITATE,  -- Paralysis
-    [357768] = DR_CATEGORY.INCAPACITATE,  -- Paralysis (2)
     [118] = DR_CATEGORY.INCAPACITATE,     -- Polymorph
-    [28271] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Turtle)
-    [28272] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Pig)
-    [61025] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Snake)
-    [61305] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Black Cat)
-    [61721] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Rabbit)
-    [61780] = DR_CATEGORY.INCAPACITATE,   -- Polymorph (Turkey)
-    [126819] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Porcupine)
-    [161353] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Polar Bear)
-    [161354] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Monkey)
-    [161355] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Penguin)
-    [161372] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Peacock)
-    [277787] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Direhorn)
-    [277792] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Bumblebee)
-    [321395] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Mawrat)
-    [391622] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Duck)
-    [460396] = DR_CATEGORY.INCAPACITATE,  -- Polymorph (Mosswool)
-    [383121] = DR_CATEGORY.INCAPACITATE,  -- Mass Polymorph
     [51514] = DR_CATEGORY.INCAPACITATE,   -- Hex
-    [196942] = DR_CATEGORY.INCAPACITATE,  -- Hex (Voodoo Totem)
-    [210873] = DR_CATEGORY.INCAPACITATE,  -- Hex (Raptor)
-    [211004] = DR_CATEGORY.INCAPACITATE,  -- Hex (Spider)
-    [211010] = DR_CATEGORY.INCAPACITATE,  -- Hex (Snake)
-    [211015] = DR_CATEGORY.INCAPACITATE,  -- Hex (Cockroach)
-    [269352] = DR_CATEGORY.INCAPACITATE,  -- Hex (Skeletal Hatchling)
-    [309328] = DR_CATEGORY.INCAPACITATE,  -- Hex (Living Honey)
-    [277778] = DR_CATEGORY.INCAPACITATE,  -- Hex (Zandalari Tendonripper)
-    [277784] = DR_CATEGORY.INCAPACITATE,  -- Hex (Wicker Mongrel)
-    [197214] = DR_CATEGORY.INCAPACITATE,  -- Sundering
-    [200196] = DR_CATEGORY.INCAPACITATE,  -- Holy Word: Chastise
-    [9484] = DR_CATEGORY.INCAPACITATE,    -- Shackle Undead
-    [710] = DR_CATEGORY.INCAPACITATE,     -- Banish
-    [6789] = DR_CATEGORY.INCAPACITATE,    -- Mortal Coil
-    [6358] = DR_CATEGORY.INCAPACITATE,    -- Seduction
-    [261589] = DR_CATEGORY.INCAPACITATE,  -- Seduction (Grimoire)
+    [20066] = DR_CATEGORY.INCAPACITATE,   -- Repentance
     [3355] = DR_CATEGORY.INCAPACITATE,    -- Freezing Trap
-    [203337] = DR_CATEGORY.INCAPACITATE,  -- Freezing Trap (Honor)
-    [213691] = DR_CATEGORY.INCAPACITATE,  -- Scatter Shot
-    [360806] = DR_CATEGORY.INCAPACITATE,  -- Sleep Walk
+    [115078] = DR_CATEGORY.INCAPACITATE,  -- Paralysis
     [217832] = DR_CATEGORY.INCAPACITATE,  -- Imprison
-    [221527] = DR_CATEGORY.INCAPACITATE,  -- Imprison (Honor)
-    [378441] = DR_CATEGORY.INCAPACITATE,  -- Time Stop
-    [107079] = DR_CATEGORY.INCAPACITATE,  -- Quaking Palm (Pandaren)
 
     -- DISORIENTS
     [2094] = DR_CATEGORY.DISORIENT,   -- Blind
     [5246] = DR_CATEGORY.DISORIENT,   -- Intimidating Shout
-    [316593] = DR_CATEGORY.DISORIENT, -- Intimidating Shout (Menace main)
-    [316595] = DR_CATEGORY.DISORIENT, -- Intimidating Shout (Menace other)
     [8122] = DR_CATEGORY.DISORIENT,   -- Psychic Scream
-    [31661] = DR_CATEGORY.DISORIENT,  -- Dragon's Breath
-    [353084] = DR_CATEGORY.DISORIENT, -- Ring of Fire
-    [105421] = DR_CATEGORY.DISORIENT, -- Blinding Light
-    [207167] = DR_CATEGORY.DISORIENT, -- Blinding Sleet
-    [207685] = DR_CATEGORY.DISORIENT, -- Sigil of Misery
     [33786] = DR_CATEGORY.DISORIENT,  -- Cyclone
-    [198909] = DR_CATEGORY.DISORIENT, -- Song of Chi-ji
-    [202274] = DR_CATEGORY.DISORIENT, -- Hot Trub
-    [10326] = DR_CATEGORY.DISORIENT,  -- Turn Evil
-    [205364] = DR_CATEGORY.DISORIENT, -- Dominate Mind
-    [605] = DR_CATEGORY.DISORIENT,    -- Mind Control
     [118699] = DR_CATEGORY.DISORIENT, -- Fear
-    [130616] = DR_CATEGORY.DISORIENT, -- Fear (Horrify)
-    [5484] = DR_CATEGORY.DISORIENT,   -- Howl of Terror
-    [1513] = DR_CATEGORY.DISORIENT,   -- Scare Beast
-    [331866] = DR_CATEGORY.DISORIENT, -- Agent of Chaos
+    [207685] = DR_CATEGORY.DISORIENT, -- Sigil of Misery
 
     -- SILENCES
     [15487] = DR_CATEGORY.SILENCE,    -- Silence
     [1330] = DR_CATEGORY.SILENCE,     -- Garrote
     [47476] = DR_CATEGORY.SILENCE,    -- Strangulate
-    [374776] = DR_CATEGORY.SILENCE,   -- Tightening Grasp
     [204490] = DR_CATEGORY.SILENCE,   -- Sigil of Silence
-    [410065] = DR_CATEGORY.SILENCE,   -- Reactive Resin
-    [202933] = DR_CATEGORY.SILENCE,   -- Spider Sting
-    [356727] = DR_CATEGORY.SILENCE,   -- Spider Venom
-    [354831] = DR_CATEGORY.SILENCE,   -- Wailing Arrow
-    [355596] = DR_CATEGORY.SILENCE,   -- Wailing Arrow (2)
-    [217824] = DR_CATEGORY.SILENCE,   -- Shield of Virtue
-    [196364] = DR_CATEGORY.SILENCE,   -- Unstable Affliction silence
 
     -- ROOTS
     [339] = DR_CATEGORY.ROOT,         -- Entangling Roots
-    [235963] = DR_CATEGORY.ROOT,      -- Entangling Roots (Earthen Grasp)
-    [170855] = DR_CATEGORY.ROOT,      -- Entangling Roots (Nature's Grasp)
-    [102359] = DR_CATEGORY.ROOT,      -- Mass Entanglement
-    [355689] = DR_CATEGORY.ROOT,      -- Landslide
     [122] = DR_CATEGORY.ROOT,         -- Frost Nova
-    [33395] = DR_CATEGORY.ROOT,       -- Freeze (Water Elemental)
-    [157997] = DR_CATEGORY.ROOT,      -- Ice Nova
-    [228600] = DR_CATEGORY.ROOT,      -- Glacial Spike root
-    [64695] = DR_CATEGORY.ROOT,       -- Earthgrab
+    [102359] = DR_CATEGORY.ROOT,      -- Mass Entanglement
     [116706] = DR_CATEGORY.ROOT,      -- Disable
-    [162480] = DR_CATEGORY.ROOT,      -- Steel Trap
-    [212638] = DR_CATEGORY.ROOT,      -- Tracker's Net
-    [201158] = DR_CATEGORY.ROOT,      -- Super Sticky Tar
-    [393456] = DR_CATEGORY.ROOT,      -- Entrapment (Tar Trap)
-    [204085] = DR_CATEGORY.ROOT,      -- Deathchill (Chains of Ice)
-    [233395] = DR_CATEGORY.ROOT,      -- Deathchill (Remorseless Winter)
-    [454787] = DR_CATEGORY.ROOT,      -- Ice Prison
-
-    -- DISARMS
-    [236077] = DR_CATEGORY.DISARM,    -- Disarm
 }
 
--- Category display info
+-- Category display info (for test mode)
 local DR_CATEGORY_INFO = {
     [DR_CATEGORY.STUN] = { icon = "Interface\\Icons\\Ability_Rogue_KidneyShot", color = {1, 0.5, 0} },
     [DR_CATEGORY.INCAPACITATE] = { icon = "Interface\\Icons\\Spell_Nature_Polymorph", color = {0.5, 0.5, 1} },
@@ -194,9 +74,6 @@ local DR_CATEGORY_INFO = {
     [DR_CATEGORY.ROOT] = { icon = "Interface\\Icons\\Spell_Frost_FrostNova", color = {0, 0.7, 1} },
     [DR_CATEGORY.DISARM] = { icon = "Interface\\Icons\\Ability_Warrior_Disarm", color = {0.6, 0.6, 0.6} },
 }
-
--- Track GUIDs to arena unit mapping
-local guidToUnit = {}
 
 -- ============================================================================
 -- Module Registration
@@ -218,60 +95,25 @@ function DRTracker:OnDisable(core)
 end
 
 -- ============================================================================
--- Combat Log Event Handler (sArena-style DR detection)
--- ============================================================================
-
-function DRTracker:OnCombatLogEvent()
-    local _, subEvent, _, _, _, _, _, destGUID, _, _, _, spellID = CombatLogGetCurrentEventInfo()
-
-    -- Only care about aura applied events
-    if subEvent ~= "SPELL_AURA_APPLIED" and subEvent ~= "SPELL_AURA_REFRESH" then
-        return
-    end
-
-    -- Check if this spell is a DR spell
-    local category = DR_SPELLS[spellID]
-    if not category then return end
-
-    -- Find which arena unit this GUID belongs to
-    local arenaUnit = nil
-    for i = 1, 3 do
-        local unit = "arena" .. i
-        if UnitExists(unit) and UnitGUID(unit) == destGUID then
-            arenaUnit = i
-            break
-        end
-    end
-
-    if not arenaUnit then return end
-
-    -- Get our frame
-    local frame = self.core.frames[arenaUnit]
-    if not frame then return end
-
-    -- Apply DR
-    self:ApplyDR(frame, category, spellID)
-end
-
--- ============================================================================
 -- Create DR Tracker Elements
 -- ============================================================================
 
 function DRTracker:CreateElements(frame)
-    -- Container parented to UIParent for rendering outside main frame
+    -- Container for DR display (positioned to left of arena frame)
     local container = CreateFrame("Frame", "GladiusMidnightDR" .. frame.index, UIParent, "BackdropTemplate")
-    container:SetSize(30, 90)
+    container:SetSize(90, 30)
     container:SetFrameStrata("MEDIUM")
     container:SetFrameLevel(10)
 
     container.arenaFrame = frame
-    container.drData = {}
+    container.blizzardDRInitialized = false
+    container.drData = {}  -- For fallback tracking
 
-    -- Create icon frames (max 3, stacked vertically)
+    -- We'll create our own icon frames for test mode and fallback
     container.icons = {}
-    for i = 1, 3 do
+    for i = 1, 4 do
         local iconFrame = CreateFrame("Frame", nil, container, "BackdropTemplate")
-        iconFrame:SetSize(22, 22)
+        iconFrame:SetSize(28, 28)
         iconFrame:SetBackdrop({
             bgFile = "Interface\\Buttons\\WHITE8X8",
             edgeFile = "Interface\\Buttons\\WHITE8X8",
@@ -286,9 +128,9 @@ function DRTracker:CreateElements(frame)
         icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         iconFrame.icon = icon
 
-        -- DR level text (centered) - shows ½, ¼, or X
+        -- DR level text (centered)
         local drLevelText = iconFrame:CreateFontString(nil, "OVERLAY")
-        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
+        drLevelText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
         drLevelText:SetPoint("CENTER", 0, 0)
         drLevelText:SetTextColor(1, 1, 1)
         iconFrame.drLevelText = drLevelText
@@ -312,6 +154,156 @@ function DRTracker:CreateElements(frame)
 end
 
 -- ============================================================================
+-- Initialize Blizzard DR Frames (Midnight 12.0 approach from sArena)
+-- ============================================================================
+
+function DRTracker:InitializeBlizzardDR(frame, blizzArenaFrame)
+    local container = frame.moduleFrames.drTracker
+    if not container or container.blizzardDRInitialized then return end
+
+    local drTray = blizzArenaFrame and blizzArenaFrame.SpellDiminishStatusTray
+    if not drTray then return end
+
+    local db = self.core.db.profile.drTracker
+    local iconSize = db.iconSize or 28
+
+    -- Reparent Blizzard's DR tray to our container
+    drTray:SetParent(container)
+    drTray:SetFrameStrata("MEDIUM")
+    drTray:SetFrameLevel(11)
+    drTray:EnableMouse(false)
+    if drTray.SetMouseClickEnabled then
+        drTray:SetMouseClickEnabled(false)
+    end
+    drTray:SetAlpha(1)
+    drTray:ClearAllPoints()
+    drTray:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+    drTray:Show()
+
+    container.blizzDRTray = drTray
+
+    -- Get the DR frames from the tray
+    local drFrames = {drTray:GetChildren()}
+    container.blizzDRFrames = drFrames
+
+    -- Style each DR frame
+    for drIndex, drFrame in ipairs(drFrames) do
+        if drFrame and drFrame.Icon then
+            drFrame:SetFrameStrata("MEDIUM")
+            drFrame:SetFrameLevel(12)
+            drFrame:SetAlpha(1)
+            drFrame:EnableMouse(false)
+            if drFrame.SetMouseClickEnabled then
+                drFrame:SetMouseClickEnabled(false)
+            end
+
+            -- Make icon visible
+            drFrame.Icon:Show()
+            drFrame.Icon:SetAlpha(1)
+
+            -- Create our custom border overlay (sArena style)
+            if not drFrame.gladiusBorder then
+                drFrame.gladiusBorder = drFrame:CreateTexture(nil, "OVERLAY", nil, 6)
+                drFrame.gladiusBorder:SetTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+                drFrame.gladiusBorder:SetAllPoints(drFrame)
+                drFrame.gladiusBorder:SetVertexColor(0, 1, 0, 1)
+            end
+
+            -- Create DR level text overlay
+            if not drFrame.gladiusDRText then
+                local textFrame = CreateFrame("Frame", nil, drFrame)
+                textFrame:SetAllPoints(drFrame)
+                textFrame:SetFrameStrata("MEDIUM")
+                textFrame:SetFrameLevel(26)
+
+                local drText = textFrame:CreateFontString(nil, "OVERLAY")
+                drText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+                drText:SetPoint("BOTTOMRIGHT", 2, -2)
+                drText:SetTextColor(0, 1, 0)
+                drText:SetText("")
+
+                drFrame.gladiusDRText = drText
+                drFrame.gladiusDRTextFrame = textFrame
+            end
+
+            -- Create immune indicator text
+            if not drFrame.gladiusImmuneText and drFrame.ImmunityIndicator then
+                local immuneText = drFrame.ImmunityIndicator:CreateFontString(nil, "OVERLAY")
+                immuneText:SetFont("Fonts\\FRIZQT__.TTF", 12, "OUTLINE")
+                immuneText:SetPoint("CENTER", 0, 0)
+                immuneText:SetTextColor(1, 0, 0)
+                immuneText:SetText("X")
+                immuneText:SetIgnoreParentAlpha(true)
+                drFrame.gladiusImmuneText = immuneText
+
+                -- Hook ImmunityIndicator to update our display
+                if drFrame.ImmunityIndicator.SetShown then
+                    hooksecurefunc(drFrame.ImmunityIndicator, "SetShown", function(_, shown)
+                        if shown then
+                            drFrame.gladiusBorder:SetVertexColor(1, 0, 0, 1)
+                            if drFrame.gladiusDRText then
+                                drFrame.gladiusDRText:SetText("")
+                            end
+                        end
+                    end)
+                end
+            end
+
+            -- Hook to track DR severity and update border color
+            if drFrame.Cooldown and not drFrame.gladiusCooldownHooked then
+                drFrame.gladiusCooldownHooked = true
+                drFrame.gladiusSeverity = 0
+
+                hooksecurefunc(drFrame.Cooldown, "SetCooldown", function(_, start, duration)
+                    if start and start > 0 and duration and duration > 0 then
+                        -- DR applied - increment severity
+                        drFrame.gladiusSeverity = (drFrame.gladiusSeverity or 0) + 1
+                        if drFrame.gladiusSeverity > 3 then
+                            drFrame.gladiusSeverity = 3
+                        end
+
+                        -- Update border color and text based on severity
+                        if drFrame.gladiusSeverity == 1 then
+                            drFrame.gladiusBorder:SetVertexColor(0, 1, 0, 1)
+                            if drFrame.gladiusDRText then
+                                drFrame.gladiusDRText:SetText("½")
+                                drFrame.gladiusDRText:SetTextColor(0, 1, 0)
+                            end
+                        elseif drFrame.gladiusSeverity == 2 then
+                            drFrame.gladiusBorder:SetVertexColor(1, 0.5, 0, 1)
+                            if drFrame.gladiusDRText then
+                                drFrame.gladiusDRText:SetText("¼")
+                                drFrame.gladiusDRText:SetTextColor(1, 0.5, 0)
+                            end
+                        else
+                            drFrame.gladiusBorder:SetVertexColor(1, 0, 0, 1)
+                            if drFrame.gladiusDRText then
+                                drFrame.gladiusDRText:SetText("X")
+                                drFrame.gladiusDRText:SetTextColor(1, 0, 0)
+                            end
+                        end
+                    end
+                end)
+
+                -- Hook Clear to reset severity
+                if drFrame.Cooldown.Clear then
+                    hooksecurefunc(drFrame.Cooldown, "Clear", function()
+                        drFrame.gladiusSeverity = 0
+                        drFrame.gladiusBorder:SetVertexColor(0, 1, 0, 1)
+                        if drFrame.gladiusDRText then
+                            drFrame.gladiusDRText:SetText("")
+                        end
+                    end)
+                end
+            end
+        end
+    end
+
+    container.blizzardDRInitialized = true
+    container:Show()
+end
+
+-- ============================================================================
 -- Update DR Tracker Display
 -- ============================================================================
 
@@ -320,18 +312,45 @@ function DRTracker:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.drTracker
-    local iconSize = db.iconSize or 22
+    local iconSize = db.iconSize or 28
 
-    -- Position to the LEFT of the arena frame (vertical stack)
+    -- Position to the LEFT of the arena frame (horizontal row, growing left)
     container:ClearAllPoints()
     container:SetPoint("RIGHT", frame, "LEFT", -4, 0)
-    container:SetSize(iconSize, iconSize * 3 + 6)
+    container:SetSize(iconSize * 4 + 12, iconSize)
 
-    -- Update icon sizes
+    -- Update Blizzard DR tray positioning if initialized
+    if container.blizzDRTray then
+        container.blizzDRTray:ClearAllPoints()
+        container.blizzDRTray:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+    end
+
+    -- Update individual Blizzard DR frames
+    if container.blizzDRFrames then
+        local spacing = 4
+        for i, drFrame in ipairs(container.blizzDRFrames) do
+            if drFrame then
+                drFrame:SetSize(iconSize, iconSize)
+                drFrame:ClearAllPoints()
+                drFrame:SetPoint("RIGHT", container, "RIGHT", -(i - 1) * (iconSize + spacing), 0)
+
+                if drFrame.Icon then
+                    drFrame.Icon:SetSize(iconSize - 4, iconSize - 4)
+                end
+
+                -- Update border size
+                if drFrame.gladiusBorder then
+                    drFrame.gladiusBorder:SetAllPoints(drFrame)
+                end
+            end
+        end
+    end
+
+    -- Update our fallback icon sizes
     for i, iconFrame in ipairs(container.icons) do
         iconFrame:SetSize(iconSize, iconSize)
         iconFrame:ClearAllPoints()
-        iconFrame:SetPoint("TOP", container, "TOP", 0, -(i - 1) * (iconSize + 2))
+        iconFrame:SetPoint("RIGHT", container, "RIGHT", -(i - 1) * (iconSize + 4), 0)
     end
 
     if testData then
@@ -340,21 +359,30 @@ function DRTracker:Update(frame, testData)
         return
     end
 
-    -- Live mode: Show only if active DRs
-    self:RefreshDisplay(frame)
+    -- In live mode, Blizzard DR tray handles display if initialized
+    if container.blizzardDRInitialized then
+        container:Show()
+    else
+        self:RefreshDisplay(frame)
+    end
 end
 
 function DRTracker:ShowTestDR(frame)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
+    -- Hide Blizzard frames for test mode
+    if container.blizzDRTray then
+        container.blizzDRTray:Hide()
+    end
+
+    -- Show our test DR icons
     for _, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()
     end
 
-    -- Show test DRs
     local testCategories = { DR_CATEGORY.STUN, DR_CATEGORY.INCAPACITATE, DR_CATEGORY.ROOT }
-    local testLevels = { 2, 3, 4 }
+    local testLevels = { 1, 2, 3 }
 
     for i, category in ipairs(testCategories) do
         local iconFrame = container.icons[i]
@@ -364,12 +392,12 @@ function DRTracker:ShowTestDR(frame)
                 iconFrame.icon:SetTexture(info.icon)
 
                 local level = testLevels[i]
-                if level == 2 then
+                if level == 1 then
                     iconFrame:SetBackdropBorderColor(0, 1, 0, 1)
                     iconFrame.drLevelText:SetText("½")
                     iconFrame.drLevelText:SetTextColor(0, 1, 0)
                     iconFrame.icon:SetDesaturated(false)
-                elseif level == 3 then
+                elseif level == 2 then
                     iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)
                     iconFrame.drLevelText:SetText("¼")
                     iconFrame.drLevelText:SetTextColor(1, 0.5, 0)
@@ -381,8 +409,40 @@ function DRTracker:ShowTestDR(frame)
                     iconFrame.icon:SetDesaturated(true)
                 end
 
+                iconFrame.cooldown:SetCooldown(GetTime() - math.random(5, 15), DR_DURATION)
                 iconFrame:Show()
             end
+        end
+    end
+
+    container:Show()
+end
+
+-- ============================================================================
+-- Fallback DR Tracking (Combat Log based)
+-- ============================================================================
+
+function DRTracker:OnCombatLogEvent()
+    if self.core.testMode then return end
+
+    local _, subEvent, _, _, _, _, _, destGUID, _, _, _, spellID = CombatLogGetCurrentEventInfo()
+
+    if subEvent ~= "SPELL_AURA_APPLIED" and subEvent ~= "SPELL_AURA_REFRESH" then
+        return
+    end
+
+    local category = DR_SPELLS[spellID]
+    if not category then return end
+
+    -- Find which arena unit this GUID belongs to
+    for i = 1, 3 do
+        local unit = "arena" .. i
+        if UnitExists(unit) and UnitGUID(unit) == destGUID then
+            local frame = self.core.frames[i]
+            if frame then
+                self:ApplyDR(frame, category, spellID)
+            end
+            break
         end
     end
 end
@@ -391,10 +451,12 @@ function DRTracker:ApplyDR(frame, category, spellID)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
+    -- Skip if Blizzard DR is handling it
+    if container.blizzardDRInitialized then return end
+
     local drData = container.drData
     local now = GetTime()
 
-    -- Get spell icon
     local spellIcon = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(spellID)
     if not spellIcon then
         spellIcon = GetSpellTexture and GetSpellTexture(spellID)
@@ -405,14 +467,12 @@ function DRTracker:ApplyDR(frame, category, spellID)
     end
 
     if drData[category] and drData[category].expireTime > now then
-        -- Existing DR - increment level
-        drData[category].level = math.min(drData[category].level + 1, 4)
+        drData[category].level = math.min(drData[category].level + 1, 3)
         drData[category].expireTime = now + DR_DURATION
         drData[category].spellIcon = spellIcon or drData[category].spellIcon
     else
-        -- New DR
         drData[category] = {
-            level = 2,  -- First CC = 50% DR next time
+            level = 1,
             expireTime = now + DR_DURATION,
             spellIcon = spellIcon,
         }
@@ -425,6 +485,9 @@ function DRTracker:RefreshDisplay(frame)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
+    -- Skip if Blizzard DR is handling it
+    if container.blizzardDRInitialized then return end
+
     for _, iconFrame in ipairs(container.icons) do
         iconFrame:Hide()
         iconFrame.icon:SetDesaturated(false)
@@ -436,36 +499,31 @@ function DRTracker:RefreshDisplay(frame)
     local hasActiveDR = false
 
     for category, data in pairs(drData) do
-        if data.expireTime > now and index <= 3 then
+        if data.expireTime > now and index <= 4 then
             hasActiveDR = true
             local iconFrame = container.icons[index]
             local info = DR_CATEGORY_INFO[category]
 
             if iconFrame and info then
-                -- Use spell icon if available, otherwise category icon
                 iconFrame.icon:SetTexture(data.spellIcon or info.icon)
 
                 local remaining = data.expireTime - now
 
-                -- Border color and text indicate DR level
-                if data.level == 2 then
+                if data.level == 1 then
                     iconFrame:SetBackdropBorderColor(0, 1, 0, 1)
                     iconFrame.drLevelText:SetText("½")
                     iconFrame.drLevelText:SetTextColor(0, 1, 0)
                     iconFrame.icon:SetDesaturated(false)
-                elseif data.level == 3 then
+                elseif data.level == 2 then
                     iconFrame:SetBackdropBorderColor(1, 0.5, 0, 1)
                     iconFrame.drLevelText:SetText("¼")
                     iconFrame.drLevelText:SetTextColor(1, 0.5, 0)
                     iconFrame.icon:SetDesaturated(false)
-                elseif data.level >= 4 then
+                else
                     iconFrame:SetBackdropBorderColor(1, 0, 0, 1)
                     iconFrame.drLevelText:SetText("X")
                     iconFrame.drLevelText:SetTextColor(1, 0, 0)
                     iconFrame.icon:SetDesaturated(true)
-                else
-                    iconFrame:SetBackdropBorderColor(info.color[1], info.color[2], info.color[3], 1)
-                    iconFrame.drLevelText:SetText("")
                 end
 
                 iconFrame.cooldown:SetCooldown(now - (DR_DURATION - remaining), DR_DURATION)
@@ -487,11 +545,13 @@ function DRTracker:OnUpdate(frame)
     local container = frame.moduleFrames.drTracker
     if not container then return end
 
+    -- Skip cleanup if Blizzard DR is handling it
+    if container.blizzardDRInitialized then return end
+
     local now = GetTime()
     local drData = container.drData
     local needsRefresh = false
 
-    -- Check for expired DRs
     for category, data in pairs(drData) do
         if data.expireTime <= now then
             drData[category] = nil
@@ -504,24 +564,10 @@ function DRTracker:OnUpdate(frame)
     end
 end
 
-function DRTracker:Reset(frame)
-    local container = frame.moduleFrames.drTracker
-    if container then
-        container.drData = {}
-        for _, iconFrame in ipairs(container.icons) do
-            iconFrame:Hide()
-            iconFrame.icon:SetDesaturated(false)
-            iconFrame.drLevelText:SetText("")
-        end
-        container:Hide()
-    end
-end
-
 -- ============================================================================
--- External Callbacks (called from Core.lua)
+-- External Callbacks
 -- ============================================================================
 
--- Called when Blizzard's DR frame triggers (backup method)
 function DRTracker:OnBlizzardDR(frame, spellID)
     if not spellID or type(spellID) ~= "number" then return end
 
@@ -531,7 +577,6 @@ function DRTracker:OnBlizzardDR(frame, spellID)
     end
 end
 
--- Called when an aura is detected via UNIT_AURA
 function DRTracker:OnAura(frame, spellID)
     if not spellID or type(spellID) ~= "number" then return end
 
@@ -541,7 +586,42 @@ function DRTracker:OnAura(frame, spellID)
     end
 end
 
+-- ============================================================================
+-- Reset
+-- ============================================================================
+
+function DRTracker:Reset(frame)
+    local container = frame.moduleFrames.drTracker
+    if container then
+        container.drData = {}
+
+        for _, iconFrame in ipairs(container.icons) do
+            iconFrame:Hide()
+            iconFrame.icon:SetDesaturated(false)
+            iconFrame.drLevelText:SetText("")
+        end
+
+        -- Reset Blizzard DR frames severity
+        if container.blizzDRFrames then
+            for _, drFrame in ipairs(container.blizzDRFrames) do
+                if drFrame then
+                    drFrame.gladiusSeverity = 0
+                    if drFrame.gladiusBorder then
+                        drFrame.gladiusBorder:SetVertexColor(0, 1, 0, 1)
+                    end
+                    if drFrame.gladiusDRText then
+                        drFrame.gladiusDRText:SetText("")
+                    end
+                end
+            end
+        end
+
+        container:Hide()
+    end
+end
+
 -- For external use
+addon.Data = addon.Data or {}
 addon.Data.DR_SPELLS = DR_SPELLS
 
 -- Register module

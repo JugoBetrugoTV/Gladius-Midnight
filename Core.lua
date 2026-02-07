@@ -645,12 +645,12 @@ function GladiusMidnight:InitializeBlizzardFrames()
             return
         end
 
-        -- Permanently hide Blizzard's arena frame with hooks to prevent re-showing
+        -- Hide main Blizzard arena frame elements (but NOT the DR tray - we reparent that)
         PermanentlyHideFrame(blizzArenaFrame)
         PermanentlyHideFrame(blizzArenaFrame.CastingBarFrame)
         PermanentlyHideFrame(blizzArenaFrame.DebuffFrame)
         PermanentlyHideFrame(blizzArenaFrame.CcRemoverFrame)
-        PermanentlyHideFrame(blizzArenaFrame.SpellDiminishStatusTray)
+        -- NOTE: Don't hide SpellDiminishStatusTray - we reparent it to our frame!
 
         -- Also hide the health bar and other visual components
         if blizzArenaFrame.healthBar then
@@ -668,51 +668,11 @@ function GladiusMidnight:InitializeBlizzardFrames()
 
         ourFrame.blizzArenaFrame = blizzArenaFrame
 
-        -- DR Tracking hooks - hook multiple methods to ensure we catch DR events
+        -- DR Tracking: Reparent Blizzard's SpellDiminishStatusTray to our frame (sArena approach)
         if self:IsModuleEnabled("drTracker") then
-            local drTray = blizzArenaFrame.SpellDiminishStatusTray
-            if drTray then
-                local drFrames = {drTray:GetChildren()}
-
-                for drIndex, drFrame in ipairs(drFrames) do
-                    if drFrame and not drFrame.gladiusHooked then
-                        drFrame.gladiusHooked = true
-                        local frameIndex = i
-
-                        -- Hook Show function
-                        hooksecurefunc(drFrame, "Show", function(self)
-                            local drModule = GladiusMidnight:GetModule("drTracker")
-                            local frame = GladiusMidnight.frames[frameIndex]
-                            if drModule and frame then
-                                -- Try to get spellID from auraData
-                                local spellID = self.auraData and self.auraData.spellID
-                                if spellID and not (issecretvalue and issecretvalue(spellID)) then
-                                    drModule:OnBlizzardDR(frame, spellID)
-                                end
-                            end
-                        end)
-
-                        -- Also hook SetCooldown on the cooldown frame (backup method)
-                        if drFrame.Cooldown then
-                            hooksecurefunc(drFrame.Cooldown, "SetCooldown", function(_, start, duration)
-                                local drModule = GladiusMidnight:GetModule("drTracker")
-                                local frame = GladiusMidnight.frames[frameIndex]
-                                if drModule and frame and start and start > 0 and duration and duration > 0 then
-                                    -- DR was triggered - try to get category from parent's auraData
-                                    local parent = drFrame
-                                    local spellID = parent.auraData and parent.auraData.spellID
-                                    if spellID and not (issecretvalue and issecretvalue(spellID)) then
-                                        drModule:OnBlizzardDR(frame, spellID)
-                                    end
-                                end
-                            end)
-                        end
-                    end
-                end
-
-                if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
-                    ourFrame.moduleFrames.drTracker:Show()
-                end
+            local drModule = self:GetModule("drTracker")
+            if drModule and drModule.InitializeBlizzardDR then
+                drModule:InitializeBlizzardDR(ourFrame, blizzArenaFrame)
             end
         end
 
@@ -770,7 +730,7 @@ function GladiusMidnight:InitializeBlizzardFrames()
     end
 
     self.blizzFramesInitialized = true
-    self:Print("Blizzard Frames versteckt - eigene Module aktiv")
+    self:Print("Blizzard DR Frames reparented - DR Tracking aktiv")
 end
 
 function GladiusMidnight:InitializeBlizzardDRFrames()
@@ -797,13 +757,22 @@ function GladiusMidnight:ResetBlizzardFrames()
             if blizzArenaFrame.CcRemoverFrame then
                 blizzArenaFrame.CcRemoverFrame:SetAlpha(1)
             end
+
+            -- Reparent DR tray back to Blizzard frame
             if blizzArenaFrame.SpellDiminishStatusTray then
+                blizzArenaFrame.SpellDiminishStatusTray:SetParent(blizzArenaFrame)
                 blizzArenaFrame.SpellDiminishStatusTray:SetAlpha(1)
             end
         end
 
         if ourFrame then
             ourFrame.blizzArenaFrame = nil
+            -- Reset DR tracker's Blizzard initialization flag
+            if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
+                ourFrame.moduleFrames.drTracker.blizzardDRInitialized = false
+                ourFrame.moduleFrames.drTracker.blizzDRTray = nil
+                ourFrame.moduleFrames.drTracker.blizzDRFrames = nil
+            end
         end
     end
 end
