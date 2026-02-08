@@ -658,10 +658,16 @@ function GladiusMixin:RegisterWidgetEvents()
 end
 
 function GladiusMixin:UnregisterWidgetEvents()
-    self:UnregisterEvent("PLAYER_TARGET_CHANGED")
-    self:UnregisterEvent("PLAYER_FOCUS_CHANGED")
-    self:UnregisterEvent("UNIT_TARGET")
-    for i = 1, self.maxArenaOpponents do
+    if self:IsEventRegistered("PLAYER_TARGET_CHANGED") then
+        self:UnregisterEvent("PLAYER_TARGET_CHANGED")
+    end
+    if self:IsEventRegistered("PLAYER_FOCUS_CHANGED") then
+        self:UnregisterEvent("PLAYER_FOCUS_CHANGED")
+    end
+    if self:IsEventRegistered("UNIT_TARGET") then
+        self:UnregisterEvent("UNIT_TARGET")
+    end
+    if self:IsEventRegistered("UNIT_FLAGS") then
         self:UnregisterEvent("UNIT_FLAGS")
     end
 end
@@ -1107,9 +1113,13 @@ function GladiusMixin:OnEvent(event, ...)
             self._inArena = false
             self:SetMouseState(true)
 
-            -- Unregister arena events
-            pcall(function() self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED") end)
-            pcall(function() self:UnregisterEvent("CHAT_MSG_BG_SYSTEM_NEUTRAL") end)
+            -- Unregister arena events (check first to avoid protected-function taint)
+            if self:IsEventRegistered("COMBAT_LOG_EVENT_UNFILTERED") then
+                self:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+            end
+            if self:IsEventRegistered("CHAT_MSG_BG_SYSTEM_NEUTRAL") then
+                self:UnregisterEvent("CHAT_MSG_BG_SYSTEM_NEUTRAL")
+            end
             self:UnregisterWidgetEvents()
             if self.UnregisterInterruptEvents then
                 self:UnregisterInterruptEvents()

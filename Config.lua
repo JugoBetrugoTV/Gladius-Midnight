@@ -2223,5 +2223,301 @@ do
 end
 
 -----------------------------------------------------------------------
+-- Layout options table builder (called by each layout's Initialize)
+-----------------------------------------------------------------------
+function GladiusMixin:GetLayoutOptionsTable(layoutName)
+    local L = self.L
+    local LSM = LibStub("LibSharedMedia-3.0")
+
+    local function LDB(info)
+        return info.handler.db.profile.layoutSettings[layoutName]
+    end
+    local function getSetting(info)
+        return LDB(info)[info[#info]]
+    end
+    local function setSetting(info, val)
+        local db = LDB(info)
+        db[info[#info]] = val
+        if self.RefreshConfig then self:RefreshConfig() end
+    end
+
+    local StatusbarValues = LSM:HashTable(LSM.MediaType.STATUSBAR)
+
+    local optionsTable = {
+        arenaFrames = {
+            order = 1,
+            name = "Arena Frames",
+            type = "group",
+            get = getSetting,
+            set = function(info, val)
+                self:UpdateFrameSettings(LDB(info), info, val)
+            end,
+            args = {
+                positioning = {
+                    order = 1, name = "Positioning", type = "group", inline = true,
+                    args = {
+                        posX = {
+                            order = 1, name = "X Position", type = "range",
+                            min = -1000, max = 1000, step = 0.1, bigStep = 1,
+                            get = getSetting, set = setSetting,
+                        },
+                        posY = {
+                            order = 2, name = "Y Position", type = "range",
+                            min = -1000, max = 1000, step = 0.1, bigStep = 1,
+                            get = getSetting, set = setSetting,
+                        },
+                        scale = {
+                            order = 3, name = "Scale", type = "range",
+                            min = 0.1, max = 3, step = 0.05, isPercent = false,
+                            get = getSetting, set = setSetting,
+                        },
+                        spacing = {
+                            order = 4, name = "Spacing", type = "range",
+                            min = 0, max = 200, step = 1,
+                            get = getSetting, set = setSetting,
+                        },
+                    },
+                },
+                sizing = {
+                    order = 2, name = "Sizing", type = "group", inline = true,
+                    args = {},
+                },
+                textures = {
+                    order = 3, name = "Textures", type = "group", inline = true,
+                    args = {
+                        generalTexture = {
+                            order = 1, type = "select", name = "General Texture",
+                            dialogControl = "LSM30_Statusbar", values = StatusbarValues,
+                            get = function(info)
+                                local lay = LDB(info)
+                                return (lay.textures and lay.textures.generalStatusBarTexture) or "Gladius Default"
+                            end,
+                            set = function(info, key)
+                                local lay = LDB(info)
+                                lay.textures = lay.textures or {}
+                                lay.textures.generalStatusBarTexture = key
+                                info.handler:UpdateTextures()
+                            end,
+                        },
+                    },
+                },
+            },
+        },
+        castBar = {
+            order = 2, name = "Cast Bar", type = "group",
+            get = function(info)
+                local db = LDB(info)
+                return db.castBar and db.castBar[info[#info]]
+            end,
+            set = function(info, val)
+                local db = LDB(info)
+                if db.castBar then
+                    db.castBar[info[#info]] = val
+                    self:UpdateCastBarSettings(db.castBar)
+                end
+            end,
+            args = {},
+        },
+        dr = {
+            order = 3, name = "Diminishing Returns", type = "group",
+            args = {},
+        },
+        specIcon = {
+            order = 4, name = "Spec Icon", type = "group",
+            args = {},
+        },
+        trinket = {
+            order = 5, name = "Trinket", type = "group",
+            args = {},
+        },
+        racial = {
+            order = 6, name = "Racial", type = "group",
+            args = {},
+        },
+        dispel = {
+            order = 7, name = "Dispel", type = "group",
+            args = {},
+        },
+        widgets = {
+            order = 8, name = "Widgets", type = "group",
+            args = {},
+        },
+    }
+
+    return optionsTable
+end
+
+-----------------------------------------------------------------------
+-- Update*Settings: apply layout settings to all frames
+-----------------------------------------------------------------------
+function GladiusMixin:UpdateFrameSettings(db, info, val)
+    if not db then return end
+    if info and val then
+        db[info[#info]] = val
+    end
+
+    self:ClearAllPoints()
+    self:SetPoint("CENTER", UIParent, "CENTER", db.posX or 0, db.posY or 0)
+    self:SetScale(db.scale or 1)
+
+    local growDir = db.growthDirection or 1
+    local spacing = db.spacing or 50
+
+    for i = 2, self.maxArenaOpponents do
+        local frame = self["arena" .. i]
+        local prev = self["arena" .. (i - 1)]
+        if frame and prev then
+            frame:ClearAllPoints()
+            if growDir == 1 then
+                frame:SetPoint("TOP", prev, "BOTTOM", 0, -spacing)
+            elseif growDir == 2 then
+                frame:SetPoint("BOTTOM", prev, "TOP", 0, spacing)
+            elseif growDir == 3 then
+                frame:SetPoint("LEFT", prev, "RIGHT", spacing, 0)
+            elseif growDir == 4 then
+                frame:SetPoint("RIGHT", prev, "LEFT", -spacing, 0)
+            end
+        end
+    end
+
+    -- Class icon font size
+    if db.classIconFontSize then
+        for i = 1, self.maxArenaOpponents do
+            local f = self["arena" .. i]
+            if f and f.ClassIcon and f.ClassIcon.Cooldown and f.ClassIcon.Cooldown.Text then
+                local fontFile = f.ClassIcon.Cooldown.Text.fontFile or STANDARD_TEXT_FONT
+                f.ClassIcon.Cooldown.Text:SetFont(fontFile, db.classIconFontSize, "OUTLINE")
+                if f.ClassIcon.Cooldown.gladiusText then
+                    f.ClassIcon.Cooldown.gladiusText:SetFont(fontFile, db.classIconFontSize, "OUTLINE")
+                end
+            end
+        end
+    end
+end
+
+function GladiusMixin:UpdateCastBarSettings(db, info, val)
+    if not db then return end
+    if info and val then db[info[#info]] = val end
+
+    for i = 1, self.maxArenaOpponents do
+        local f = self["arena" .. i]
+        if f and f.CastBar then
+            f.CastBar:ClearAllPoints()
+            f.CastBar:SetPoint("CENTER", f, "CENTER", db.posX or 0, db.posY or 0)
+            f.CastBar:SetScale(db.scale or 1)
+            if db.width then f.CastBar:SetWidth(db.width) end
+
+            if f.CastBar.Icon then
+                f.CastBar.Icon:ClearAllPoints()
+                f.CastBar.Icon:SetPoint("RIGHT", f.CastBar, "LEFT",
+                    -5 + (db.iconPosX or 0), (db.iconPosY or 0))
+            end
+
+            if f.CastBar.Spark then
+                f.CastBar.Spark:SetAlpha(db.hideCastbarSpark and 0 or 1)
+            end
+            if f.CastBar.Icon then
+                f.CastBar.Icon:SetAlpha(db.hideCastbarIcon and 0 or 1)
+            end
+            if f.CastBar.BorderShield then
+                f.CastBar.BorderShield:SetAlpha(db.hideCastbarIcon and 0 or 1)
+            end
+        end
+    end
+end
+
+function GladiusMixin:UpdateDRSettings(db, info, val)
+    if not db then return end
+    if info and val then db[info[#info]] = val end
+
+    for i = 1, self.maxArenaOpponents do
+        local f = self["arena" .. i]
+        if f and f.UpdateDRPositions then
+            f:UpdateDRPositions()
+        end
+    end
+end
+
+function GladiusMixin:UpdateSpecIconSettings(db, info, val)
+    if not db then return end
+    if info and val then db[info[#info]] = val end
+
+    for i = 1, self.maxArenaOpponents do
+        local f = self["arena" .. i]
+        if f and f.SpecIcon then
+            f.SpecIcon:ClearAllPoints()
+            f.SpecIcon:SetPoint("CENTER", f, "CENTER", db.posX or 0, db.posY or 0)
+            if db.size then f.SpecIcon:SetSize(db.size, db.size) end
+        end
+    end
+end
+
+function GladiusMixin:UpdateTrinketSettings(db, info, val)
+    if not db then return end
+    if info and val then db[info[#info]] = val end
+
+    for i = 1, self.maxArenaOpponents do
+        local f = self["arena" .. i]
+        if f and f.Trinket then
+            f.Trinket:ClearAllPoints()
+            f.Trinket:SetPoint("CENTER", f, "CENTER", db.posX or 0, db.posY or 0)
+            if db.size then f.Trinket:SetSize(db.size, db.size) end
+        end
+    end
+end
+
+function GladiusMixin:UpdateRacialSettings(db, info, val)
+    if not db then return end
+    if info and val then db[info[#info]] = val end
+
+    for i = 1, self.maxArenaOpponents do
+        local f = self["arena" .. i]
+        if f and f.Racial then
+            f.Racial:ClearAllPoints()
+            f.Racial:SetPoint("CENTER", f, "CENTER", db.posX or 0, db.posY or 0)
+            if db.size then f.Racial:SetSize(db.size, db.size) end
+        end
+    end
+end
+
+function GladiusMixin:UpdateDispelSettings(db, info, val)
+    if not db then return end
+    if info and val then db[info[#info]] = val end
+
+    for i = 1, self.maxArenaOpponents do
+        local f = self["arena" .. i]
+        if f and f.Dispel then
+            f.Dispel:ClearAllPoints()
+            f.Dispel:SetPoint("CENTER", f, "CENTER", db.posX or 0, db.posY or 0)
+            if db.size then f.Dispel:SetSize(db.size, db.size) end
+        end
+    end
+end
+
+function GladiusMixin:UpdateWidgetSettings(db, info, val)
+    if not db then return end
+    if info and val then db[info[#info]] = val end
+
+    for i = 1, self.maxArenaOpponents do
+        local f = self["arena" .. i]
+        if f and f.WidgetOverlay then
+            local wo = f.WidgetOverlay
+            local widgets = {"targetIndicator", "focusIndicator", "combatIndicator",
+                            "partyTarget1", "partyTarget2"}
+            for _, wName in ipairs(widgets) do
+                local w = wo[wName]
+                local wdb = db[wName]
+                if w and wdb then
+                    w:ClearAllPoints()
+                    w:SetPoint("CENTER", f, "CENTER", wdb.posX or 0, wdb.posY or 0)
+                    if wdb.size then w:SetSize(wdb.size, wdb.size) end
+                    w:SetShown(wdb.enabled ~= false)
+                end
+            end
+        end
+    end
+end
+
+-----------------------------------------------------------------------
 -- End of Config.lua
 -----------------------------------------------------------------------
