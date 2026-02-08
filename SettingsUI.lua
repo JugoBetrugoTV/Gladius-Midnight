@@ -852,9 +852,23 @@ local tabGeneral = {
         { type = "header", label = "Health Bars" },
         pToggle("Class Colored Health Bars", "classColors",
             "Color health bars by class color instead of green.", rfConfigTest),
+        pToggle("Class Color Frame Texture", "classColorFrameTexture",
+            "Color the entire frame border/texture by class color.", rfColorsTest),
+        pToggle("Only Class Icon Colored", "classColorFrameTextureOnlyClassIcon",
+            "Only color the class icon area instead of the full frame texture.", rfColorsTest,
+            function() local p = getProfile(); return not (p and p.classColorFrameTexture) end),
+        pToggle("Healer Green Frame", "classColorFrameTextureHealerGreen",
+            "Show healers with green frame texture when class coloring is on.", rfColorsTest,
+            function() local p = getProfile(); return not (p and p.classColorFrameTexture) end),
+        pToggle("Reverse Bar Fill", "reverseBarsFill",
+            "Reverse the fill direction of health and power bars.", rfConfigTest),
         { type = "header", label = "Names" },
         pToggle("Show Player Names", "showNames",
             "Display opponent names on frames.", rfTest),
+        pToggle("Class Color Names", "classColorNames",
+            "Color player names by their class color.", rfTest),
+        pToggle("Show Arena Numbers", "showArenaNumber",
+            "Show arena1/arena2/arena3 instead of player names.", rfTest),
         { type = "header", label = "Dark Mode" },
         pToggle("Enable Dark Mode", "darkMode",
             "Darken frame borders and textures.", rfColorsTest),
@@ -903,7 +917,7 @@ local tabGeneral = {
             "Completely hide all health/power text.", rfTest),
         pToggle("Hide Power Text", "hidePowerText",
             "Hide power bar text (mana/energy/rage numbers).", rfStatus),
-        { type = "header", label = "Miscellaneous" },
+        { type = "header", label = "Stealth / Mystery" },
         pSlider("Stealth Alpha", "stealthAlpha",
             "Transparency of frames for stealthed opponents.",
             0, 1, 0.05, function()
@@ -912,6 +926,23 @@ local tabGeneral = {
                     GladiusMidnight.stealthAlpha = p.stealthAlpha or 0.4
                 end
             end),
+        pToggle("Gray Out Hidden Players", "colorMysteryGray",
+            "Gray out arena frames for players you cannot see (stealthed/invisible).", rfTest),
+        { type = "header", label = "Swipe Animations" },
+        pToggle("Disable Swipe Edge Glow", "disableSwipeEdge",
+            "Disable the bright edge animation on all cooldown swipes.", rfConfigTest),
+        pToggle("Disable Class Icon Swipe", "disableClassIconSwipe",
+            "Disable the cooldown swipe overlay on the class icon.", rfConfigTest),
+        pToggle("Disable DR Swipe", "disableDRSwipe",
+            "Disable the cooldown swipe overlay on DR icons.", rfConfigTest),
+        pToggle("Disable Trinket/Racial Swipe", "disableTrinketRacialSwipe",
+            "Disable the cooldown swipe overlay on trinket and racial icons.", rfConfigTest),
+        { type = "header", label = "Masque / AddOn Support" },
+        pToggle("Enable Masque Skins", "enableMasque",
+            "Allow the Masque addon to skin icon frames (requires Masque).", rfConfigTest),
+        pToggle("Disable Overshield Display", "disableOvershields",
+            "Hide the overshield/absorb glow effect on health bars.", rfConfigTest),
+        { type = "header", label = "Miscellaneous" },
         pToggle("Shadowsight Timer", "shadowSightTimer",
             "Show a timer for Shadowsight orb spawns in arena."),
         { type = "header", label = "Test Mode" },
@@ -938,6 +969,8 @@ local tabClassIcon = {
             function() local ls = getLS(); return ls and (ls.hideClassIcon or ls.replaceClassIcon) end),
         lToggle("Crop Icons", "cropIcons",
             "Slightly crop class/spec icons to remove border artifacts.", rfConfigTest),
+        pToggle("Disable Auras on Class Icon", "disableAurasOnClassIcon",
+            "Prevent priority aura overlays from appearing on the class icon.", rfConfigTest),
         { type = "header", label = "Cooldown Display" },
         pToggle("Invert Cooldown Swipe", "invertClassIconCooldown",
             "Reverse the direction of the cooldown swipe animation.", function()
@@ -989,6 +1022,64 @@ local tabCastBar = {
                 if GladiusMidnight then GladiusMidnight:UpdateTextures() end
                 rfTest()
             end, function() local ls = getLS(); return not (ls and ls.modernCastbar) end),
+        { type = "header", label = "CastBar Elements" },
+        lToggle("Hide CastBar Icon", "hideCastbarIcon",
+            "Hide the spell icon on the cast bar.", rfConfigTest),
+        lToggle("Hide Shield Icon", "hideCastbarShield",
+            "Hide the shield icon for uninterruptible casts.", rfConfigTest),
+        lToggle("Hide Spark", "hideCastbarSpark",
+            "Hide the spark/glow animation on the cast bar.", rfConfigTest),
+        { type = "header", label = "CastBar Sizing (Per-Layout)" },
+        {
+            type = "slider", label = "CastBar Width",
+            desc = "Width of the cast bar in pixels.",
+            min = 30, max = 400, step = 1,
+            get = function()
+                local ls = getLS()
+                local cb = ls and ls.castBar
+                return cb and cb.width or 120
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "castBar"); ls.castBar.width = val
+                if GladiusMidnight then GladiusMidnight:UpdateCastBarSettings(ls.castBar) end
+            end,
+        },
+        {
+            type = "slider", label = "CastBar Scale",
+            desc = "Scale of the cast bar.",
+            min = 0.1, max = 3, step = 0.05, isPercent = true,
+            get = function()
+                local ls = getLS()
+                local cb = ls and ls.castBar
+                return cb and cb.scale or 1
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "castBar"); ls.castBar.scale = val
+                if GladiusMidnight then GladiusMidnight:UpdateCastBarSettings(ls.castBar) end
+            end,
+        },
+        {
+            type = "slider", label = "Icon Scale",
+            desc = "Scale of the spell icon on the cast bar.",
+            min = 0.1, max = 3, step = 0.05,
+            get = function()
+                local ls = getLS()
+                local cb = ls and ls.castBar
+                return cb and cb.iconScale or 1
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "castBar"); ls.castBar.iconScale = val
+                if GladiusMidnight then GladiusMidnight:UpdateCastBarSettings(ls.castBar) end
+            end,
+        },
+        { type = "header", label = "CastBar Borders (Per-Layout)" },
+        lToggle("Use Pixel Border", "castBarPixelBorder",
+            "Use thin pixel borders on the cast bar.", rfConfigTest),
+        lToggle("Thin Pixel Border", "castBarThinPixelBorder",
+            "Use a thinner pixel border style.", rfConfigTest),
         { type = "header", label = "CastBar Colors" },
         { type = "desc", label = "Customize the colors for different cast bar states." },
         {
@@ -1074,8 +1165,12 @@ local tabTrinket = {
             "Display the racial ability icon next to the trinket.", rfConfigTest),
         pToggle("Swap Racial / Trinket Position", "swapRacialTrinket",
             "Swap the positions of the racial and PvP trinket icons.", rfConfigTest),
+        pToggle("Color Trinket Green/Red", "colorTrinket",
+            "Color the trinket icon green when ready, red when on cooldown.", rfTest),
         pToggle("Desaturate Trinket on Cooldown", "desaturateTrinketCD",
             "Gray out the trinket icon while it is on cooldown."),
+        pToggle("Hide Unequipped Trinket Texture", "removeUnequippedTrinketTexture",
+            "Hide the trinket icon entirely if no PvP trinket is equipped."),
         {
             type = "checkbox",
             label = "Invert Trinket/Racial Cooldown Swipe",
@@ -1262,6 +1357,26 @@ local function widgetSlider(widgetKey, axis, label)
     }
 end
 
+local function widgetScale(widgetKey)
+    return {
+        type = "slider", label = "Scale",
+        desc = "Scale of the indicator icon.",
+        min = 0.1, max = 3, step = 0.05,
+        get = function()
+            local ls = getLS()
+            local w = ls and ls.widgets and ls.widgets[widgetKey]
+            return w and w.scale or 1
+        end,
+        set = function(val)
+            local ls = getLS(); if not ls then return end
+            ensureTable(ls, "widgets")
+            ensureTable(ls.widgets, widgetKey)
+            ls.widgets[widgetKey].scale = val
+            refreshConfig()
+        end,
+    }
+end
+
 local tabWidgets = {
     name = "Widgets",
     icon = 525134, -- Achievement_Arena (widget icon)
@@ -1269,18 +1384,22 @@ local tabWidgets = {
         { type = "desc", label = "Overlay indicators shown on arena frames. Position values are offsets from the frame center." },
         { type = "header", label = "Target Indicator" },
         widgetToggle("targetIndicator", "Enable", "Show a crosshair on your current target."),
+        widgetScale("targetIndicator"),
         widgetSlider("targetIndicator", "posX", "X Offset"),
         widgetSlider("targetIndicator", "posY", "Y Offset"),
         { type = "header", label = "Focus Indicator" },
         widgetToggle("focusIndicator", "Enable", "Show a pin on your focus target."),
+        widgetScale("focusIndicator"),
         widgetSlider("focusIndicator", "posX", "X Offset"),
         widgetSlider("focusIndicator", "posY", "Y Offset"),
         { type = "header", label = "Combat Indicator" },
         widgetToggle("combatIndicator", "Enable", "Show food/drink icon when enemy is out of combat."),
+        widgetScale("combatIndicator"),
         widgetSlider("combatIndicator", "posX", "X Offset"),
         widgetSlider("combatIndicator", "posY", "Y Offset"),
         { type = "header", label = "Party Target Indicators" },
         widgetToggle("partyTargetIndicators", "Enable", "Show colored dots when party members are targeting."),
+        widgetScale("partyTargetIndicators"),
         widgetSlider("partyTargetIndicators", "posX", "X Offset"),
         widgetSlider("partyTargetIndicators", "posY", "Y Offset"),
     },
@@ -1302,8 +1421,8 @@ local tabFont = {
             end),
         {
             type = "dropdown",
-            label = "Font",
-            desc = "Select a font from LibSharedMedia.",
+            label = "Frame Font",
+            desc = "Font used for names, health text, and other frame elements.",
             values = function()
                 local list = getFontList()
                 local t = {}
@@ -1316,6 +1435,28 @@ local tabFont = {
             set = function(val)
                 local ls = getLS(); if not ls then return end
                 ls.fontName = val
+                if GladiusMidnight and GladiusMidnight.UpdateFonts then
+                    GladiusMidnight:UpdateFonts()
+                end
+            end,
+            disabled = function() local ls = getLS(); return not (ls and ls.changeFont) end,
+        },
+        {
+            type = "dropdown",
+            label = "Cooldown Font",
+            desc = "Font used for cooldown countdown text on icons.",
+            values = function()
+                local list = getFontList()
+                local t = {}
+                for _, k in ipairs(list) do
+                    t[#t + 1] = { key = k, name = k }
+                end
+                return t
+            end,
+            get = function() local ls = getLS(); return ls and ls.cdFontName or "Prototype" end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ls.cdFontName = val
                 if GladiusMidnight and GladiusMidnight.UpdateFonts then
                     GladiusMidnight:UpdateFonts()
                 end
@@ -1349,6 +1490,67 @@ local tabFont = {
             end,
             disabled = function() local ls = getLS(); return not (ls and ls.changeFont) end,
         },
+        { type = "header", label = "Name Text" },
+        {
+            type = "dropdown",
+            label = "Name Anchor",
+            desc = "Text alignment for player names.",
+            values = function()
+                return {
+                    { key = "LEFT", name = "Left" },
+                    { key = "CENTER", name = "Center" },
+                    { key = "RIGHT", name = "Right" },
+                }
+            end,
+            get = function() local ls = getLS(); return ls and ls.nameAnchor or "LEFT" end,
+            set = layoutSet("nameAnchor", rfConfigTest),
+        },
+        lSlider("Name Size", "nameSize", "Scale of the name text.",
+            0.2, 3, 0.1, rfConfigTest),
+        lSlider("Name X Offset", "nameOffsetX", "Horizontal offset for the name text.",
+            -200, 200, 1, rfConfigTest),
+        lSlider("Name Y Offset", "nameOffsetY", "Vertical offset for the name text.",
+            -200, 200, 1, rfConfigTest),
+        { type = "header", label = "Spec Text" },
+        lToggle("Spec Text on Mana Bar", "specTextOnManabar",
+            "Show spec abbreviation on the resource bar.", rfConfigTest),
+        {
+            type = "dropdown",
+            label = "Spec Text Anchor",
+            desc = "Text alignment for spec name.",
+            values = function()
+                return {
+                    { key = "LEFT", name = "Left" },
+                    { key = "CENTER", name = "Center" },
+                    { key = "RIGHT", name = "Right" },
+                }
+            end,
+            get = function() local ls = getLS(); return ls and ls.specTextAnchor or "RIGHT" end,
+            set = layoutSet("specTextAnchor", rfConfigTest),
+        },
+        lSlider("Spec Text Size", "specTextSize", "Scale of the spec text.",
+            0.2, 3, 0.1, rfConfigTest),
+        { type = "header", label = "DR Text" },
+        {
+            type = "dropdown",
+            label = "DR Text Anchor",
+            desc = "Text alignment for DR countdown text.",
+            values = function()
+                return {
+                    { key = "LEFT", name = "Left" },
+                    { key = "CENTER", name = "Center" },
+                    { key = "RIGHT", name = "Right" },
+                }
+            end,
+            get = function() local ls = getLS(); return ls and ls.drTextAnchor or "RIGHT" end,
+            set = layoutSet("drTextAnchor", rfConfigTest),
+        },
+        lSlider("DR Text Size", "drTextSize", "Scale of the DR text.",
+            0.2, 3, 0.1, rfConfigTest),
+        lSlider("DR Text X Offset", "drTextOffsetX", "Horizontal offset for DR text.",
+            -50, 50, 1, rfConfigTest),
+        lSlider("DR Text Y Offset", "drTextOffsetY", "Vertical offset for DR text.",
+            -50, 50, 1, rfConfigTest),
     },
 }
 
@@ -1532,6 +1734,8 @@ local tabPositioning = {
         { type = "header", label = "Spec Icon Position" },
         posNestedSlider("specIcon", "posX", "X Offset"),
         posNestedSlider("specIcon", "posY", "Y Offset"),
+        lSlider("Spec Icon Scale", "specIconScale", "Scale of the spec icon.",
+            0.1, 5.0, 0.01, refreshConfig, { isPercent = true }),
         { type = "header", label = "Trinket Position" },
         posNestedSlider("trinket", "posX", "X Offset"),
         posNestedSlider("trinket", "posY", "Y Offset"),
@@ -1544,6 +1748,8 @@ local tabPositioning = {
         { type = "header", label = "Class Icon Position" },
         posNestedSlider("classIcon", "posX", "X Offset"),
         posNestedSlider("classIcon", "posY", "Y Offset"),
+        lSlider("Class Icon Scale", "classIconScale", "Scale of the class icon.",
+            0.1, 5.0, 0.01, refreshConfig, { isPercent = true }),
         { type = "header", label = "DR Icons Position" },
         {
             type = "slider", label = "X Offset",
@@ -1573,7 +1779,51 @@ local tabPositioning = {
 }
 
 -----------------------------------------------------------------------
--- TAB 11: PROFILES
+-- TAB 11: LAYOUT OPTIONS (dynamic per-layout settings)
+-----------------------------------------------------------------------
+local tabLayoutOptions = {
+    name = "Layout Options",
+    icon = 134063, -- INV_Misc_Gear_01
+    controls = {
+        { type = "desc", label = "Settings specific to the current layout. Available options vary by layout." },
+        { type = "header", label = "Frame Sizing" },
+        lSlider("Frame Width", "width",
+            "Width of each arena frame in pixels.",
+            40, 400, 1, rfConfigTest),
+        lSlider("Frame Height", "height",
+            "Height of each arena frame in pixels.",
+            2, 100, 1, rfConfigTest),
+        lSlider("Power Bar Height", "powerBarHeight",
+            "Height of the power/mana bar in pixels.",
+            1, 50, 1, rfConfigTest),
+        { type = "header", label = "Layout-Specific Toggles" },
+        lToggle("Crop Icons", "layoutCropIcons",
+            "Crop class/spec icons to remove transparent edges.", rfConfigTest),
+        lToggle("Trinket Circle Border", "trinketCircleBorder",
+            "Use a circular border around the trinket icon.", rfConfigTest),
+        lToggle("Hide Name Background", "hideNameBackground",
+            "Hide the background behind player names.", rfConfigTest),
+        lToggle("Big Healthbar", "bigHealthbar",
+            "Use an enlarged health bar style.", rfConfigTest),
+        { type = "header", label = "Pixel Borders" },
+        lSlider("Pixel Border Size", "pixelBorderSize",
+            "Thickness of pixel borders.",
+            0.5, 3, 0.5, rfConfigTest),
+        lSlider("Pixel Border Offset", "pixelBorderOffset",
+            "Offset of pixel borders from frame edge.",
+            -3, 3, 0.5, rfConfigTest),
+        lSlider("DR Pixel Border Size", "drPixelBorderSize",
+            "Thickness of pixel borders on DR icons.",
+            0.5, 3, 0.5, rfConfigTest),
+        { type = "header", label = "Class Icon Font" },
+        lSlider("Class Icon CD Font Size", "classIconCDFontSize",
+            "Font size for cooldown text on the class icon.",
+            4, 32, 1, rfConfigTest),
+    },
+}
+
+-----------------------------------------------------------------------
+-- TAB 12: PROFILES
 -----------------------------------------------------------------------
 local tabProfiles = {
     name = "Profiles",
@@ -1585,7 +1835,6 @@ local tabProfiles = {
             type = "button", label = "Open AceDB Profiles",
             width = 200,
             func = function()
-                -- Fall back to AceConfig dialog for profile management
                 Settings.OpenToCategory("Gladius Midnight")
             end,
         },
@@ -1616,6 +1865,7 @@ local allTabs = {
     tabFont,
     tabTextures,
     tabPositioning,
+    tabLayoutOptions,
     tabProfiles,
 }
 

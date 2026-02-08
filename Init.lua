@@ -20,28 +20,77 @@ GladiusMixin.L = setmetatable({}, { __index = function(_, k) return k end })
 GladiusMixin.defaultSettings = {
     profile = {
         currentLayout = "Gladiuish",
+
+        -- Health Bars
         classColors = true,
+        classColorFrameTexture = false,
+        classColorFrameTextureOnlyClassIcon = false,
+        classColorFrameTextureHealerGreen = false,
+        reverseBarsFill = false,
+
+        -- Names
         showNames = true,
-        hidePowerText = true,
-        showDecimalsDR = true,
-        showDecimalsClassIcon = true,
-        decimalThreshold = 6,
-        colorDRCooldownText = false,
+        classColorNames = false,
+        showArenaNumber = false,
+
+        -- Dark Mode
+        darkMode = false,
         darkModeValue = 0.2,
-        desaturateTrinketCD = true,
-        desaturateDispelCD = true,
         darkModeDesaturate = true,
-        invertClassIconCooldown = true,
+
+        -- Status Text
+        hidePowerText = true,
         statusText = {
             alwaysShow = true,
             formatNumbers = true,
+            usePercentage = false,
         },
+
+        -- Class Icon
+        showDecimalsClassIcon = true,
+        decimalThreshold = 6,
+        invertClassIconCooldown = true,
+        disableAurasOnClassIcon = false,
+
+        -- Trinket / Racial
+        desaturateTrinketCD = true,
+        colorTrinket = false,
+        removeUnequippedTrinketTexture = false,
+
+        -- Dispel
+        desaturateDispelCD = true,
+
+        -- DR
+        showDecimalsDR = true,
+        colorDRCooldownText = false,
+        blackDRBorder = false,
+
+        -- Swipe Animations
+        disableSwipeEdge = false,
+        disableClassIconSwipe = false,
+        disableDRSwipe = false,
+        disableTrinketRacialSwipe = false,
+
+        -- Masque
+        enableMasque = false,
+        disableOvershields = false,
+
+        -- Stealth
+        stealthAlpha = 0.4,
+        colorMysteryGray = true,
+
+        -- Misc
+        shadowSightTimer = false,
+        testUnits = 3,
+
+        -- CastBar Colors
         castBarColors = {
             standard = { 1.0, 0.7, 0.0, 1 },
             channel = { 0.0, 1.0, 0.0, 1 },
             uninterruptable = { 0.7, 0.7, 0.7, 1 },
             interruptNotReady = { 1.0, 0.0, 0.0, 1 },
         },
+
         layoutSettings = {},
     }
 }
