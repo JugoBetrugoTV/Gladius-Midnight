@@ -2301,6 +2301,10 @@ function GladiusMixin:GetLayoutOptionsTable(layoutName)
                         },
                     },
                 },
+                other = {
+                    order = 4, name = "Other", type = "group", inline = true,
+                    args = {},
+                },
             },
         },
         castBar = {
