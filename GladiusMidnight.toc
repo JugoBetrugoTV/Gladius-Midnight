@@ -1,29 +1,10 @@
-## Interface: 120000
-## Title: Gladius Midnight
-## Notes: Arena enemy unit frames for World of Warcraft Midnight
-## Author: GladiusMidnight Team
-## Version: 1.0.0
+## Interface: 120001, 120000
+## Title: Gladius |cff00ff00Midnight|r
+## Notes: Arena Enemy Unit Frames
+## Version: v1.0.0
+## Author: JugoBetrugoTV
+## IconTexture: 135884
+## X-Category: PvP/Arena
 ## SavedVariables: GladiusMidnightDB
-## IconTexture: Interface\Icons\Achievement_Arena_2v2_7
-
-Libs\embeds.xml
-
-Data\ClassData.lua
-Data\RacialData.lua
-Data\AuraData.lua
-Data\DRData.lua
-Data\InterruptData.lua
 
 GladiusMidnight.xml
-Core.lua
-Frames.lua
-
-Modules\ClassIcon.lua
-Modules\Trinket.lua
-Modules\Racial.lua
-Modules\Auras.lua
-Modules\DRTracker.lua
-Modules\CastBar.lua
-Modules\Interrupt.lua
-
-Config.lua

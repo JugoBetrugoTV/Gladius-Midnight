@@ -1,138 +1,141 @@
---[[=========================================================================
+--[[
     Gladius Midnight - Interrupt Module
-    Tracks when enemies are interrupted and shows lockout on class icon
-    Also tracks the player's own interrupt cooldown to color castbars
-===========================================================================]]
+    Tracks the player's own interrupt spell cooldown.
+    Recolors enemy castbars when the player's interrupt comes off cooldown.
+    Detects interrupt spell from talents and pet abilities.
+]]
 
-local _, Gladius = ...
+-----------------------------------------------------------------------
+-- Local references
+-----------------------------------------------------------------------
+local interruptList = GladiusMixin.interruptList
 
--- =========================================================================
--- Enemy Interrupted (from combat log SPELL_INTERRUPT)
--- =========================================================================
-function GladiusArenaFrameMixin:OnInterrupted(interruptSpellID, interruptedSpellID, sourceGUID, sourceName)
-    if not Gladius.db.profile.interruptEnabled then return end
-
-    -- Get the lockout duration from our interrupt data
-    local lockoutDuration = Gladius.INTERRUPT_SPELLS[interruptSpellID]
-    if not lockoutDuration then return end
-
-    -- Check for spell lock duration reducers on the interrupted target
-    if self.unitID and UnitExists(self.unitID) then
-        lockoutDuration = self:CheckLockoutReduction(lockoutDuration)
-    end
-
-    -- Get the source class for coloring
-    local sourceClass = nil
-    if sourceGUID then
-        local _, classToken = GetPlayerInfoByGUID(sourceGUID)
-        sourceClass = classToken
-    end
-
-    -- Show interrupt overlay on class icon
-    self:SetInterruptOverlay(interruptSpellID, lockoutDuration, sourceClass)
-
-    -- Set interrupt state
-    self.isInterrupted = true
-    self.interruptExpiration = GetTime() + lockoutDuration
-
-    -- Schedule restoration of class icon after lockout ends
-    C_Timer.After(lockoutDuration + 0.1, function()
-        if GetTime() >= self.interruptExpiration then
-            self.isInterrupted = false
-            self:RefreshClassIcon()
-            self:RefreshAuras()
+-----------------------------------------------------------------------
+-- Detect the player's interrupt spell from known spells / pet spells
+-----------------------------------------------------------------------
+local function DetectPlayerInterrupt()
+    for spellID, _ in pairs(interruptList) do
+        if IsSpellKnownOrOverridesKnown(spellID)
+            or (UnitExists("pet") and IsSpellKnownOrOverridesKnown(spellID, true))
+        then
+            return spellID
         end
-    end)
+    end
+    return nil
 end
 
--- =========================================================================
--- Lockout Duration Reduction
--- Some buffs reduce the duration of interrupt lockouts
--- =========================================================================
-function GladiusArenaFrameMixin:CheckLockoutReduction(baseDuration)
-    local unit = self.unitID
-    if not UnitExists(unit) then return baseDuration end
+local playerKickSpellID = DetectPlayerInterrupt()
 
-    local reducedDuration = baseDuration
+-----------------------------------------------------------------------
+-- Pet summon spells that might change the available interrupt
+-----------------------------------------------------------------------
+local petSummonSpells = {
+    [30146]  = true, -- Summon Felguard (Demonology)
+    [691]    = true, -- Summon Felhunter (for Spell Lock)
+    [108503] = true, -- Grimoire of Sacrifice
+}
 
-    for reducerSpellID, multiplier in pairs(Gladius.SPELL_LOCK_REDUCERS) do
-        if AuraUtil and AuraUtil.FindAuraByName then
-            local name = Gladius.GetSpellInfo(reducerSpellID)
-            if name and AuraUtil.FindAuraByName(name, unit, "HELPFUL") then
-                reducedDuration = reducedDuration * multiplier
+-----------------------------------------------------------------------
+-- Hidden interrupt cooldown tracker frame
+-----------------------------------------------------------------------
+GladiusMixin.interruptIcon = CreateFrame("Frame")
+GladiusMixin.interruptIcon.cooldown = CreateFrame("Cooldown", nil, GladiusMixin.interruptIcon, "CooldownFrameTemplate")
+
+-- When the cooldown finishes, mark interrupt as ready and refresh castbar colors
+GladiusMixin.interruptIcon.cooldown:HookScript("OnCooldownDone", function()
+    GladiusMixin.interruptReady = true
+    GladiusMixin:UpdateCastbarInterruptStatus()
+end)
+
+-----------------------------------------------------------------------
+-- UpdateCastbarInterruptStatus: Recolor all visible castbars
+-- Called when the player's interrupt comes off cooldown
+-----------------------------------------------------------------------
+function GladiusMixin:UpdateCastbarInterruptStatus()
+    for i = 1, GladiusMixin.maxArenaOpponents do
+        local frame = _G["GladiusEnemyFrame" .. i]
+        if frame then
+            local castBar = frame.CastBar
+            if castBar and castBar:IsShown() then
+                GladiusMixin:CastbarOnEvent(castBar)
             end
         end
     end
-
-    return reducedDuration
 end
 
--- =========================================================================
--- Player's Own Interrupt Tracking
--- Monitors the player's interrupt CD to color enemy castbars accordingly
--- =========================================================================
-local interruptCheckFrame = nil
-local playerInterruptSpellID = nil
-
-function Gladius:SetupInterruptTracking()
-    if not self.db.profile.interruptColorCastbar then return end
-
-    local classToken = self.playerClass
-    if not classToken then return end
-
-    playerInterruptSpellID = Gladius.CLASS_INTERRUPT_SPELLS[classToken]
-    if not playerInterruptSpellID then
-        -- Class has no baseline interrupt (e.g., Priest)
-        self.playerInterruptOnCD = false
-        return
+-----------------------------------------------------------------------
+-- Internal: Update the hidden cooldown frame with current kick CD
+-----------------------------------------------------------------------
+local function SyncInterruptCooldown(iconFrame)
+    if not playerKickSpellID then
+        playerKickSpellID = DetectPlayerInterrupt()
     end
+    if not playerKickSpellID then return end
 
-    if not interruptCheckFrame then
-        interruptCheckFrame = CreateFrame("Frame")
+    local cdInfo = C_Spell.GetSpellCooldown(playerKickSpellID)
+    if cdInfo then
+        iconFrame.cooldown:SetCooldown(cdInfo.startTime, cdInfo.duration)
     end
+end
 
-    -- Poll interrupt cooldown status periodically
-    local pollInterval = 0.5
-    local elapsed = 0
-
-    interruptCheckFrame:SetScript("OnUpdate", function(_, dt)
-        elapsed = elapsed + dt
-        if elapsed < pollInterval then return end
-        elapsed = 0
-
-        if not playerInterruptSpellID then return end
-
-        local cdInfo = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(playerInterruptSpellID)
-        if cdInfo then
-            local remaining = (cdInfo.startTime + cdInfo.duration) - GetTime()
-            Gladius.playerInterruptOnCD = remaining > 0
-        else
-            -- Fallback
-            local start, duration = GetSpellCooldown(playerInterruptSpellID)
-            if start and duration then
-                local remaining = (start + duration) - GetTime()
-                Gladius.playerInterruptOnCD = remaining > 0
+-----------------------------------------------------------------------
+-- Event handler: detect when player uses interrupt or summons pet
+-----------------------------------------------------------------------
+local function OnInterruptEvent(_, event, unit, _, spellID)
+    if event == "UNIT_SPELLCAST_SUCCEEDED" then
+        -- Player used their interrupt
+        if interruptList[spellID] then
+            local cdInfo = C_Spell.GetSpellCooldown(spellID)
+            if cdInfo then
+                GladiusMixin.interruptIcon.cooldown:SetCooldown(cdInfo.startTime, cdInfo.duration)
             end
+            GladiusMixin.interruptReady = false
+            GladiusMixin:UpdateCastbarInterruptStatus()
+            return
         end
+
+        -- Check if this was a pet summon (might change available interrupt)
+        if not petSummonSpells[spellID] then return end
+    end
+
+    -- Re-detect interrupt after talent/pet changes (slight delay for API)
+    C_Timer.After(0.1, function()
+        playerKickSpellID = DetectPlayerInterrupt()
+        SyncInterruptCooldown(GladiusMixin.interruptIcon)
     end)
 end
 
-function Gladius:StopInterruptTracking()
-    if interruptCheckFrame then
-        interruptCheckFrame:SetScript("OnUpdate", nil)
-    end
-    self.playerInterruptOnCD = false
+-----------------------------------------------------------------------
+-- Cooldown update listener: keep the hidden frame in sync
+-----------------------------------------------------------------------
+local cdUpdateFrame = CreateFrame("Frame")
+cdUpdateFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+cdUpdateFrame:SetScript("OnEvent", function(_, _, spellID)
+    if spellID ~= playerKickSpellID then return end
+    SyncInterruptCooldown(GladiusMixin.interruptIcon)
+end)
+
+-----------------------------------------------------------------------
+-- Event routing frame for spell cast / talent updates
+-----------------------------------------------------------------------
+GladiusMixin.interruptSpellUpdate = CreateFrame("Frame")
+GladiusMixin.interruptSpellUpdate:SetScript("OnEvent", OnInterruptEvent)
+
+-----------------------------------------------------------------------
+-- RegisterInterruptEvents: Start tracking (called when entering arena)
+-----------------------------------------------------------------------
+function GladiusMixin:RegisterInterruptEvents()
+    self.interruptSpellUpdate:RegisterUnitEvent("UNIT_SPELLCAST_SUCCEEDED", "player")
+    self.interruptSpellUpdate:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    self.interruptSpellUpdate:RegisterEvent("PLAYER_TALENT_UPDATE")
+
+    playerKickSpellID = DetectPlayerInterrupt()
+    SyncInterruptCooldown(self.interruptIcon)
 end
 
--- Hook into arena enter/leave
-local originalEnterArena = Gladius.EnterArena
-function Gladius:EnterArena()
-    originalEnterArena(self)
-    self:SetupInterruptTracking()
-end
-
-local originalLeaveArena = Gladius.LeaveArena
-function Gladius:LeaveArena()
-    originalLeaveArena(self)
-    self:StopInterruptTracking()
+-----------------------------------------------------------------------
+-- UnregisterInterruptEvents: Stop tracking (called when leaving arena)
+-----------------------------------------------------------------------
+function GladiusMixin:UnregisterInterruptEvents()
+    self.interruptSpellUpdate:UnregisterAllEvents()
 end

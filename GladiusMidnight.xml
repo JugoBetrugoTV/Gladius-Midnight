@@ -1,324 +1,363 @@
-<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+<Ui xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+    <!-- Libraries -->
+    <Script file="Libs\LibStub\LibStub.lua"/>
+    <Include file="Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml"/>
+    <Script file="Libs\LibSharedMedia-3.0\LibSharedMedia-3.0.lua"/>
+    <Include file="Libs\AceDB-3.0\AceDB-3.0.xml"/>
+    <Include file="Libs\AceDBOptions-3.0\AceDBOptions-3.0.xml"/>
+    <Include file="Libs\AceConsole-3.0\AceConsole-3.0.xml"/>
+    <Include file="Libs\AceGUI-3.0\AceGUI-3.0.xml"/>
+    <Include file="Libs\AceGUI-3.0-SharedMediaWidgets\widget.xml"/>
+    <Include file="Libs\AceConfig-3.0\AceConfig-3.0.xml"/>
+    <Script file="Libs\LibDeflate\LibDeflate.lua"/>
+    <Script file="Libs\LibSerialize\LibSerialize.lua"/>
 
-    <!-- ======================================================
-         Gladius Midnight - Arena Enemy Unit Frame Templates
-         ====================================================== -->
+    <!-- Initialization -->
+    <Script file="Init.lua"/>
 
-    <!-- Icon frame used for trinket, racial, spec, and DR icons -->
-    <Frame name="GladiusIconTemplate" virtual="true">
-        <Size x="28" y="28"/>
+    <!-- Spell Data -->
+    <Script file="Data\InterruptList.lua"/>
+    <Script file="Data\DRList.lua"/>
+    <Script file="Data\AuraList.lua"/>
+    <Script file="Data\Profiles.lua"/>
+
+    <!-- Interrupt Module (loaded early, needed by Core) -->
+    <Script file="Modules\Interrupt.lua"/>
+
+    <!-- Core Logic -->
+    <Script file="Core.lua"/>
+    <Script file="Frames.lua"/>
+
+    <!-- Modules -->
+    <Script file="Modules\Racials.lua"/>
+    <Script file="Modules\Dispels.lua"/>
+    <Script file="Modules\DiminishingReturns.lua"/>
+    <Script file="Modules\Auras.lua"/>
+    <Script file="Modules\Trinkets.lua"/>
+    <Script file="Modules\ModernCastbar.lua"/>
+    <Script file="Modules\ImportExport.lua"/>
+
+    <!-- Configuration -->
+    <Script file="Config.lua"/>
+
+    <!-- Layouts -->
+    <Script file="Layouts\BlizzArena.lua"/>
+    <Script file="Layouts\BlizzRaid.lua"/>
+    <Script file="Layouts\BlizzRetail.lua"/>
+    <Script file="Layouts\BlizzCompact.lua"/>
+    <Script file="Layouts\BlizzTourney.lua"/>
+    <Script file="Layouts\BlizzTarget.lua"/>
+    <Script file="Layouts\Gladiuish.lua"/>
+    <Script file="Layouts\Pixelated.lua"/>
+    <Script file="Layouts\Xaryu.lua"/>
+
+    <!-- ==================== FRAME TEMPLATES ==================== -->
+
+    <!-- DR Icon Frame -->
+    <Frame name="GladiusDRTemplate" enablemouse="true" movable="true" hidden="true" virtual="true">
+        <Size x="40" y="40"/>
         <Layers>
-            <Layer level="ARTWORK">
-                <Texture parentKey="Icon">
-                    <Size x="26" y="26"/>
-                    <Anchors>
-                        <Anchor point="CENTER"/>
-                    </Anchors>
-                </Texture>
-            </Layer>
             <Layer level="OVERLAY">
-                <Texture parentKey="Border" file="Interface\Buttons\UI-Quickslot2">
-                    <Size x="42" y="42"/>
-                    <Anchors>
-                        <Anchor point="CENTER"/>
-                    </Anchors>
-                </Texture>
-                <FontString parentKey="StackText" inherits="NumberFontNormalSmall">
-                    <Anchors>
-                        <Anchor point="BOTTOMRIGHT" x="-2" y="2"/>
-                    </Anchors>
-                </FontString>
+                <Texture parentKey="Border" file="Interface\Buttons\UI-Quickslot-Depress"/>
             </Layer>
-        </Layers>
-        <Frames>
-            <Cooldown parentKey="Cooldown" inherits="CooldownFrameTemplate">
-                <Size x="26" y="26"/>
-                <Anchors>
-                    <Anchor point="CENTER"/>
-                </Anchors>
-            </Cooldown>
-        </Frames>
-    </Frame>
-
-    <!-- DR tracker icon with severity text -->
-    <Frame name="GladiusDRIconTemplate" virtual="true">
-        <Size x="24" y="24"/>
-        <Layers>
             <Layer level="ARTWORK">
                 <Texture parentKey="Icon">
-                    <Size x="22" y="22"/>
-                    <Anchors>
-                        <Anchor point="CENTER"/>
-                    </Anchors>
                     <TexCoords left="0.08" right="0.92" top="0.08" bottom="0.92"/>
                 </Texture>
             </Layer>
-            <Layer level="OVERLAY">
-                <Texture parentKey="Border" file="Interface\Buttons\UI-Quickslot2">
-                    <Size x="36" y="36"/>
-                    <Anchors>
-                        <Anchor point="CENTER"/>
-                    </Anchors>
-                </Texture>
-                <FontString parentKey="SeverityText" inherits="NumberFontNormalSmall">
-                    <Anchors>
-                        <Anchor point="CENTER" y="0"/>
-                    </Anchors>
-                </FontString>
-            </Layer>
         </Layers>
         <Frames>
-            <Cooldown parentKey="Cooldown" inherits="CooldownFrameTemplate">
-                <Size x="22" y="22"/>
-                <Anchors>
-                    <Anchor point="CENTER"/>
-                </Anchors>
-            </Cooldown>
-        </Frames>
-    </Frame>
-
-    <!-- Castbar template -->
-    <StatusBar name="GladiusCastBarTemplate" virtual="true" enableMouse="false">
-        <Size x="120" y="16"/>
-        <BarTexture file="Interface\TargetingFrame\UI-StatusBar"/>
-        <BarColor r="1" g="0.7" b="0"/>
-        <Layers>
-            <Layer level="BACKGROUND">
-                <Texture parentKey="Background" setAllPoints="true">
+            <Cooldown parentKey="Cooldown" drawBling="false" hideCountdownNumbers="false" inherits="CooldownFrameTemplate">
+                <SwipeTexture>
                     <Color r="0" g="0" b="0" a="0.6"/>
-                </Texture>
-            </Layer>
-            <Layer level="ARTWORK">
-                <Texture parentKey="Icon">
-                    <Size x="16" y="16"/>
-                    <Anchors>
-                        <Anchor point="RIGHT" relativePoint="LEFT" x="-2"/>
-                    </Anchors>
-                    <TexCoords left="0.08" right="0.92" top="0.08" bottom="0.92"/>
-                </Texture>
-            </Layer>
-            <Layer level="OVERLAY">
-                <FontString parentKey="SpellText" inherits="GameFontHighlightSmall" justifyH="CENTER" maxLines="1">
-                    <Anchors>
-                        <Anchor point="LEFT" x="4" y="0"/>
-                        <Anchor point="RIGHT" x="-20" y="0"/>
-                    </Anchors>
-                </FontString>
-                <FontString parentKey="TimeText" inherits="GameFontHighlightSmall" justifyH="RIGHT">
-                    <Anchors>
-                        <Anchor point="RIGHT" x="-4" y="0"/>
-                    </Anchors>
-                </FontString>
-            </Layer>
-            <Layer level="HIGHLIGHT">
-                <Texture parentKey="BorderShield" file="Interface\CastingBar\UI-CastingBar-Small-Shield" hidden="true">
-                    <Size x="52" y="52"/>
-                    <Anchors>
-                        <Anchor point="CENTER" x="12" y="0"/>
-                    </Anchors>
-                </Texture>
-            </Layer>
-        </Layers>
-        <Frames>
-            <Frame parentKey="Spark">
-                <Size x="16" y="32"/>
+                </SwipeTexture>
+                <Scripts>
+                    <OnLoad>
+                        self:SetDrawBling(false)
+                        self:SetReverse(true)
+                        for _, region in next, { self:GetRegions() } do
+                            if region:GetObjectType() == "FontString" then
+                                self.Text = region
+                                self.Text.fontFile = region:GetFont()
+                            end
+                        end
+                        self.parent = self:GetParent()
+                    </OnLoad>
+                    <OnShow>
+                        self.parent:GetParent():UpdateDRPositions()
+                    </OnShow>
+                    <OnHide>
+                        self.parent:Hide()
+                        self.parent.severity = 1
+                        self.parent:GetParent():UpdateDRPositions()
+                    </OnHide>
+                </Scripts>
+            </Cooldown>
+            <Frame parentKey="DRTextFrame" frameStrata="HIGH" setAllPoints="true">
                 <Layers>
                     <Layer level="OVERLAY">
-                        <Texture parentKey="Texture" file="Interface\CastingBar\UI-CastingBar-Spark">
-                            <Size x="16" y="32"/>
+                        <FontString parentKey="DRText" font="Interface\AddOns\GladiusMidnight\Textures\arialn.ttf" justifyH="RIGHT" justifyV="BOTTOM" outline="NORMAL">
+                            <FontHeight>
+                                <AbsValue val="14"/>
+                            </FontHeight>
                             <Anchors>
-                                <Anchor point="CENTER"/>
-                            </Anchors>
-                        </Texture>
-                    </Layer>
-                </Layers>
-            </Frame>
-        </Frames>
-    </StatusBar>
-
-    <!-- Main arena enemy unit frame -->
-    <Button name="GladiusArenaFrameTemplate" inherits="SecureActionButtonTemplate" virtual="true"
-            registerForClicks="AnyDown">
-        <Size x="170" y="44"/>
-        <Layers>
-            <Layer level="BACKGROUND">
-                <Texture parentKey="Background">
-                    <Anchors>
-                        <Anchor point="TOPLEFT"/>
-                        <Anchor point="BOTTOMRIGHT"/>
-                    </Anchors>
-                    <Color r="0.05" g="0.05" b="0.05" a="0.85"/>
-                </Texture>
-            </Layer>
-            <Layer level="OVERLAY">
-                <FontString parentKey="NameText" inherits="GameFontNormalSmall" justifyH="LEFT" maxLines="1">
-                    <Size x="0" y="12"/>
-                    <Anchors>
-                        <Anchor point="TOPLEFT" relativeKey="$parent.HealthBar" relativePoint="TOPLEFT" x="2" y="0"/>
-                        <Anchor point="TOPRIGHT" relativeKey="$parent.HealthBar" relativePoint="TOPRIGHT" x="-2" y="0"/>
-                    </Anchors>
-                    <Color r="1" g="1" b="1"/>
-                </FontString>
-                <FontString parentKey="HealthText" inherits="GameFontNormalSmall" justifyH="RIGHT" maxLines="1">
-                    <Size x="0" y="12"/>
-                    <Anchors>
-                        <Anchor point="TOPRIGHT" relativeKey="$parent.HealthBar" relativePoint="TOPRIGHT" x="-2" y="0"/>
-                    </Anchors>
-                    <Color r="1" g="1" b="1"/>
-                </FontString>
-                <FontString parentKey="PowerText" inherits="GameFontNormalSmall" justifyH="CENTER" maxLines="1" hidden="true">
-                    <Anchors>
-                        <Anchor point="CENTER" relativeKey="$parent.PowerBar"/>
-                    </Anchors>
-                    <Color r="1" g="1" b="1"/>
-                </FontString>
-            </Layer>
-        </Layers>
-        <Frames>
-            <!-- Class/Spec icon on the left -->
-            <Frame parentKey="ClassIcon" inherits="GladiusIconTemplate">
-                <Size x="44" y="44"/>
-                <Anchors>
-                    <Anchor point="TOPRIGHT" relativePoint="TOPLEFT" x="-1" y="0"/>
-                </Anchors>
-                <Layers>
-                    <Layer level="ARTWORK">
-                        <Texture parentKey="Icon">
-                            <Size x="40" y="40"/>
-                        </Texture>
-                    </Layer>
-                    <Layer level="OVERLAY">
-                        <FontString parentKey="StackText" inherits="NumberFontNormal">
-                            <Anchors>
-                                <Anchor point="BOTTOMRIGHT" x="-2" y="2"/>
+                                <Anchor point="BOTTOMRIGHT" x="4" y="-4"/>
                             </Anchors>
                         </FontString>
                     </Layer>
                 </Layers>
             </Frame>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                self.severity = 1
+            </OnLoad>
+        </Scripts>
+    </Frame>
 
-            <!-- Health bar -->
-            <StatusBar parentKey="HealthBar" minValue="0" maxValue="100" defaultValue="100">
-                <Size x="0" y="30"/>
-                <Anchors>
-                    <Anchor point="TOPLEFT" x="0" y="0"/>
-                    <Anchor point="TOPRIGHT" x="0" y="0"/>
-                </Anchors>
-                <BarTexture file="Interface\TargetingFrame\UI-StatusBar"/>
-                <BarColor r="0.2" g="0.8" b="0.2"/>
-            </StatusBar>
+    <!-- CastBar StatusBar Frame -->
+    <StatusBar name="GladiusCastBarTemplate" mixin="CastingBarMixin,GladiusCastBarExtMixin" inherits="CastingBarFrameAnimsTemplate" enablemouse="true" movable="true" virtual="true" hidden="true">
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture setAllPoints="true">
+                    <Color r="0" g="0" b="0" a="0.5"/>
+                </Texture>
+            </Layer>
+            <Layer level="ARTWORK">
+                <Texture parentKey="BorderShield" file="Interface\CastingBar\UI-CastingBar-Arena-Shield" hidden="true">
+                    <Size x="42" y="42"/>
+                    <Anchors>
+                        <Anchor point="LEFT" x="-25" y="0"/>
+                    </Anchors>
+                </Texture>
+                <FontString parentKey="Text" inherits="GameFontHighlightSmall" setAllPoints="true"/>
+                <Texture parentKey="Icon">
+                    <Size x="16" y="16"/>
+                    <Anchors>
+                        <Anchor point="RIGHT" relativePoint="LEFT" x="-5" y="0"/>
+                    </Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="OVERLAY">
+                <Texture parentKey="Spark" file="Interface\CastingBar\UI-CastingBar-Spark" alphaMode="ADD">
+                    <Size x="1.5" y="21"/>
+                    <Anchors>
+                        <Anchor point="CENTER"/>
+                    </Anchors>
+                </Texture>
+                <Texture parentKey="Flash" alphaMode="ADD">
+                    <Size x="256" y="64"/>
+                    <Anchors>
+                        <Anchor point="TOP" x="0" y="28"/>
+                    </Anchors>
+                </Texture>
+            </Layer>
+        </Layers>
+        <BarTexture file="Interface\TargetingFrame\UI-StatusBar"/>
+        <BarColor r="1.0" g="0.7" b="0.0"/>
+        <Scripts>
+            <OnLoad>
+                self:OnLoad(nil, true, false)
+            </OnLoad>
+            <OnEvent method="OnEvent"/>
+            <OnUpdate method="OnUpdate"/>
+            <OnShow method="OnShow"/>
+        </Scripts>
+    </StatusBar>
 
-            <!-- Power/mana bar -->
-            <StatusBar parentKey="PowerBar" minValue="0" maxValue="100" defaultValue="100">
-                <Size x="0" y="12"/>
-                <Anchors>
-                    <Anchor point="TOPLEFT" relativeKey="$parent.HealthBar" relativePoint="BOTTOMLEFT" x="0" y="-1"/>
-                    <Anchor point="TOPRIGHT" relativeKey="$parent.HealthBar" relativePoint="BOTTOMRIGHT" x="0" y="-1"/>
-                </Anchors>
-                <BarTexture file="Interface\TargetingFrame\UI-StatusBar"/>
-                <BarColor r="0" g="0.5" b="1"/>
-            </StatusBar>
+    <!-- Icon Frame (Trinket, Racial, Dispel) -->
+    <Frame name="GladiusIconTemplate" enablemouse="true" movable="true" virtual="true">
+        <Layers>
+            <Layer level="OVERLAY" textureSubLevel="1">
+                <Texture parentKey="Texture" setAllPoints="true"/>
+            </Layer>
+        </Layers>
+        <Frames>
+            <Cooldown parentKey="Cooldown" hideCountdownNumbers="false" inherits="CooldownFrameTemplate">
+                <Scripts>
+                    <OnLoad>
+                        self:SetDrawBling(false)
+                        for _, region in next, { self:GetRegions() } do
+                            if region:GetObjectType() == "FontString" then
+                                self.Text = region
+                                self.Text.fontFile = region:GetFont()
+                            end
+                        end
+                    </OnLoad>
+                </Scripts>
+            </Cooldown>
+        </Frames>
+    </Frame>
 
-            <!-- Trinket icon -->
-            <Frame parentKey="TrinketIcon" inherits="GladiusIconTemplate">
-                <Anchors>
-                    <Anchor point="TOPLEFT" relativePoint="TOPRIGHT" x="1" y="0"/>
-                </Anchors>
-            </Frame>
+    <!-- Widget Overlay Indicator -->
+    <Frame name="GladiusWidgetTemplate" enablemouse="true" movable="true" virtual="true" hidden="true">
+        <Layers>
+            <Layer level="OVERLAY">
+                <Texture parentKey="Texture" setAllPoints="true"/>
+            </Layer>
+        </Layers>
+    </Frame>
 
-            <!-- Racial icon -->
-            <Frame parentKey="RacialIcon" inherits="GladiusIconTemplate">
-                <Anchors>
-                    <Anchor point="TOP" relativeKey="$parent.TrinketIcon" relativePoint="BOTTOM" x="0" y="-1"/>
-                </Anchors>
-            </Frame>
-
-            <!-- Spec icon (small, beside class icon) -->
-            <Frame parentKey="SpecIcon">
-                <Size x="20" y="20"/>
-                <Anchors>
-                    <Anchor point="BOTTOMLEFT" relativeKey="$parent.ClassIcon" relativePoint="BOTTOMLEFT" x="2" y="2"/>
-                </Anchors>
+    <!-- Main Enemy Unit Frame -->
+    <Button name="GladiusUnitFrameTemplate" frameStrata="MEDIUM" frameLevel="3" mixin="GladiusFrameMixin" hidden="true" virtual="true" inherits="SecureActionButtonTemplate">
+        <Layers>
+            <Layer level="BORDER" textureSubLevel="1">
+                <Texture parentKey="myHealPredictionBar" inherits="MyHealPredictionBarTemplate"/>
+                <Texture parentKey="otherHealPredictionBar" inherits="OtherHealPredictionBarTemplate"/>
+                <Texture parentKey="totalAbsorbBar" inherits="TotalAbsorbBarTemplate">
+                    <KeyValues>
+                        <KeyValue key="fillTexture" value="Interface\RaidFrame\Shield-Fill" type="string"/>
+                    </KeyValues>
+                </Texture>
+            </Layer>
+            <Layer level="ARTWORK" textureSubLevel="1">
+                <Texture parentKey="healAbsorbBar" inherits="HealAbsorbBarTemplate"/>
+            </Layer>
+            <Layer level="ARTWORK" textureSubLevel="2">
+                <Texture parentKey="frameTexture" hidden="true"/>
+            </Layer>
+            <Layer level="ARTWORK" textureSubLevel="3">
+                <FontString parentKey="Name" inherits="GameFontNormalSmall"/>
+                <FontString parentKey="SpecNameText"/>
+                <FontString parentKey="HealthText"/>
+                <FontString parentKey="PowerText"/>
+                <Texture parentKey="overAbsorbGlow" inherits="OverAbsorbGlowTemplate"/>
+                <Texture parentKey="overHealAbsorbGlow" inherits="OverHealAbsorbGlowTemplate"/>
+                <Texture parentKey="totalAbsorbBarOverlay" inherits="TotalAbsorbBarOverlayTemplate"/>
+            </Layer>
+            <Layer level="OVERLAY" textureSubLevel="7">
+                <Texture parentKey="DeathIcon" atlas="DeathIcon" hidden="true">
+                    <TexCoords left="0" right="1" top="0" bottom="0.5"/>
+                </Texture>
+                <FontString parentKey="AuraStacks" inherits="SystemFont_Shadow_Small2"/>
+                <FontString parentKey="DispelStacks" inherits="SystemFont_Shadow_Small2"/>
+            </Layer>
+        </Layers>
+        <Frames>
+            <StatusBar parentKey="HealthBar" drawLayer="BORDER" useParentLevel="true">
                 <Layers>
-                    <Layer level="ARTWORK">
-                        <Texture parentKey="Icon">
-                            <Anchors>
-                                <Anchor point="TOPLEFT"/>
-                                <Anchor point="BOTTOMRIGHT"/>
-                            </Anchors>
-                            <TexCoords left="0.08" right="0.92" top="0.08" bottom="0.92"/>
+                    <Layer level="BACKGROUND">
+                        <Texture parentKey="hpUnderlay" setAllPoints="true">
+                            <Color r="0" g="0" b="0" a="0.6"/>
                         </Texture>
                     </Layer>
                 </Layers>
-            </Frame>
-
-            <!-- Castbar -->
-            <StatusBar parentKey="CastBar" inherits="GladiusCastBarTemplate">
-                <Anchors>
-                    <Anchor point="TOPLEFT" relativeKey="$parent.PowerBar" relativePoint="BOTTOMLEFT" x="0" y="-2"/>
-                    <Anchor point="TOPRIGHT" relativeKey="$parent.PowerBar" relativePoint="BOTTOMRIGHT" x="0" y="-2"/>
-                </Anchors>
             </StatusBar>
-
-            <!-- Target highlight overlay -->
-            <Frame parentKey="TargetHighlight" hidden="true" frameStrata="MEDIUM">
-                <Anchors>
-                    <Anchor point="TOPLEFT" x="-2" y="2"/>
-                    <Anchor point="BOTTOMRIGHT" x="2" y="-2"/>
-                </Anchors>
+            <StatusBar parentKey="PowerBar" drawLayer="BORDER" useParentLevel="true">
                 <Layers>
-                    <Layer level="OVERLAY">
-                        <Texture parentKey="Glow" file="Interface\Buttons\UI-ActionButton-Border" alphaMode="ADD">
-                            <Anchors>
-                                <Anchor point="TOPLEFT"/>
-                                <Anchor point="BOTTOMRIGHT"/>
-                            </Anchors>
-                            <Color r="1" g="0.8" b="0" a="0.7"/>
+                    <Layer level="BACKGROUND">
+                        <Texture parentKey="ppUnderlay" setAllPoints="true">
+                            <Color r="0" g="0" b="0" a="0.6"/>
                         </Texture>
                     </Layer>
                 </Layers>
-            </Frame>
-
-            <!-- Focus indicator -->
-            <Frame parentKey="FocusHighlight" hidden="true" frameStrata="MEDIUM">
-                <Anchors>
-                    <Anchor point="TOPLEFT" x="-2" y="2"/>
-                    <Anchor point="BOTTOMRIGHT" x="2" y="-2"/>
-                </Anchors>
+            </StatusBar>
+            <Frame parentKey="ClassIcon" frameLevel="7" enablemouse="true" movable="true">
                 <Layers>
-                    <Layer level="OVERLAY">
-                        <Texture parentKey="Glow" file="Interface\Buttons\UI-ActionButton-Border" alphaMode="ADD">
-                            <Anchors>
-                                <Anchor point="TOPLEFT"/>
-                                <Anchor point="BOTTOMRIGHT"/>
-                            </Anchors>
-                            <Color r="0.5" g="0.5" b="1" a="0.6"/>
-                        </Texture>
+                    <Layer level="BORDER" textureSubLevel="1">
+                        <Texture parentKey="Texture" setAllPoints="true"/>
+                        <MaskTexture parentKey="Mask" file="Interface\CharacterFrame\TempPortraitAlphaMask" setAllPoints="true"/>
+                    </Layer>
+                </Layers>
+                <Frames>
+                    <Cooldown parentKey="Cooldown" drawLayer="BORDER" useParentLevel="true" reverse="true" hideCountdownNumbers="false" inherits="CooldownFrameTemplate">
+                        <Scripts>
+                            <OnLoad>
+                                for _, region in next, { self:GetRegions() } do
+                                    if region:GetObjectType() == "FontString" then
+                                        self.Text = region
+                                        self.Text.fontFile = region:GetFont()
+                                    end
+                                end
+                                self:SetAllPoints(self:GetParent().Texture)
+                                self:SetSwipeTexture(1)
+                                self:SetSwipeColor(0, 0, 0, 0.55)
+                                self:SetDrawBling(false)
+                            </OnLoad>
+                        </Scripts>
+                    </Cooldown>
+                </Frames>
+            </Frame>
+            <Frame parentKey="SpecIcon" frameLevel="8" enablemouse="true" movable="true">
+                <Layers>
+                    <Layer level="ARTWORK" textureSubLevel="2">
+                        <Texture parentKey="Texture" setAllPoints="true"/>
+                        <MaskTexture parentKey="Mask" setAllPoints="true" file="Interface\CharacterFrame\TempPortraitAlphaMask"/>
                     </Layer>
                 </Layers>
             </Frame>
+            <Frame parentKey="WidgetOverlay" frameStrata="HIGH" frameLevel="10" setAllPoints="true">
+                <Frames>
+                    <Frame parentKey="targetIndicator" inherits="GladiusWidgetTemplate">
+                        <KeyValues>
+                            <KeyValue key="atlas" value="TargetCrosshairs" type="string"/>
+                        </KeyValues>
+                    </Frame>
+                    <Frame parentKey="focusIndicator" inherits="GladiusWidgetTemplate">
+                        <KeyValues>
+                            <KeyValue key="atlas" value="Waypoint-MapPin-Untracked" type="string"/>
+                        </KeyValues>
+                    </Frame>
+                    <Frame parentKey="combatIndicator" inherits="GladiusWidgetTemplate">
+                        <KeyValues>
+                            <KeyValue key="atlas" value="Food" type="string"/>
+                        </KeyValues>
+                    </Frame>
+                    <Frame parentKey="partyTarget1" inherits="GladiusWidgetTemplate">
+                        <KeyValues>
+                            <KeyValue key="atlas" value="GM-icon-headCount" type="string"/>
+                            <KeyValue key="desaturated" value="true" type="boolean"/>
+                        </KeyValues>
+                    </Frame>
+                    <Frame parentKey="partyTarget2" inherits="GladiusWidgetTemplate">
+                        <KeyValues>
+                            <KeyValue key="atlas" value="GM-icon-headCount" type="string"/>
+                            <KeyValue key="desaturated" value="true" type="boolean"/>
+                        </KeyValues>
+                    </Frame>
+                </Frames>
+            </Frame>
+            <Frame parentKey="Trinket" inherits="GladiusIconTemplate"/>
+            <Frame parentKey="Racial" inherits="GladiusIconTemplate"/>
+            <Frame parentKey="Dispel" inherits="GladiusIconTemplate"/>
+        </Frames>
+        <Scripts>
+            <OnEvent method="OnEvent"/>
+            <OnLoad method="OnLoad"/>
+            <OnEnter method="OnEnter"/>
+            <OnLeave method="OnLeave"/>
+        </Scripts>
+    </Button>
 
-            <!-- Death icon overlay -->
-            <Frame parentKey="DeathOverlay" hidden="true" frameStrata="HIGH">
+    <!-- Main Addon Frame -->
+    <Frame name="GladiusMidnight" mixin="GladiusMixin" movable="true" parent="UIParent">
+        <Size x="1" y="1"/>
+        <Frames>
+            <Button name="GladiusEnemyFrame1" parentKey="arena1" inherits="GladiusUnitFrameTemplate" id="1">
                 <Anchors>
-                    <Anchor point="CENTER" relativeKey="$parent.HealthBar"/>
+                    <Anchor point="CENTER"/>
                 </Anchors>
+            </Button>
+            <Button name="GladiusEnemyFrame2" parentKey="arena2" inherits="GladiusUnitFrameTemplate" id="2"/>
+            <Button name="GladiusEnemyFrame3" parentKey="arena3" inherits="GladiusUnitFrameTemplate" id="3"/>
+
+            <Frame parentKey="ShadowsightTimer" hidden="true">
+                <Size x="250" y="20"/>
                 <Layers>
                     <Layer level="OVERLAY">
-                        <Texture parentKey="Icon" file="Interface\TargetingFrame\UI-TargetingFrame-Skull">
-                            <Size x="28" y="28"/>
+                        <FontString parentKey="Text" inherits="GameFontNormalSmall">
                             <Anchors>
-                                <Anchor point="CENTER"/>
+                                <Anchor point="CENTER" relativePoint="CENTER" x="0" y="0"/>
                             </Anchors>
-                        </Texture>
+                            <Color r="1.0" g="0.8" b="0.0"/>
+                        </FontString>
                     </Layer>
                 </Layers>
             </Frame>
         </Frames>
-
-    </Button>
-
-
-
+        <Scripts>
+            <OnEvent method="OnEvent"/>
+            <OnLoad method="OnLoad"/>
+        </Scripts>
+    </Frame>
 </Ui>
