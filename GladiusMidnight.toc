@@ -12,6 +12,9 @@ Libs\embeds.xml
 # Data
 Data.lua
 
+# Main XML (creates event frame at UI load, before combat can occur)
+GladiusMidnight.xml
+
 # Core
 Core.lua
 

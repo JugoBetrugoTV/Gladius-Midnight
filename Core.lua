@@ -16,53 +16,18 @@
 local addonName, addon = ...
 
 -- ============================================================================
--- Midnight 12.0 Workaround: Create event frame at file load time
--- Frame:RegisterEvent() is protected during combat in Midnight 12.0
--- By creating and registering at file scope, we avoid combat lockdown issues
+-- Midnight 12.0 Workaround: Event frame created in XML (GladiusMidnight.xml)
+-- RegisterEvent is protected during combat - XML frames load before combat
+-- This is the same approach as sArena_Reloaded
 -- ============================================================================
 
-local EventFrame = CreateFrame("Frame", "GladiusMidnightEventFrame")
-local EventCallbacks = {}
+-- Global callback table that XML OnEvent will call
+GladiusMidnightEventCallbacks = GladiusMidnightEventCallbacks or {}
 
--- Register events at file load time (before combat can occur)
-local MIDNIGHT_EVENTS = {
-    "ARENA_OPPONENT_UPDATE",
-    "ARENA_PREP_OPPONENT_SPECIALIZATIONS",
-    "PLAYER_ENTERING_WORLD",
-    "ZONE_CHANGED_NEW_AREA",
-    "PLAYER_TARGET_CHANGED",
-    "UNIT_HEALTH",
-    "UNIT_MAXHEALTH",
-    "UNIT_POWER_UPDATE",
-    "UNIT_MAXPOWER",
-    "UNIT_SPELLCAST_SUCCEEDED",
-    "UNIT_AURA",
-    "UNIT_SPELLCAST_START",
-    "UNIT_SPELLCAST_STOP",
-    "UNIT_SPELLCAST_FAILED",
-    "UNIT_SPELLCAST_INTERRUPTED",
-    "UNIT_SPELLCAST_CHANNEL_START",
-    "UNIT_SPELLCAST_CHANNEL_STOP",
-    "PLAYER_REGEN_ENABLED",
-    "COMBAT_LOG_EVENT_UNFILTERED",
-}
-
-for _, event in ipairs(MIDNIGHT_EVENTS) do
-    pcall(function() EventFrame:RegisterEvent(event) end)
-end
-
-EventFrame:SetScript("OnEvent", function(self, event, ...)
-    local callback = EventCallbacks[event]
-    if callback then
-        callback(event, ...)
-    end
-end)
-
--- Create main addon object using Ace3 (but we'll use our own event frame)
+-- Create main addon object using Ace3
 local GladiusMidnight = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0")
 addon.Core = GladiusMidnight
-addon.EventFrame = EventFrame
-addon.EventCallbacks = EventCallbacks
+addon.EventCallbacks = GladiusMidnightEventCallbacks
 
 -- ============================================================================
 -- Default Settings (Gladius Classic Style)
@@ -556,27 +521,28 @@ local function ShouldHideBlizzardFrames()
 end
 
 function GladiusMidnight:SetupEventCallbacks()
-    -- Route events to addon methods using our pre-registered event frame
+    -- Route events from XML frame to addon methods
+    -- Events are registered in GladiusMidnight.xml (at UI load, before combat)
     local self = self
-    addon.EventCallbacks["ARENA_OPPONENT_UPDATE"] = function(event, ...) self:ARENA_OPPONENT_UPDATE(event, ...) end
-    addon.EventCallbacks["ARENA_PREP_OPPONENT_SPECIALIZATIONS"] = function(event, ...) self:ARENA_PREP_OPPONENT_SPECIALIZATIONS(event, ...) end
-    addon.EventCallbacks["PLAYER_ENTERING_WORLD"] = function(event, ...) self:PLAYER_ENTERING_WORLD(event, ...) end
-    addon.EventCallbacks["ZONE_CHANGED_NEW_AREA"] = function(event, ...) self:ZONE_CHANGED_NEW_AREA(event, ...) end
-    addon.EventCallbacks["PLAYER_TARGET_CHANGED"] = function(event, ...) self:PLAYER_TARGET_CHANGED(event, ...) end
-    addon.EventCallbacks["UNIT_HEALTH"] = function(event, ...) self:UNIT_HEALTH(event, ...) end
-    addon.EventCallbacks["UNIT_MAXHEALTH"] = function(event, ...) self:UNIT_MAXHEALTH(event, ...) end
-    addon.EventCallbacks["UNIT_POWER_UPDATE"] = function(event, ...) self:UNIT_POWER_UPDATE(event, ...) end
-    addon.EventCallbacks["UNIT_MAXPOWER"] = function(event, ...) self:UNIT_MAXPOWER(event, ...) end
-    addon.EventCallbacks["UNIT_SPELLCAST_SUCCEEDED"] = function(event, ...) self:UNIT_SPELLCAST_SUCCEEDED(event, ...) end
-    addon.EventCallbacks["UNIT_AURA"] = function(event, ...) self:UNIT_AURA(event, ...) end
-    addon.EventCallbacks["UNIT_SPELLCAST_START"] = function(event, ...) self:UNIT_SPELLCAST_START(event, ...) end
-    addon.EventCallbacks["UNIT_SPELLCAST_STOP"] = function(event, ...) self:UNIT_SPELLCAST_STOP(event, ...) end
-    addon.EventCallbacks["UNIT_SPELLCAST_FAILED"] = function(event, ...) self:UNIT_SPELLCAST_FAILED(event, ...) end
-    addon.EventCallbacks["UNIT_SPELLCAST_INTERRUPTED"] = function(event, ...) self:UNIT_SPELLCAST_INTERRUPTED(event, ...) end
-    addon.EventCallbacks["UNIT_SPELLCAST_CHANNEL_START"] = function(event, ...) self:UNIT_SPELLCAST_CHANNEL_START(event, ...) end
-    addon.EventCallbacks["UNIT_SPELLCAST_CHANNEL_STOP"] = function(event, ...) self:UNIT_SPELLCAST_CHANNEL_STOP(event, ...) end
-    addon.EventCallbacks["PLAYER_REGEN_ENABLED"] = function(event, ...) self:PLAYER_REGEN_ENABLED(event, ...) end
-    addon.EventCallbacks["COMBAT_LOG_EVENT_UNFILTERED"] = function(event, ...) self:COMBAT_LOG_EVENT_UNFILTERED(event, ...) end
+    GladiusMidnightEventCallbacks["ARENA_OPPONENT_UPDATE"] = function(event, ...) self:ARENA_OPPONENT_UPDATE(event, ...) end
+    GladiusMidnightEventCallbacks["ARENA_PREP_OPPONENT_SPECIALIZATIONS"] = function(event, ...) self:ARENA_PREP_OPPONENT_SPECIALIZATIONS(event, ...) end
+    GladiusMidnightEventCallbacks["PLAYER_ENTERING_WORLD"] = function(event, ...) self:PLAYER_ENTERING_WORLD(event, ...) end
+    GladiusMidnightEventCallbacks["ZONE_CHANGED_NEW_AREA"] = function(event, ...) self:ZONE_CHANGED_NEW_AREA(event, ...) end
+    GladiusMidnightEventCallbacks["PLAYER_TARGET_CHANGED"] = function(event, ...) self:PLAYER_TARGET_CHANGED(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_HEALTH"] = function(event, ...) self:UNIT_HEALTH(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_MAXHEALTH"] = function(event, ...) self:UNIT_MAXHEALTH(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_POWER_UPDATE"] = function(event, ...) self:UNIT_POWER_UPDATE(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_MAXPOWER"] = function(event, ...) self:UNIT_MAXPOWER(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_SUCCEEDED"] = function(event, ...) self:UNIT_SPELLCAST_SUCCEEDED(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_AURA"] = function(event, ...) self:UNIT_AURA(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_START"] = function(event, ...) self:UNIT_SPELLCAST_START(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_STOP"] = function(event, ...) self:UNIT_SPELLCAST_STOP(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_FAILED"] = function(event, ...) self:UNIT_SPELLCAST_FAILED(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_INTERRUPTED"] = function(event, ...) self:UNIT_SPELLCAST_INTERRUPTED(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_CHANNEL_START"] = function(event, ...) self:UNIT_SPELLCAST_CHANNEL_START(event, ...) end
+    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_CHANNEL_STOP"] = function(event, ...) self:UNIT_SPELLCAST_CHANNEL_STOP(event, ...) end
+    GladiusMidnightEventCallbacks["PLAYER_REGEN_ENABLED"] = function(event, ...) self:PLAYER_REGEN_ENABLED(event, ...) end
+    GladiusMidnightEventCallbacks["COMBAT_LOG_EVENT_UNFILTERED"] = function(event, ...) self:COMBAT_LOG_EVENT_UNFILTERED(event, ...) end
 end
 
 function GladiusMidnight:OnEnable()
