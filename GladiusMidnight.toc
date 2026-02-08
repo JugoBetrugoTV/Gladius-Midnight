@@ -1,33 +1,29 @@
 ## Interface: 120000
 ## Title: Gladius Midnight
-## Notes: Arena Unit Frames for WoW Midnight (12.0) - Modular Design
-## Author: Gladius-Midnight Team
-## Version: 2.0.0
+## Notes: Arena enemy unit frames for World of Warcraft Midnight
+## Author: GladiusMidnight Team
+## Version: 1.0.0
 ## SavedVariables: GladiusMidnightDB
 ## IconTexture: Interface\Icons\Achievement_Arena_2v2_7
 
-# Libraries
 Libs\embeds.xml
 
-# Data
-Data.lua
+Data\ClassData.lua
+Data\RacialData.lua
+Data\AuraData.lua
+Data\DRData.lua
+Data\InterruptData.lua
 
-# Main XML (creates event frame at UI load, before combat can occur)
 GladiusMidnight.xml
-
-# Core
 Core.lua
+Frames.lua
 
-# Modules
 Modules\ClassIcon.lua
-Modules\Health.lua
-Modules\Power.lua
 Modules\Trinket.lua
 Modules\Racial.lua
+Modules\Auras.lua
 Modules\DRTracker.lua
 Modules\CastBar.lua
-Modules\Auras.lua
+Modules\Interrupt.lua
 
-# Options (must be last)
-Options.lua
-OptionsUI.lua
+Config.lua

@@ -1,1461 +1,548 @@
---[[
+--[[=========================================================================
     Gladius Midnight - Core
-    Arena Unit Frames for WoW Midnight 12.0
+    Main addon initialization, event routing, and frame management
+===========================================================================]]
 
-    Modular architecture - each component is a separate module
+local ADDON_NAME, Gladius = ...
 
-    Midnight 12.0 API Notes:
-    - Secret values: Use issecretvalue() to check before table index access
-    - StatusBar:SetValue() accepts secret values natively
-    - FontString:SetText() accepts secret strings natively
-    - C_CurveUtil.CreateColorCurve() for health bar coloring with secrets
-    - C_DurationUtil.CreateDuration() for timer displays with secrets
-    - Cooldown:SetCooldownFromDurationObject() for cooldown frames
-]]
+-- Create the main addon namespace table
+GladiusMidnight = Gladius
 
-local addonName, addon = ...
-
--- ============================================================================
--- Midnight 12.0 Workaround: Event frame created in XML (GladiusMidnight.xml)
--- RegisterEvent is protected during combat - XML frames load before combat
--- This is the same approach as sArena_Reloaded
--- ============================================================================
-
--- Create main addon object using Ace3
-local GladiusMidnight = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0")
-addon.Core = GladiusMidnight
-
--- Event frame reference (created in XML at UI load time)
-local eventFrame = nil
-local eventsRegistered = false
-local pendingEventRegistration = false
-
--- ============================================================================
--- Default Settings (Gladius Classic Style)
--- ============================================================================
-
-local defaults = {
+-- =========================================================================
+-- Default saved variable settings
+-- =========================================================================
+Gladius.DEFAULTS = {
     profile = {
-        enabled = true,
-        locked = true,
-
-        -- Frame settings (sArena Gladiuish style)
-        frameWidth = 168,
-        frameHeight = 44,
-        scale = 1.15,
-        spacing = 35,
+        -- General
+        locked       = true,
+        enabled      = true,
+        frameScale   = 1.0,
         growDirection = "DOWN",
-
-        -- Layout style (mirrored = class icon on LEFT, bars on RIGHT)
-        mirrored = true,  -- sArena Gladiuish style
+        frameSpacing = 35,
+        frameWidth   = 170,
+        frameHeight  = 44,
+        powerBarHeight = 12,
 
         -- Position
-        posX = 355,
-        posY = 131,
+        posX = nil,
+        posY = nil,
 
-        -- Minimap
-        minimap = {
-            hide = false,
+        -- Visual
+        classColorBars  = true,
+        classColorNames = true,
+        showNames       = true,
+        showHealthText  = true,
+        showPowerText   = false,
+        darkBackground  = true,
+        bgAlpha         = 0.85,
+        barTexture      = "Interface\\TargetingFrame\\UI-StatusBar",
+
+        -- Class Icon
+        classIconEnabled    = true,
+        classIconSize       = 44,
+        showSpecIcon        = true,
+        auraPriorityOnIcon  = true,
+
+        -- Trinket
+        trinketEnabled      = true,
+        trinketSize         = 28,
+        trinketDesaturateCD = true,
+
+        -- Racial
+        racialEnabled       = true,
+        racialSize          = 28,
+        swapRacialToTrinket = false,
+
+        -- Auras
+        aurasEnabled        = true,
+        auraShowStacks      = true,
+
+        -- DR Tracker
+        drEnabled           = true,
+        drSize              = 24,
+        drGrowDirection     = "RIGHT",
+        drSpacing           = 2,
+        drShowSeverity      = true,
+        drColorText         = true,
+        drCategories = {
+            ["Stun"]         = true,
+            ["Incapacitate"] = true,
+            ["Disorient"]    = true,
+            ["Silence"]      = true,
+            ["Root"]         = true,
+            ["Disarm"]       = true,
+            ["Knock"]        = true,
         },
 
-        -- Module toggles
-        modules = {
-            classIcon = true,
-            health = true,
-            power = true,
-            trinket = true,
-            racial = true,
-            drTracker = true,
-            castBar = true,
-            auras = true,
+        -- Cast Bar
+        castBarEnabled      = true,
+        castBarHeight       = 16,
+        castBarShowIcon     = true,
+        castBarShowTime     = true,
+        castBarInterruptColor = true,
+        castBarColors = {
+            normal          = { r = 1.0, g = 0.7, b = 0.0 },
+            channel         = { r = 0.0, g = 1.0, b = 0.0 },
+            uninterruptible = { r = 0.7, g = 0.7, b = 0.7 },
+            interrupted     = { r = 1.0, g = 0.0, b = 0.0 },
         },
 
-        -- Visual settings (sArena style)
-        targetHighlight = true,
-        immunityGlow = true,
-        hideBlizzardFrames = true,
-        classColors = true,
-        showNames = true,
-        desaturateCooldowns = true,
-        invertCooldownSwipe = true,
+        -- Interrupt
+        interruptEnabled        = true,
+        interruptColorCastbar   = true,
 
-        -- Module-specific settings (sArena Gladiuish sizes)
-        classIcon = {
-            size = 44,
-            position = "LEFT",
-            showSpec = true,
-            fontSize = 14,
-        },
-        health = {
-            height = 22,
-            showText = true,
-            showPercent = true,
-            showAbsolute = true,
-            showName = true,
-            showSpec = true,
-            colorByClass = true,
-        },
-        power = {
-            height = 9,
-            showText = false,
-        },
-        trinket = {
-            size = 32,
-            position = "RIGHT",
-            showTimer = true,
-            fontSize = 14,
-        },
-        racial = {
-            size = 26,
-            position = "RIGHT",
-            showTimer = true,
-            fontSize = 14,
-        },
-        drTracker = {
-            iconSize = 28,
-            showTimer = false,
-            maxIcons = 4,
-            borderSize = 2.5,
-            fontSize = 12,
-            spacing = 6,
-            growDirection = "LEFT",
-        },
-        castBar = {
-            height = 14,
-            width = 108,
-            showIcon = true,
-            insideFrame = false,
-            posX = 8,
-            posY = -23.5,
-            scale = 1.35,
-        },
-        auras = {
-            iconSize = 24,
-            maxAuras = 4,
-        },
-    }
+        -- Indicators
+        targetHighlight  = true,
+        focusHighlight   = true,
+    },
 }
 
--- ============================================================================
--- Frame Storage
--- ============================================================================
+-- =========================================================================
+-- Addon State
+-- =========================================================================
+Gladius.arenaFrames = {}
+Gladius.isInArena = false
+Gladius.isTestMode = false
+Gladius.playerFaction = nil
+Gladius.playerClass = nil
+Gladius.playerInterruptOnCD = false
 
-GladiusMidnight.frames = {}
-GladiusMidnight.modules = {}
-GladiusMidnight.testMode = false
-GladiusMidnight.arenaSize = 0
-GladiusMidnight.prepPhase = false
+local MAX_ARENA_OPPONENTS = 5
 
--- ============================================================================
--- Module Registration
--- ============================================================================
-
-function GladiusMidnight:RegisterModule(name, module)
-    self.modules[name] = module
-    if module.OnRegister then
-        module:OnRegister(self)
-    end
-end
-
-function GladiusMidnight:GetModule(name)
-    return self.modules[name]
-end
-
-function GladiusMidnight:IsModuleEnabled(name)
-    return self.db.profile.modules[name] == true
-end
-
--- ============================================================================
--- Arena Frame Creation (Gladius Classic Style)
--- ============================================================================
-
-function GladiusMidnight:CreateArenaFrame(index)
-    local unit = "arena" .. index
-    local frameName = "GladiusMidnightFrame" .. index
-
-    -- Main container frame
-    local frame = CreateFrame("Button", frameName, UIParent, "BackdropTemplate,SecureUnitButtonTemplate")
-    frame:SetSize(self.db.profile.frameWidth, self.db.profile.frameHeight)
-    frame:SetMovable(true)
-    frame:EnableMouse(true)
-    frame:RegisterForDrag("LeftButton")
-    frame:RegisterForClicks("AnyUp")
-    frame:SetClampedToScreen(true)
-
-    -- IMPORTANT: Allow child frames to render outside parent bounds
-    frame:SetClipsChildren(false)
-
-    frame.unit = unit
-    frame.index = index
-    frame.displayedUnit = unit
-
-    -- Add optionTable for Blizzard compatibility
-    frame.optionTable = {
-        displayOnlyDispellableDebuffs = false,
-        displayDebuffs = true,
-        displayBuffs = true,
-        displayNonBossDebuffs = true,
-        maxDispelDebuffs = 3,
-        maxDebuffs = 3,
-        maxBuffs = 3,
-    }
-
-    frame.blockedAuraInstanceIDsTable = frame.blockedAuraInstanceIDsTable or {}
-
-    -- Dark background (Gladius style)
-    frame:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    frame:SetBackdropColor(0.05, 0.05, 0.05, 0.95)
-    frame:SetBackdropBorderColor(0.2, 0.2, 0.2, 1)
-
-    -- Target highlight glow (Red border when targeted - Gladius style)
-    local targetGlow = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    targetGlow:SetPoint("TOPLEFT", -2, 2)
-    targetGlow:SetPoint("BOTTOMRIGHT", 2, -2)
-    targetGlow:SetBackdrop({
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 2,
-    })
-    targetGlow:SetBackdropBorderColor(1, 0, 0, 1)  -- Red for target
-    targetGlow:SetFrameLevel(frame:GetFrameLevel() + 5)
-    targetGlow:Hide()
-    frame.targetGlow = targetGlow
-
-    -- Immunity glow
-    local immunityGlow = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    immunityGlow:SetPoint("TOPLEFT", -3, 3)
-    immunityGlow:SetPoint("BOTTOMRIGHT", 3, -3)
-    immunityGlow:SetBackdrop({
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 3,
-    })
-    immunityGlow:SetBackdropBorderColor(1, 1, 1, 1)
-    immunityGlow:SetFrameLevel(frame:GetFrameLevel() - 1)
-    immunityGlow:Hide()
-    frame.immunityGlow = immunityGlow
-    frame.hasImmunity = false
-    frame.immunityType = nil
-
-    -- Secure targeting
-    frame:SetAttribute("type1", "target")
-    frame:SetAttribute("type2", "focus")
-    frame:SetAttribute("unit", unit)
-    RegisterUnitWatch(frame)
-
-    -- Drag handlers
-    frame:SetScript("OnDragStart", function(f)
-        if not GladiusMidnight.db.profile.locked then
-            f:StartMoving()
-        end
-    end)
-
-    frame:SetScript("OnDragStop", function(f)
-        f:StopMovingOrSizing()
-        if f.index == 1 then
-            local scale = f:GetEffectiveScale()
-            local uiScale = UIParent:GetEffectiveScale()
-            local centerX, centerY = f:GetCenter()
-            local uiCenterX, uiCenterY = UIParent:GetCenter()
-
-            if centerX and uiCenterX then
-                local x = (centerX - uiCenterX) * (scale / uiScale)
-                local y = (centerY - uiCenterY) * (scale / uiScale)
-                local frameScale = GladiusMidnight.db.profile.scale or 1
-                GladiusMidnight.db.profile.posX = x / frameScale
-                GladiusMidnight.db.profile.posY = y / frameScale
-            end
-        end
-        local db = GladiusMidnight.db.profile
-        local prevFrame = GladiusMidnight.frames[1]
-        for i = 2, 3 do
-            local otherFrame = GladiusMidnight.frames[i]
-            if otherFrame and prevFrame then
-                otherFrame:ClearAllPoints()
-                local spacing = db.spacing
-                if db.growDirection == "DOWN" then
-                    otherFrame:SetPoint("TOP", prevFrame, "BOTTOM", 0, -spacing)
-                elseif db.growDirection == "UP" then
-                    otherFrame:SetPoint("BOTTOM", prevFrame, "TOP", 0, spacing)
-                elseif db.growDirection == "LEFT" then
-                    otherFrame:SetPoint("RIGHT", prevFrame, "LEFT", -spacing, 0)
-                else
-                    otherFrame:SetPoint("LEFT", prevFrame, "RIGHT", spacing, 0)
-                end
-                prevFrame = otherFrame
-            end
-        end
-    end)
-
-    -- Container for module elements
-    frame.moduleFrames = {}
-
-    -- Hide by default
+-- =========================================================================
+-- Main Event Frame (created in Lua to avoid XML mixin timing issues)
+-- =========================================================================
+local function CreateEventFrame()
+    local frame = CreateFrame("Frame", "GladiusMidnightFrame", UIParent)
     frame:Hide()
 
+    frame:SetScript("OnEvent", function(self, event, ...)
+        if event == "PLAYER_LOGIN" then
+            Gladius:Initialize()
+        elseif event == "PLAYER_ENTERING_WORLD" then
+            Gladius:OnEnteringWorld()
+        elseif event == "ARENA_PREP_OPPONENT_SPECIALIZATIONS" then
+            Gladius:OnArenaPrepOpponents()
+        elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
+            Gladius:OnCombatLogEvent()
+        elseif event == "PLAYER_TARGET_CHANGED" then
+            Gladius:RefreshTargetIndicators()
+        elseif event == "PLAYER_FOCUS_CHANGED" then
+            Gladius:RefreshFocusIndicators()
+        elseif event == "UNIT_TARGET" then
+            local unit = ...
+            if unit and unit:match("^party") then
+                Gladius:RefreshTargetIndicators()
+            end
+        end
+    end)
+
+    frame:RegisterEvent("PLAYER_LOGIN")
     return frame
 end
 
--- ============================================================================
--- Frame Updates
--- ============================================================================
+GladiusMidnightFrame = CreateEventFrame()
 
-function GladiusMidnight:UpdateFrame(frame, testData)
-    if not frame then return end
+-- =========================================================================
+-- Initialization
+-- =========================================================================
+function Gladius:Initialize()
+    -- Player info
+    self.playerFaction = UnitFactionGroup("player")
+    _, self.playerClass = UnitClass("player")
 
-    local db = self.db.profile
+    -- Setup AceDB
+    self.db = LibStub("AceDB-3.0"):New("GladiusMidnightDB", self.DEFAULTS, true)
+    self.db.RegisterCallback(self, "OnProfileChanged", "OnProfileChanged")
+    self.db.RegisterCallback(self, "OnProfileCopied", "OnProfileChanged")
+    self.db.RegisterCallback(self, "OnProfileReset", "OnProfileChanged")
 
-    if not InCombatLockdown() then
-        frame:SetSize(db.frameWidth, db.frameHeight)
-        frame:SetScale(db.scale)
+    -- Create arena frames
+    self:CreateArenaFrames()
+
+    -- Register slash commands
+    SLASH_GLADIUSMIDNIGHT1 = "/gladius"
+    SLASH_GLADIUSMIDNIGHT2 = "/gm"
+    SlashCmdList["GLADIUSMIDNIGHT"] = function(msg)
+        self:HandleSlashCommand(msg)
     end
 
-    for name, module in pairs(self.modules) do
-        if self:IsModuleEnabled(name) then
-            if module.Update then
-                module:Update(frame, testData)
-            end
+    -- Register main events
+    local eventFrame = GladiusMidnightFrame
+    eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+    eventFrame:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
+
+    -- Hide default Blizzard arena frames if they exist
+    self:SuppressBlizzardFrames()
+
+    -- Setup configuration
+    self:SetupConfig()
+
+    -- Load saved position
+    self:RestorePosition()
+
+    print("|cff00ccffGladius Midnight|r v1.0.0 loaded. Type |cff00ccff/gladius|r for options.")
+end
+
+function Gladius:OnProfileChanged()
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame then
+            frame:ApplySettings()
+        end
+    end
+    self:RestorePosition()
+end
+
+-- =========================================================================
+-- Arena Frame Creation
+-- =========================================================================
+function Gladius:CreateArenaFrames()
+    local anchor = CreateFrame("Frame", "GladiusAnchor", UIParent)
+    anchor:SetSize(10, 10)
+    anchor:SetPoint("RIGHT", UIParent, "RIGHT", -100, 0)
+    anchor:SetMovable(true)
+    anchor:SetClampedToScreen(true)
+    self.anchorFrame = anchor
+
+    -- Create drag handle
+    local drag = CreateFrame("Frame", nil, anchor)
+    drag:SetAllPoints()
+    drag:EnableMouse(false)
+    drag:RegisterForDrag("LeftButton")
+    drag:SetScript("OnDragStart", function()
+        if not Gladius.db.profile.locked then
+            anchor:StartMoving()
+        end
+    end)
+    drag:SetScript("OnDragStop", function()
+        anchor:StopMovingOrSizing()
+        Gladius:SavePosition()
+    end)
+    self.dragFrame = drag
+
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local unitID = "arena" .. i
+        local frameName = "GladiusArenaFrame" .. i
+
+        local frame = CreateFrame("Button", frameName, UIParent, "GladiusArenaFrameTemplate")
+        Mixin(frame, GladiusArenaFrameMixin)
+
+        -- Set up script handlers after mixin is applied
+        frame:SetScript("OnEvent", function(f, event, ...) f:OnEvent(event, ...) end)
+        frame:SetScript("OnEnter", function(f) f:OnEnter() end)
+        frame:SetScript("OnLeave", function(f) f:OnLeave() end)
+
+        frame:OnLoad()
+        frame.unitID = unitID
+        frame.frameIndex = i
+
+        -- Position relative to anchor
+        local db = self.db.profile
+        local spacing = db.frameSpacing
+        local growDir = db.growDirection
+
+        if i == 1 then
+            frame:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", 0, 0)
         else
-            if frame.moduleFrames and frame.moduleFrames[name] then
-                frame.moduleFrames[name]:Hide()
-            end
-        end
-    end
-
-    self:UpdateTargetHighlight()
-end
-
-function GladiusMidnight:UpdateAllFrames()
-    local testData = self.testMode and self:GetTestData() or nil
-
-    for i = 1, 3 do
-        local frame = self.frames[i]
-        if frame then
-            self:UpdateFrame(frame, testData)
-        end
-    end
-    self:PositionFrames()
-
-    self:UpdateBlizzardDRSize()
-    self:UpdateBlizzardCastBarSize()
-    self:UpdateBlizzardDebuffSize()
-end
-
-function GladiusMidnight:GetTestData()
-    return {
-        class = "MAGE",
-        name = "TestPlayer",
-        health = 75,
-        maxHealth = 100,
-        power = 80,
-        maxPower = 100,
-        powerType = Enum.PowerType.Mana,
-    }
-end
-
-function GladiusMidnight:PositionFrames()
-    if InCombatLockdown() then
-        return
-    end
-
-    local db = self.db.profile
-    local prevFrame = nil
-    local numFrames = self.arenaSize > 0 and self.arenaSize or 3
-
-    for i = 1, numFrames do
-        local frame = self.frames[i]
-        if frame then
-            frame:ClearAllPoints()
-
-            if i == 1 then
-                frame:SetPoint("CENTER", UIParent, "CENTER", db.posX, db.posY)
+            local prev = self.arenaFrames[i - 1]
+            if growDir == "DOWN" then
+                frame:SetPoint("TOPRIGHT", prev, "BOTTOMRIGHT", 0, -spacing)
             else
-                local spacing = db.spacing
-                if db.growDirection == "DOWN" then
-                    frame:SetPoint("TOP", prevFrame, "BOTTOM", 0, -spacing)
-                elseif db.growDirection == "UP" then
-                    frame:SetPoint("BOTTOM", prevFrame, "TOP", 0, spacing)
-                elseif db.growDirection == "LEFT" then
-                    frame:SetPoint("RIGHT", prevFrame, "LEFT", -spacing, 0)
-                else
-                    frame:SetPoint("LEFT", prevFrame, "RIGHT", spacing, 0)
-                end
+                frame:SetPoint("BOTTOMRIGHT", prev, "TOPRIGHT", 0, spacing)
             end
-
-            frame:SetScale(db.scale)
-            prevFrame = frame
         end
+
+        -- Click bindings: left=target, right=focus
+        frame:SetAttribute("type1", "target")
+        frame:SetAttribute("unit", unitID)
+        frame:SetAttribute("*type2", "focus")
+        frame:SetAttribute("*unit2", unitID)
+
+        frame:ApplySettings()
+        frame:Hide()
+
+        self.arenaFrames[i] = frame
     end
 end
 
--- ============================================================================
--- Arena Detection
--- ============================================================================
+-- =========================================================================
+-- Position Save/Restore
+-- =========================================================================
+function Gladius:SavePosition()
+    local point, _, relPoint, x, y = self.anchorFrame:GetPoint(1)
+    self.db.profile.posX = x
+    self.db.profile.posY = y
+end
 
-function GladiusMidnight:DetectArenaType()
+function Gladius:RestorePosition()
+    local x = self.db.profile.posX
+    local y = self.db.profile.posY
+    if x and y then
+        self.anchorFrame:ClearAllPoints()
+        self.anchorFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", x, y)
+    end
+end
+
+-- =========================================================================
+-- Arena Lifecycle Events
+-- =========================================================================
+function Gladius:OnEnteringWorld()
     local _, instanceType = IsInInstance()
-    if instanceType ~= "arena" then
-        self.arenaSize = 0
-        return
-    end
+    local wasInArena = self.isInArena
+    self.isInArena = (instanceType == "arena")
 
-    if C_PvP and C_PvP.IsSoloShuffle and C_PvP.IsSoloShuffle() then
-        self.arenaSize = 3
-        self:Print("Solo Shuffle erkannt")
-        return
+    if self.isInArena and not wasInArena then
+        self:EnterArena()
+    elseif not self.isInArena and wasInArena then
+        self:LeaveArena()
+    elseif not self.isInArena and not self.isTestMode then
+        self:HideAllFrames()
     end
-
-    if C_PvP and C_PvP.GetActiveMatchBracket then
-        local bracket = C_PvP.GetActiveMatchBracket()
-        if bracket == 1 then
-            self.arenaSize = 2
-        else
-            self.arenaSize = 3
-        end
-    else
-        self.arenaSize = 3
-    end
-
-    self:Print(self.arenaSize .. "v" .. self.arenaSize .. " Arena erkannt")
 end
 
--- ============================================================================
--- Test Mode
--- ============================================================================
+function Gladius:EnterArena()
+    local eventFrame = GladiusMidnightFrame
+    eventFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    eventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+    eventFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+    eventFrame:RegisterEvent("UNIT_TARGET")
 
-function GladiusMidnight:ToggleTest()
-    self.testMode = not self.testMode
+    -- Enable mouse on frames
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame then
+            frame:EnableMouse(true)
+            frame:RegisterUnitEvents()
+            frame:Show()
+            frame:ResetState()
+        end
+    end
+end
 
-    if self.testMode then
-        self:Print("Test Modus |cFF00FF00aktiviert|r")
+function Gladius:LeaveArena()
+    local eventFrame = GladiusMidnightFrame
+    eventFrame:UnregisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+    eventFrame:UnregisterEvent("PLAYER_TARGET_CHANGED")
+    eventFrame:UnregisterEvent("PLAYER_FOCUS_CHANGED")
+    eventFrame:UnregisterEvent("UNIT_TARGET")
 
-        local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
-                          "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
-                          "DRUID", "DEMONHUNTER", "EVOKER" }
+    self.isTestMode = false
+    self:HideAllFrames()
+end
 
-        local specs = {
-            MAGE = {62, 63, 64},       -- Arcane, Fire, Frost
-            WARRIOR = {71, 72, 73},    -- Arms, Fury, Prot
-            ROGUE = {259, 260, 261},   -- Assassination, Outlaw, Sub
-            HUNTER = {253, 254, 255},  -- BM, MM, Survival
-        }
-
-        for i = 1, 3 do
-            local frame = self.frames[i]
-            if frame then
-                UnregisterUnitWatch(frame)
-
-                local testClass = classes[math.random(1, #classes)]
-                frame.class = testClass
-
-                -- Assign a spec if available
-                if specs[testClass] then
-                    frame.specID = specs[testClass][math.random(1, #specs[testClass])]
-                end
-
-                local testData = {
-                    class = testClass,
-                    health = math.random(20, 100),
-                    maxHealth = 100,
-                    power = math.random(0, 100),
-                    maxPower = 100,
-                    powerType = Enum.PowerType.Mana,
-                }
-
-                self:UpdateFrame(frame, testData)
+function Gladius:OnArenaPrepOpponents()
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame then
+            frame:ResetDRState()
+            local specID = GetArenaOpponentSpec(i)
+            if specID and specID > 0 then
+                frame:SetSpecialization(specID)
                 frame:Show()
             end
         end
+    end
+end
 
-        self:PositionFrames()
+function Gladius:HideAllFrames()
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame then
+            frame:UnregisterUnitEvents()
+            frame:Hide()
+            frame:ResetState()
+        end
+    end
+end
+
+-- =========================================================================
+-- Combat Log Event Router
+-- =========================================================================
+function Gladius:OnCombatLogEvent()
+    local timestamp, combatEvent, hideCaster, sourceGUID, sourceName,
+          sourceFlags, sourceRaidFlags, destGUID, destName, destFlags,
+          destRaidFlags = CombatLogGetCurrentEventInfo()
+
+    if not combatEvent then return end
+
+    -- Route relevant combat events to arena frames
+    local spellID, spellName
+    if combatEvent == "SPELL_CAST_SUCCESS"
+        or combatEvent == "SPELL_AURA_APPLIED"
+        or combatEvent == "SPELL_AURA_REMOVED"
+        or combatEvent == "SPELL_AURA_REFRESH"
+        or combatEvent == "SPELL_INTERRUPT"
+        or combatEvent == "SPELL_AURA_BROKEN_SPELL"
+    then
+        spellID = select(12, CombatLogGetCurrentEventInfo())
+        spellName = select(13, CombatLogGetCurrentEventInfo())
     else
-        self:Print("Test Modus |cFFFF0000deaktiviert|r")
+        return
+    end
 
-        for i = 1, 3 do
-            local frame = self.frames[i]
-            if frame then
-                frame:Hide()
-                frame.class = nil
-                frame.specID = nil
-                RegisterUnitWatch(frame)
+    if not spellID then return end
 
-                if frame.moduleFrames then
-                    if frame.moduleFrames.drTracker then
-                        frame.moduleFrames.drTracker:Hide()
-                    end
-                    if frame.moduleFrames.castBar then
-                        frame.moduleFrames.castBar:Hide()
-                    end
-                    if frame.moduleFrames.auras then
-                        frame.moduleFrames.auras:Hide()
-                    end
-                end
-            end
+    -- Find the arena frame by GUID
+    local destFrame = self:GetFrameByGUID(destGUID)
+    local sourceFrame = self:GetFrameByGUID(sourceGUID)
+
+    -- DR tracking: detect CC applied/removed on enemies
+    if destFrame and self.db.profile.drEnabled then
+        if combatEvent == "SPELL_AURA_APPLIED" or combatEvent == "SPELL_AURA_REFRESH" then
+            destFrame:OnDRAuraApplied(spellID)
+        elseif combatEvent == "SPELL_AURA_REMOVED" or combatEvent == "SPELL_AURA_BROKEN_SPELL" then
+            destFrame:OnDRAuraRemoved(spellID)
+        end
+    end
+
+    -- Racial detection: enemy used a racial ability
+    if sourceFrame and combatEvent == "SPELL_CAST_SUCCESS" then
+        sourceFrame:OnRacialDetected(spellID)
+    end
+
+    -- Interrupt detection: someone interrupted an enemy
+    if destFrame and combatEvent == "SPELL_INTERRUPT" then
+        local extraSpellID = select(15, CombatLogGetCurrentEventInfo())
+        destFrame:OnInterrupted(spellID, extraSpellID, sourceGUID, sourceName)
+    end
+
+    -- Trinket detection from combat log (backup for ARENA_COOLDOWNS_UPDATE)
+    if sourceFrame and combatEvent == "SPELL_CAST_SUCCESS" then
+        if spellID == Gladius.TRINKET_SPELL_ID then
+            sourceFrame:OnTrinketUsed()
         end
     end
 end
 
--- ============================================================================
--- Initialization
--- ============================================================================
-
-function GladiusMidnight:OnInitialize()
-    self.db = LibStub("AceDB-3.0"):New("GladiusMidnightDB", defaults, true)
-
-    for i = 1, 3 do
-        self.frames[i] = self:CreateArenaFrame(i)
-    end
-
-    for name, module in pairs(self.modules) do
-        if module.OnInitialize then
-            module:OnInitialize(self)
+function Gladius:GetFrameByGUID(guid)
+    if not guid then return nil end
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame and frame:IsShown() and UnitGUID(frame.unitID) == guid then
+            return frame
         end
     end
+    return nil
+end
 
-    for i = 1, 3 do
-        local frame = self.frames[i]
-        for name, module in pairs(self.modules) do
-            if module.CreateElements then
-                module:CreateElements(frame)
-            end
+-- =========================================================================
+-- Target / Focus Indicators
+-- =========================================================================
+function Gladius:RefreshTargetIndicators()
+    if not self.db.profile.targetHighlight then return end
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame and frame:IsShown() then
+            local isTarget = UnitIsUnit(frame.unitID, "target")
+            frame.TargetHighlight:SetShown(isTarget)
         end
     end
-
-    self:RegisterChatCommand("gladius", "SlashCommand")
-    self:RegisterChatCommand("gm", "SlashCommand")
-    self:RegisterChatCommand("gg", "SurrenderArena")
-
-    self:Print("Geladen - |cFF00FF00/gladius test|r zum Testen, |cFFFF6600/gg|r zum Aufgeben")
 end
 
--- Helper function to check if we should hide Blizzard frames (defined early for use in timer)
-local function ShouldHideBlizzardFrames()
-    local _, instanceType = IsInInstance()
-    return instanceType == "arena" and GladiusMidnight.db and GladiusMidnight.db.profile and GladiusMidnight.db.profile.enabled
+function Gladius:RefreshFocusIndicators()
+    if not self.db.profile.focusHighlight then return end
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame and frame:IsShown() then
+            local isFocus = UnitIsUnit(frame.unitID, "focus")
+            frame.FocusHighlight:SetShown(isFocus)
+        end
+    end
 end
 
--- ============================================================================
--- Event Registration (Midnight 12.0 Combat-Safe)
--- RegisterEvent is protected during combat - we MUST check InCombatLockdown()
--- ============================================================================
+-- =========================================================================
+-- Suppress Blizzard Arena Frames
+-- =========================================================================
+function Gladius:SuppressBlizzardFrames()
+    -- Attempt to hide Blizzard's compact arena frames in Midnight
+    if CompactArenaFrame then
+        CompactArenaFrame:UnregisterAllEvents()
+        CompactArenaFrame:Hide()
+        hooksecurefunc(CompactArenaFrame, "Show", function(self)
+            self:Hide()
+        end)
+    end
+end
 
-local eventsToRegister = {
-    "ARENA_OPPONENT_UPDATE",
-    "ARENA_PREP_OPPONENT_SPECIALIZATIONS",
-    "PLAYER_ENTERING_WORLD",
-    "ZONE_CHANGED_NEW_AREA",
-    "PLAYER_TARGET_CHANGED",
-    "UNIT_HEALTH",
-    "UNIT_MAXHEALTH",
-    "UNIT_POWER_UPDATE",
-    "UNIT_MAXPOWER",
-    "UNIT_SPELLCAST_SUCCEEDED",
-    "UNIT_AURA",
-    "UNIT_SPELLCAST_START",
-    "UNIT_SPELLCAST_STOP",
-    "UNIT_SPELLCAST_FAILED",
-    "UNIT_SPELLCAST_INTERRUPTED",
-    "UNIT_SPELLCAST_CHANNEL_START",
-    "UNIT_SPELLCAST_CHANNEL_STOP",
-    "PLAYER_REGEN_ENABLED",
-    -- NOTE: COMBAT_LOG_EVENT_UNFILTERED is problematic in Midnight 12.0
-    -- sArena skips it entirely for Midnight - we do the same
+-- =========================================================================
+-- Slash Command Handler
+-- =========================================================================
+function Gladius:HandleSlashCommand(msg)
+    msg = msg and msg:trim():lower() or ""
+
+    if msg == "" or msg == "config" or msg == "options" then
+        self:OpenConfig()
+    elseif msg == "lock" then
+        self.db.profile.locked = true
+        self.dragFrame:EnableMouse(false)
+        print("|cff00ccffGladius Midnight|r: Frames locked.")
+    elseif msg == "unlock" then
+        self.db.profile.locked = false
+        self.dragFrame:EnableMouse(true)
+        print("|cff00ccffGladius Midnight|r: Frames unlocked. Drag to reposition.")
+    elseif msg:match("^test") then
+        local count = tonumber(msg:match("test%s*(%d)")) or 3
+        self:ActivateTestMode(count)
+    elseif msg == "hide" then
+        self.isTestMode = false
+        self:HideAllFrames()
+        print("|cff00ccffGladius Midnight|r: Test mode disabled.")
+    elseif msg == "version" or msg == "ver" then
+        print("|cff00ccffGladius Midnight|r v1.0.0")
+    else
+        print("|cff00ccffGladius Midnight|r commands:")
+        print("  /gladius - Open configuration")
+        print("  /gladius test [1-5] - Show test frames")
+        print("  /gladius hide - Hide test frames")
+        print("  /gladius lock - Lock frame position")
+        print("  /gladius unlock - Unlock frame position")
+    end
+end
+
+-- =========================================================================
+-- Test Mode
+-- =========================================================================
+local TEST_CLASSES = {
+    "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
+    "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
+    "DRUID", "DEMONHUNTER", "EVOKER",
 }
 
-function GladiusMidnight:RegisterAllEvents()
-    -- CRITICAL: Never call RegisterEvent during combat lockdown
-    if InCombatLockdown() then
-        -- Mark that we need to register events later
-        pendingEventRegistration = true
-        return false
-    end
+local TEST_RACES = {
+    "Human", "Orc", "Dwarf", "NightElf", "Scourge",
+    "Tauren", "Gnome", "Troll", "BloodElf", "Draenei",
+    "Worgen", "Goblin", "Pandaren", "Dracthyr",
+}
 
-    if eventsRegistered then
-        return true
-    end
+local TEST_NAMES = {
+    "Shadowstrike", "Frostweaver", "Lightbringer",
+    "Doomcaller", "Stormrider",
+}
 
-    -- Get the event frame created in XML
-    eventFrame = _G["GladiusMidnightEventFrame"]
-    if not eventFrame then
-        self:Print("|cFFFF0000Error: Event frame not found!|r")
-        return false
-    end
+function Gladius:ActivateTestMode(count)
+    count = math.min(count or 3, MAX_ARENA_OPPONENTS)
+    self.isTestMode = true
 
-    -- Set up OnEvent handler
-    local self = self
-    eventFrame:SetScript("OnEvent", function(_, event, ...)
-        local handler = self[event]
-        if handler then
-            handler(self, event, ...)
-        end
-    end)
+    for i = 1, MAX_ARENA_OPPONENTS do
+        local frame = self.arenaFrames[i]
+        if frame then
+            if i <= count then
+                local classIndex = math.random(1, #TEST_CLASSES)
+                local raceIndex = math.random(1, #TEST_RACES)
+                local testClass = TEST_CLASSES[classIndex]
+                local testRace = TEST_RACES[raceIndex]
+                local testName = TEST_NAMES[i] or ("Opponent" .. i)
+                local testHealth = math.random(40, 100)
+                local testPower = math.random(20, 100)
 
-    -- Register all events (safe - not in combat)
-    for _, event in ipairs(eventsToRegister) do
-        eventFrame:RegisterEvent(event)
-    end
-
-    eventsRegistered = true
-    pendingEventRegistration = false
-    return true
-end
-
-function GladiusMidnight:SetupEventCallbacks()
-    -- This is now handled by RegisterAllEvents()
-    -- Kept for compatibility
-end
-
-function GladiusMidnight:OnEnable()
-    -- Register events with combat-safe checks
-    -- If in combat, will defer until combat ends via PLAYER_REGEN_ENABLED
-    if not self:RegisterAllEvents() then
-        -- We're in combat - set up a temporary frame to wait for combat end
-        local waitFrame = CreateFrame("Frame")
-        waitFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-        waitFrame:SetScript("OnEvent", function(f)
-            f:UnregisterAllEvents()
-            f:SetScript("OnEvent", nil)
-            self:RegisterAllEvents()
-            self:Print("Events registered after combat")
-        end)
-    end
-
-    for name, module in pairs(self.modules) do
-        if module.OnEnable then
-            module:OnEnable(self)
-        end
-    end
-
-    self.updateTimer = C_Timer.NewTicker(0.1, function()
-        if self.testMode then return end
-
-        for i = 1, 3 do
-            local frame = self.frames[i]
-            if frame and frame:IsShown() then
-                for name, module in pairs(self.modules) do
-                    if self:IsModuleEnabled(name) and module.OnUpdate then
-                        module:OnUpdate(frame)
-                    end
-                end
-            end
-
-            -- Ensure Blizzard frames stay hidden
-            if ShouldHideBlizzardFrames() then
-                local blizzFrame = _G["CompactArenaFrameMember" .. i]
-                if blizzFrame and blizzFrame:GetAlpha() > 0 then
-                    blizzFrame:SetAlpha(0)
-                end
-            end
-        end
-    end)
-end
-
-function GladiusMidnight:OnDisable()
-    if self.updateTimer then
-        self.updateTimer:Cancel()
-    end
-
-    for name, module in pairs(self.modules) do
-        if module.OnDisable then
-            module:OnDisable(self)
-        end
-    end
-end
-
--- ============================================================================
--- Event Handlers
--- ============================================================================
-
-function GladiusMidnight:PLAYER_ENTERING_WORLD()
-    self:DetectArenaType()
-    self:CheckArenaStatus()
-    self:UpdateTargetHighlight()
-    self:HideBlizzardFrames()
-
-    local _, instanceType = IsInInstance()
-    if instanceType == "arena" and self.db.profile.enabled then
-        C_Timer.After(0.3, function()
-            self:InitializeBlizzardFrames()
-        end)
-
-        C_Timer.After(0.5, function()
-            self:ScanExistingOpponents()
-        end)
-    end
-end
-
--- ============================================================================
--- Blizzard Arena Frame Handling (Midnight 12.0)
--- ============================================================================
-
--- Helper function to permanently hide a frame
-local function PermanentlyHideFrame(frame)
-    if not frame then return end
-
-    -- Set alpha to 0
-    frame:SetAlpha(0)
-
-    -- Hook SetAlpha to prevent Blizzard from making it visible again
-    if not frame.gladiusAlphaHooked then
-        frame.gladiusAlphaHooked = true
-        hooksecurefunc(frame, "SetAlpha", function(self, alpha)
-            if ShouldHideBlizzardFrames() and alpha > 0 then
-                self:SetAlpha(0)
-            end
-        end)
-    end
-
-    -- Also hook Show to reset alpha when shown
-    if not frame.gladiusShowHooked then
-        frame.gladiusShowHooked = true
-        hooksecurefunc(frame, "Show", function(self)
-            if ShouldHideBlizzardFrames() then
-                self:SetAlpha(0)
-            end
-        end)
-    end
-end
-
-function GladiusMidnight:InitializeBlizzardFrames()
-    if self.blizzFramesInitialized then return end
-
-    for i = 1, 3 do
-        local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
-        local ourFrame = self.frames[i]
-
-        if not blizzArenaFrame or not ourFrame then
-            C_Timer.After(1, function()
-                self:InitializeBlizzardFrames()
-            end)
-            return
-        end
-
-        -- Hide main Blizzard arena frame elements (but NOT the DR tray - we reparent that)
-        PermanentlyHideFrame(blizzArenaFrame)
-        PermanentlyHideFrame(blizzArenaFrame.CastingBarFrame)
-        PermanentlyHideFrame(blizzArenaFrame.DebuffFrame)
-        PermanentlyHideFrame(blizzArenaFrame.CcRemoverFrame)
-        -- NOTE: Don't hide SpellDiminishStatusTray - we reparent it to our frame!
-
-        -- Also hide the health bar and other visual components
-        if blizzArenaFrame.healthBar then
-            PermanentlyHideFrame(blizzArenaFrame.healthBar)
-        end
-        if blizzArenaFrame.HealthBar then
-            PermanentlyHideFrame(blizzArenaFrame.HealthBar)
-        end
-        if blizzArenaFrame.manaBar then
-            PermanentlyHideFrame(blizzArenaFrame.manaBar)
-        end
-        if blizzArenaFrame.PowerBar then
-            PermanentlyHideFrame(blizzArenaFrame.PowerBar)
-        end
-
-        ourFrame.blizzArenaFrame = blizzArenaFrame
-
-        -- DR Tracking: Reparent Blizzard's SpellDiminishStatusTray to our frame (sArena approach)
-        if self:IsModuleEnabled("drTracker") then
-            local drModule = self:GetModule("drTracker")
-            if drModule and drModule.InitializeBlizzardDR then
-                drModule:InitializeBlizzardDR(ourFrame, blizzArenaFrame)
-            end
-        end
-
-        -- DebuffFrame hooks
-        local debuffFrame = blizzArenaFrame.DebuffFrame
-        if debuffFrame then
-            local frameIndex = i
-
-            if debuffFrame.Icon and not debuffFrame.gladiusHooked then
-                hooksecurefunc(debuffFrame.Icon, "SetTexture", function(_, tex)
-                    local frame = GladiusMidnight.frames[frameIndex]
-                    if frame then
-                        local classIconModule = GladiusMidnight:GetModule("classIcon")
-                        if classIconModule and classIconModule.OnDebuffUpdate then
-                            classIconModule:OnDebuffUpdate(frame, tex)
-                        end
-                    end
-                end)
-
-                if debuffFrame.Cooldown then
-                    hooksecurefunc(debuffFrame.Cooldown, "SetCooldown", function(_, start, duration)
-                        local frame = GladiusMidnight.frames[frameIndex]
-                        if frame then
-                            local classIconModule = GladiusMidnight:GetModule("classIcon")
-                            if classIconModule and classIconModule.OnDebuffCooldown then
-                                classIconModule:OnDebuffCooldown(frame, start, duration)
-                            end
-                        end
-                    end)
-                end
-
-                debuffFrame.gladiusHooked = true
-            end
-        end
-
-        -- Trinket hooks
-        if self:IsModuleEnabled("trinket") then
-            local trinketFrame = blizzArenaFrame.CcRemoverFrame
-            if trinketFrame and trinketFrame.Cooldown and not trinketFrame.gladiusHooked then
-                local frameIndex = i
-
-                hooksecurefunc(trinketFrame.Cooldown, "SetCooldown", function(_, start, duration)
-                    local frame = GladiusMidnight.frames[frameIndex]
-                    if frame then
-                        local trinketModule = GladiusMidnight:GetModule("trinket")
-                        if trinketModule and trinketModule.OnBlizzardTrinketCooldown then
-                            trinketModule:OnBlizzardTrinketCooldown(frame, start, duration)
-                        end
-                    end
-                end)
-
-                trinketFrame.gladiusHooked = true
-            end
-        end
-    end
-
-    self.blizzFramesInitialized = true
-    self:Print("Blizzard DR Frames reparented - DR Tracking aktiv")
-end
-
-function GladiusMidnight:InitializeBlizzardDRFrames()
-    self:InitializeBlizzardFrames()
-end
-
-function GladiusMidnight:ResetBlizzardFrames()
-    self.blizzFramesInitialized = false
-
-    for i = 1, 3 do
-        local ourFrame = self.frames[i]
-        local blizzArenaFrame = _G["CompactArenaFrameMember" .. i]
-
-        if blizzArenaFrame then
-            -- Restore visibility when leaving arena
-            blizzArenaFrame:SetAlpha(1)
-
-            if blizzArenaFrame.CastingBarFrame then
-                blizzArenaFrame.CastingBarFrame:SetAlpha(1)
-            end
-            if blizzArenaFrame.DebuffFrame then
-                blizzArenaFrame.DebuffFrame:SetAlpha(1)
-            end
-            if blizzArenaFrame.CcRemoverFrame then
-                blizzArenaFrame.CcRemoverFrame:SetAlpha(1)
-            end
-
-            -- Reparent DR tray back to Blizzard frame
-            if blizzArenaFrame.SpellDiminishStatusTray then
-                blizzArenaFrame.SpellDiminishStatusTray:SetParent(blizzArenaFrame)
-                blizzArenaFrame.SpellDiminishStatusTray:SetAlpha(1)
-            end
-        end
-
-        if ourFrame then
-            ourFrame.blizzArenaFrame = nil
-            -- Reset DR tracker's Blizzard initialization flag
-            if ourFrame.moduleFrames and ourFrame.moduleFrames.drTracker then
-                ourFrame.moduleFrames.drTracker.blizzardDRInitialized = false
-                ourFrame.moduleFrames.drTracker.blizzDRTray = nil
-                ourFrame.moduleFrames.drTracker.blizzDRFrames = nil
-            end
-        end
-    end
-end
-
-function GladiusMidnight:ResetBlizzardDRFrames()
-    self:ResetBlizzardFrames()
-end
-
-function GladiusMidnight:UpdateBlizzardDRSize()
-    if not self.blizzFramesInitialized then return end
-
-    local drModule = self:GetModule("drTracker")
-    if drModule then
-        for i = 1, 3 do
-            local ourFrame = self.frames[i]
-            if ourFrame then
-                drModule:Update(ourFrame, self.testMode and self:GetTestData(i) or nil)
-            end
-        end
-    end
-end
-
-function GladiusMidnight:UpdateBlizzardCastBarSize()
-    local castBarModule = self:GetModule("castBar")
-    if castBarModule then
-        for i = 1, 3 do
-            local ourFrame = self.frames[i]
-            if ourFrame then
-                castBarModule:Update(ourFrame, self.testMode and self:GetTestData(i) or nil)
-            end
-        end
-    end
-end
-
-function GladiusMidnight:UpdateBlizzardDebuffSize()
-    local classIconModule = self:GetModule("classIcon")
-    if classIconModule then
-        for i = 1, 3 do
-            local ourFrame = self.frames[i]
-            if ourFrame then
-                classIconModule:Update(ourFrame, self.testMode and self:GetTestData(i) or nil)
-            end
-        end
-    end
-end
-
-function GladiusMidnight:ScanExistingOpponents()
-    local _, instanceType = IsInInstance()
-    if instanceType ~= "arena" or self.testMode then return end
-
-    self:Print("Scanne Arena-Gegner...")
-
-    local foundOpponents = 0
-    for i = 1, 3 do
-        local unit = "arena" .. i
-        local frame = self.frames[i]
-
-        if frame and UnitExists(unit) then
-            foundOpponents = foundOpponents + 1
-
-            local _, classFile = UnitClass(unit)
-            if classFile then
-                frame.class = classFile
-            end
-
-            if GetArenaOpponentSpec then
-                local specID = GetArenaOpponentSpec(i)
-                if specID and specID > 0 then
-                    frame.specID = specID
-                    local _, _, _, _, _, specClassFile = GetSpecializationInfoByID(specID)
-                    if specClassFile then
-                        frame.class = specClassFile
-                    end
-                end
-            end
-
-            if UnitRace then
-                local _, raceToken = UnitRace(unit)
-                if raceToken then
-                    frame.race = raceToken
-                end
-            end
-
-            self:UpdateFrame(frame)
-            if not InCombatLockdown() then
+                frame:SetTestData(testName, testClass, testRace, testHealth, testPower)
                 frame:Show()
-            end
-        end
-    end
-
-    if foundOpponents > 0 then
-        self:Print(foundOpponents .. " Gegner gefunden nach Reload")
-        self:PositionFrames()
-    end
-end
-
-function GladiusMidnight:PLAYER_TARGET_CHANGED()
-    self:UpdateTargetHighlight()
-end
-
-function GladiusMidnight:UpdateTargetHighlight()
-    for i = 1, 3 do
-        local frame = self.frames[i]
-        if frame and frame.targetGlow then
-            if self.db.profile.targetHighlight and UnitIsUnit("target", frame.unit) then
-                frame.targetGlow:Show()
             else
-                frame.targetGlow:Hide()
-            end
-        end
-        if frame and frame.immunityGlow and not self.db.profile.immunityGlow then
-            frame.immunityGlow:Hide()
-            frame.hasImmunity = false
-        end
-    end
-end
-
-function GladiusMidnight:HideBlizzardFrames()
-    -- Always hide Blizzard arena frames when our addon is enabled
-    local _, instanceType = IsInInstance()
-    if instanceType ~= "arena" then return end
-
-    for i = 1, 5 do
-        -- Old arena frames
-        local frameName = "ArenaEnemyFrame" .. i
-        local frame = _G[frameName]
-        if frame then
-            frame:UnregisterAllEvents()
-            frame:Hide()
-            frame:SetScript("OnShow", function(self) self:Hide() end)
-        end
-
-        -- Compact arena frame container
-        local compactFrame = _G["CompactArenaFrame" .. i]
-        if compactFrame then
-            compactFrame:UnregisterAllEvents()
-            compactFrame:Hide()
-        end
-
-        -- Compact arena frame members (the actual visible frames)
-        local memberFrame = _G["CompactArenaFrameMember" .. i]
-        if memberFrame then
-            PermanentlyHideFrame(memberFrame)
-            -- Hide all children recursively
-            for _, child in pairs({memberFrame:GetChildren()}) do
-                if child.SetAlpha then
-                    child:SetAlpha(0)
-                end
+                frame:Hide()
             end
         end
     end
 
-    -- Hide containers
-    if ArenaEnemyPrepFramesContainer then
-        ArenaEnemyPrepFramesContainer:Hide()
-    end
-
-    if CompactArenaFrame then
-        CompactArenaFrame:SetAlpha(0)
-        if not CompactArenaFrame.gladiusAlphaHooked then
-            CompactArenaFrame.gladiusAlphaHooked = true
-            hooksecurefunc(CompactArenaFrame, "SetAlpha", function(self, alpha)
-                if ShouldHideBlizzardFrames() and alpha > 0 then
-                    self:SetAlpha(0)
-                end
-            end)
-        end
-    end
-
-    -- Also check for EditModeArenaFrame or other variants
-    if EditModeManagerFrame and EditModeManagerFrame.AccountSettings then
-        -- Don't disable edit mode, just hide the actual frames
-    end
+    print("|cff00ccffGladius Midnight|r: Test mode with " .. count .. " opponents.")
 end
-
-function GladiusMidnight:ZONE_CHANGED_NEW_AREA()
-    local _, instanceType = IsInInstance()
-
-    if instanceType ~= "arena" and self.blizzFramesInitialized then
-        self:ResetBlizzardFrames()
-    end
-
-    self:DetectArenaType()
-    self:CheckArenaStatus()
-
-    if instanceType == "arena" and self.db.profile.enabled then
-        C_Timer.After(0.5, function()
-            self:InitializeBlizzardFrames()
-        end)
-    end
-end
-
-function GladiusMidnight:ARENA_OPPONENT_UPDATE(_, unit, updateType)
-    if not self.db.profile.enabled or self.testMode then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local frame = self.frames[index]
-
-    if updateType == "seen" or updateType == "cleared" then
-        if self.prepPhase then
-            self.prepPhase = false
-            self:Print("Arena gestartet!")
-            if not InCombatLockdown() then
-                for i = 1, 3 do
-                    local f = self.frames[i]
-                    if f then
-                        RegisterUnitWatch(f)
-                    end
-                end
-            end
-        end
-
-        if UnitExists(unit) then
-            local _, classFile = UnitClass(unit)
-            if classFile then
-                frame.class = classFile
-            end
-        end
-
-        self:UpdateFrame(frame)
-        if not InCombatLockdown() then
-            frame:Show()
-        end
-
-        if frame.moduleFrames then
-            if frame.moduleFrames.drTracker then
-                frame.moduleFrames.drTracker:ClearAllPoints()
-                frame.moduleFrames.drTracker:SetPoint("RIGHT", frame, "LEFT", -4, 0)
-            end
-            if frame.moduleFrames.castBar then
-                frame.moduleFrames.castBar:ClearAllPoints()
-                local height = self.db.profile.castBar.height or 14
-                frame.moduleFrames.castBar:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", height + 2, -2)
-                frame.moduleFrames.castBar:SetPoint("TOPRIGHT", frame, "BOTTOMRIGHT", 0, -2)
-            end
-            if frame.moduleFrames.auras then
-                local healthHeight = self.db.profile.health.height or 20
-                local powerHeight = self:IsModuleEnabled("power") and (self.db.profile.power.height or 6) or 0
-                local yOffset = -(healthHeight + powerHeight + 6)
-                local leftOffset = self.db.profile.classIcon.size + 4
-                frame.moduleFrames.auras:ClearAllPoints()
-                frame.moduleFrames.auras:SetPoint("TOPLEFT", frame, "TOPLEFT", leftOffset, yOffset)
-            end
-        end
-
-        self:PositionFrames()
-    elseif updateType == "destroyed" then
-        if not InCombatLockdown() then
-            frame:Hide()
-        end
-        if frame.moduleFrames then
-            if frame.moduleFrames.drTracker then
-                frame.moduleFrames.drTracker:Hide()
-            end
-            if frame.moduleFrames.castBar then
-                frame.moduleFrames.castBar:Hide()
-            end
-            if frame.moduleFrames.auras then
-                frame.moduleFrames.auras:Hide()
-            end
-        end
-        self:ResetFrame(frame)
-    end
-end
-
-function GladiusMidnight:ARENA_PREP_OPPONENT_SPECIALIZATIONS()
-    if not self.db.profile.enabled or self.testMode then return end
-
-    if self.arenaSize == 0 then
-        self:DetectArenaType()
-    end
-
-    for i = 1, 3 do
-        local frame = self.frames[i]
-        if frame then
-            self:ResetFrame(frame)
-        end
-    end
-
-    self.prepPhase = true
-    if not InCombatLockdown() then
-        for i = 1, 3 do
-            local frame = self.frames[i]
-            if frame then
-                UnregisterUnitWatch(frame)
-            end
-        end
-    end
-
-    local numOpponents = GetNumArenaOpponentSpecs and GetNumArenaOpponentSpecs() or self.arenaSize
-    if numOpponents == 0 then numOpponents = self.arenaSize end
-    if numOpponents == 0 then numOpponents = 3 end
-
-    self:Print("Prep Phase - " .. numOpponents .. " Gegner erkannt")
-
-    for i = 1, numOpponents do
-        local frame = self.frames[i]
-        if frame then
-            local specID = GetArenaOpponentSpec and GetArenaOpponentSpec(i)
-            if specID and specID > 0 then
-                local _, specName, _, _, role, classFile = GetSpecializationInfoByID(specID)
-                if classFile then
-                    frame.class = classFile
-                    frame.specID = specID
-                    self:Print("Arena" .. i .. ": " .. classFile .. " (SpecID: " .. specID .. ")")
-                end
-            else
-                self:Print("Arena" .. i .. ": Spec nicht verfügbar")
-            end
-
-            self:UpdateFrame(frame)
-            if not InCombatLockdown() then
-                frame:Show()
-            end
-        end
-    end
-
-    for i = numOpponents + 1, 3 do
-        local frame = self.frames[i]
-        if frame and not InCombatLockdown() then
-            frame:Hide()
-        end
-    end
-
-    self:PositionFrames()
-end
-
-function GladiusMidnight:UNIT_HEALTH(_, unit)
-    if self.testMode then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if index and self.frames[index] and self.frames[index]:IsShown() then
-        local module = self:GetModule("health")
-        if module and self:IsModuleEnabled("health") then
-            module:UpdateUnit(self.frames[index])
-        end
-    end
-end
-
-function GladiusMidnight:UNIT_MAXHEALTH(_, unit)
-    self:UNIT_HEALTH(_, unit)
-end
-
-function GladiusMidnight:UNIT_POWER_UPDATE(_, unit)
-    if self.testMode then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if index and self.frames[index] and self.frames[index]:IsShown() then
-        local module = self:GetModule("power")
-        if module and self:IsModuleEnabled("power") then
-            module:UpdateUnit(self.frames[index])
-        end
-    end
-end
-
-function GladiusMidnight:UNIT_MAXPOWER(_, unit)
-    self:UNIT_POWER_UPDATE(_, unit)
-end
-
-function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
-    if self.testMode or not unit or not spellID or type(spellID) ~= "number" then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local trinketModule = self:GetModule("trinket")
-    if trinketModule and self:IsModuleEnabled("trinket") then
-        trinketModule:OnSpellCast(self.frames[index], spellID)
-    end
-
-    local racialModule = self:GetModule("racial")
-    if racialModule and self:IsModuleEnabled("racial") then
-        racialModule:OnSpellCast(self.frames[index], spellID)
-    end
-end
-
-function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
-    if self.testMode or not unit then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local frame = self.frames[index]
-
-    local drModule = self:GetModule("drTracker")
-    if drModule and self:IsModuleEnabled("drTracker") then
-        if updateInfo and updateInfo.addedAuras then
-            for _, auraInfo in ipairs(updateInfo.addedAuras) do
-                if auraInfo and auraInfo.spellId and type(auraInfo.spellId) == "number" then
-                    drModule:OnAura(frame, auraInfo.spellId)
-                end
-            end
-        else
-            self:ScanDebuffsForDR(frame, unit)
-        end
-    end
-
-    local aurasModule = self:GetModule("auras")
-    if aurasModule and self:IsModuleEnabled("auras") then
-        aurasModule:OnAuraChange(frame)
-    end
-end
-
-function GladiusMidnight:ScanDebuffsForDR(frame, unit)
-    local drModule = self:GetModule("drTracker")
-    if not drModule then return end
-
-    frame.lastDRScan = frame.lastDRScan or {}
-    local currentDebuffs = {}
-
-    if C_UnitAuras and C_UnitAuras.GetDebuffDataByIndex then
-        for i = 1, 40 do
-            local auraData = C_UnitAuras.GetDebuffDataByIndex(unit, i)
-            if not auraData then break end
-
-            local spellId = auraData.spellId
-            if spellId and not (issecretvalue and issecretvalue(spellId)) then
-                currentDebuffs[spellId] = true
-
-                if not frame.lastDRScan[spellId] then
-                    drModule:OnAura(frame, spellId)
-                end
-            end
-        end
-    end
-
-    frame.lastDRScan = currentDebuffs
-end
-
--- Cast Bar Events
-function GladiusMidnight:UNIT_SPELLCAST_START(_, unit, castGUID, spellID)
-    if self.testMode or not unit then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local castBarModule = self:GetModule("castBar")
-    if castBarModule and self:IsModuleEnabled("castBar") then
-        castBarModule:OnCastStart(self.frames[index], unit, spellID, false)
-    end
-end
-
-function GladiusMidnight:UNIT_SPELLCAST_STOP(_, unit)
-    if self.testMode or not unit then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local castBarModule = self:GetModule("castBar")
-    if castBarModule and self:IsModuleEnabled("castBar") then
-        castBarModule:OnCastStop(self.frames[index])
-    end
-end
-
-function GladiusMidnight:UNIT_SPELLCAST_FAILED(_, unit)
-    if self.testMode or not unit then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local castBarModule = self:GetModule("castBar")
-    if castBarModule and self:IsModuleEnabled("castBar") then
-        castBarModule:OnCastStop(self.frames[index])
-    end
-end
-
-function GladiusMidnight:UNIT_SPELLCAST_INTERRUPTED(_, unit)
-    if self.testMode or not unit then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local castBarModule = self:GetModule("castBar")
-    if castBarModule and self:IsModuleEnabled("castBar") then
-        castBarModule:OnCastInterrupted(self.frames[index])
-    end
-end
-
-function GladiusMidnight:UNIT_SPELLCAST_CHANNEL_START(_, unit, castGUID, spellID)
-    if self.testMode or not unit then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local castBarModule = self:GetModule("castBar")
-    if castBarModule and self:IsModuleEnabled("castBar") then
-        castBarModule:OnCastStart(self.frames[index], unit, spellID, true)
-    end
-end
-
-function GladiusMidnight:UNIT_SPELLCAST_CHANNEL_STOP(_, unit)
-    if self.testMode or not unit then return end
-
-    local index = tonumber(unit:match("arena(%d)"))
-    if not index or not self.frames[index] then return end
-
-    local castBarModule = self:GetModule("castBar")
-    if castBarModule and self:IsModuleEnabled("castBar") then
-        castBarModule:OnCastStop(self.frames[index])
-    end
-end
-
-function GladiusMidnight:COMBAT_LOG_EVENT_UNFILTERED()
-    if self.testMode then return end
-
-    local drModule = self:GetModule("drTracker")
-    if drModule and self:IsModuleEnabled("drTracker") then
-        drModule:OnCombatLogEvent()
-    end
-end
-
-function GladiusMidnight:PLAYER_REGEN_ENABLED()
-    -- Combat ended - check if we have pending event registration
-    if pendingEventRegistration then
-        self:RegisterAllEvents()
-    end
-end
-
-function GladiusMidnight:CheckArenaStatus()
-    if self.testMode then return end
-
-    local _, instanceType = IsInInstance()
-
-    if instanceType ~= "arena" or not self.db.profile.enabled then
-        self.prepPhase = false
-        self.arenaSize = 0
-
-        for i = 1, 3 do
-            local frame = self.frames[i]
-            if frame then
-                if not InCombatLockdown() then
-                    RegisterUnitWatch(frame)
-                    frame:Hide()
-                end
-                self:ResetFrame(frame)
-            end
-        end
-    end
-end
-
-function GladiusMidnight:ResetFrame(frame)
-    for name, module in pairs(self.modules) do
-        if module.Reset then
-            module:Reset(frame)
-        end
-    end
-end
-
--- ============================================================================
--- Slash Commands
--- ============================================================================
-
-function GladiusMidnight:SlashCommand(input)
-    input = (input or ""):trim():lower()
-
-    if input == "test" then
-        self:ToggleTest()
-    elseif input == "lock" then
-        self.db.profile.locked = true
-        self:Print("Frames |cFF00FF00fixiert|r")
-    elseif input == "unlock" then
-        self.db.profile.locked = false
-        self:Print("Frames |cFFFF0000entsperrt|r - zum Verschieben ziehen")
-    elseif input == "reset" then
-        self.db:ResetProfile()
-        self:UpdateAllFrames()
-        self:Print("Einstellungen zurückgesetzt")
-    elseif input == "config" or input == "" then
-        LibStub("AceConfigDialog-3.0"):Open(addonName)
-    else
-        self:Print("Befehle:")
-        self:Print("  |cFF00FF00/gladius|r - Einstellungen öffnen")
-        self:Print("  |cFF00FF00/gladius test|r - Test-Modus")
-        self:Print("  |cFF00FF00/gladius lock|r - Frames fixieren")
-        self:Print("  |cFF00FF00/gladius unlock|r - Frames entsperren")
-        self:Print("  |cFF00FF00/gladius reset|r - Zurücksetzen")
-        self:Print("  |cFF00FF00/gg|r - Arena aufgeben")
-    end
-end
-
-function GladiusMidnight:SurrenderArena()
-    local _, instanceType = IsInInstance()
-    if instanceType == "arena" then
-        if C_PvP and C_PvP.RequestCrowdControlSpell then
-            LeaveBattlefield()
-            self:Print("|cFFFF0000Arena aufgegeben|r")
-        else
-            LeaveBattlefield()
-            self:Print("|cFFFF0000Arena aufgegeben|r")
-        end
-    else
-        self:Print("Du bist nicht in einer Arena!")
-    end
-end
-
--- Export
-_G.GladiusMidnight = GladiusMidnight

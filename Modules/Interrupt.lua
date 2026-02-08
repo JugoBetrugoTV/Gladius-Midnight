@@ -1,124 +1,138 @@
---[[
+--[[=========================================================================
     Gladius Midnight - Interrupt Module
-    Tracks interrupt cooldowns on arena opponents.
-]]
+    Tracks when enemies are interrupted and shows lockout on class icon
+    Also tracks the player's own interrupt cooldown to color castbars
+===========================================================================]]
 
-local addonName, addon = ...
-local Interrupt = {}
+local _, Gladius = ...
 
--- ============================================================================
--- Module Registration
--- ============================================================================
+-- =========================================================================
+-- Enemy Interrupted (from combat log SPELL_INTERRUPT)
+-- =========================================================================
+function GladiusArenaFrameMixin:OnInterrupted(interruptSpellID, interruptedSpellID, sourceGUID, sourceName)
+    if not Gladius.db.profile.interruptEnabled then return end
 
-function Interrupt:OnRegister(core)
-    self.core = core
-end
+    -- Get the lockout duration from our interrupt data
+    local lockoutDuration = Gladius.INTERRUPT_SPELLS[interruptSpellID]
+    if not lockoutDuration then return end
 
-function Interrupt:OnInitialize(core)
-    self.core = core
-end
+    -- Check for spell lock duration reducers on the interrupted target
+    if self.unitID and UnitExists(self.unitID) then
+        lockoutDuration = self:CheckLockoutReduction(lockoutDuration)
+    end
 
--- ============================================================================
--- Create Interrupt Elements
--- ============================================================================
+    -- Get the source class for coloring
+    local sourceClass = nil
+    if sourceGUID then
+        local _, classToken = GetPlayerInfoByGUID(sourceGUID)
+        sourceClass = classToken
+    end
 
-function Interrupt:CreateElements(frame)
-    local container = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    container:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
-        edgeFile = "Interface\\Buttons\\WHITE8X8",
-        edgeSize = 1,
-    })
-    container:SetBackdropColor(0, 0, 0, 0.8)
-    container:SetBackdropBorderColor(0, 0, 0, 1)
+    -- Show interrupt overlay on class icon
+    self:SetInterruptOverlay(interruptSpellID, lockoutDuration, sourceClass)
 
-    local icon = container:CreateTexture(nil, "ARTWORK")
-    icon:SetPoint("TOPLEFT", 1, -1)
-    icon:SetPoint("BOTTOMRIGHT", -1, 1)
-    icon:SetTexture("Interface\\Icons\\Ability_Kick")
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- Set interrupt state
+    self.isInterrupted = true
+    self.interruptExpiration = GetTime() + lockoutDuration
 
-    local cooldown = CreateFrame("Cooldown", nil, container, "CooldownFrameTemplate")
-    cooldown:SetAllPoints(icon)
-    cooldown:SetDrawSwipe(true)
-    cooldown:SetDrawEdge(false)
-    cooldown:SetHideCountdownNumbers(false)
-
-    container.icon = icon
-    container.cooldown = cooldown
-    container.startTime = 0
-    container.duration = 0
-    container.onCooldown = false
-
-    frame.moduleFrames.interrupt = container
-end
-
--- ============================================================================
--- Update Interrupt Display
--- ============================================================================
-
-function Interrupt:Update(frame, testData)
-    local container = frame.moduleFrames.interrupt
-    if not container then return end
-
-    local db = self.core.db.profile.interrupt
-
-    container:SetSize(db.size, db.size)
-    container:ClearAllPoints()
-
-    if db.position == "RIGHT" then
-        local trinketFrame = frame.moduleFrames.trinket
-        if trinketFrame and self.core:IsModuleEnabled("trinket") then
-            container:SetPoint("TOP", trinketFrame, "BOTTOM", 0, -2)
-        else
-            container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
+    -- Schedule restoration of class icon after lockout ends
+    C_Timer.After(lockoutDuration + 0.1, function()
+        if GetTime() >= self.interruptExpiration then
+            self.isInterrupted = false
+            self:RefreshClassIcon()
+            self:RefreshAuras()
         end
-    else
-        container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
-    end
-
-    if testData and testData.isTarget then
-        container.icon:SetTexture("Interface\\Icons\\Ability_Kick")
-        container.icon:SetDesaturated(true)
-        container.cooldown:SetCooldown(GetTime(), 10)
-    end
-
-    container:Show()
+    end)
 end
 
-function Interrupt:OnSpellCast(frame, spellID)
-    -- In Midnight 12.0, spellID may be "secret" for arena opponents
-    if not spellID or type(spellID) ~= "number" then return end
+-- =========================================================================
+-- Lockout Duration Reduction
+-- Some buffs reduce the duration of interrupt lockouts
+-- =========================================================================
+function GladiusArenaFrameMixin:CheckLockoutReduction(baseDuration)
+    local unit = self.unitID
+    if not UnitExists(unit) then return baseDuration end
 
-    local cooldownDuration = addon.Data.InterruptSpells[spellID]
-    if not cooldownDuration then return end
+    local reducedDuration = baseDuration
 
-    local container = frame.moduleFrames.interrupt
-    if not container then return end
-
-    local iconTexture = addon.Data.GetSpellIcon(spellID)
-    if iconTexture then
-        container.icon:SetTexture(iconTexture)
+    for reducerSpellID, multiplier in pairs(Gladius.SPELL_LOCK_REDUCERS) do
+        if AuraUtil and AuraUtil.FindAuraByName then
+            local name = Gladius.GetSpellInfo(reducerSpellID)
+            if name and AuraUtil.FindAuraByName(name, unit, "HELPFUL") then
+                reducedDuration = reducedDuration * multiplier
+            end
+        end
     end
 
-    container.startTime = GetTime()
-    container.duration = cooldownDuration
-    container.onCooldown = true
-    container.icon:SetDesaturated(true)
-    container.cooldown:SetCooldown(container.startTime, cooldownDuration)
+    return reducedDuration
 end
 
-function Interrupt:Reset(frame)
-    local container = frame.moduleFrames.interrupt
-    if container then
-        container.startTime = 0
-        container.duration = 0
-        container.onCooldown = false
-        container.icon:SetDesaturated(false)
-        container.icon:SetTexture("Interface\\Icons\\Ability_Kick")
-        container.cooldown:Clear()
+-- =========================================================================
+-- Player's Own Interrupt Tracking
+-- Monitors the player's interrupt CD to color enemy castbars accordingly
+-- =========================================================================
+local interruptCheckFrame = nil
+local playerInterruptSpellID = nil
+
+function Gladius:SetupInterruptTracking()
+    if not self.db.profile.interruptColorCastbar then return end
+
+    local classToken = self.playerClass
+    if not classToken then return end
+
+    playerInterruptSpellID = Gladius.CLASS_INTERRUPT_SPELLS[classToken]
+    if not playerInterruptSpellID then
+        -- Class has no baseline interrupt (e.g., Priest)
+        self.playerInterruptOnCD = false
+        return
     end
+
+    if not interruptCheckFrame then
+        interruptCheckFrame = CreateFrame("Frame")
+    end
+
+    -- Poll interrupt cooldown status periodically
+    local pollInterval = 0.5
+    local elapsed = 0
+
+    interruptCheckFrame:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + dt
+        if elapsed < pollInterval then return end
+        elapsed = 0
+
+        if not playerInterruptSpellID then return end
+
+        local cdInfo = C_Spell and C_Spell.GetSpellCooldown and C_Spell.GetSpellCooldown(playerInterruptSpellID)
+        if cdInfo then
+            local remaining = (cdInfo.startTime + cdInfo.duration) - GetTime()
+            Gladius.playerInterruptOnCD = remaining > 0
+        else
+            -- Fallback
+            local start, duration = GetSpellCooldown(playerInterruptSpellID)
+            if start and duration then
+                local remaining = (start + duration) - GetTime()
+                Gladius.playerInterruptOnCD = remaining > 0
+            end
+        end
+    end)
 end
 
--- Register module
-addon.Core:RegisterModule("interrupt", Interrupt)
+function Gladius:StopInterruptTracking()
+    if interruptCheckFrame then
+        interruptCheckFrame:SetScript("OnUpdate", nil)
+    end
+    self.playerInterruptOnCD = false
+end
+
+-- Hook into arena enter/leave
+local originalEnterArena = Gladius.EnterArena
+function Gladius:EnterArena()
+    originalEnterArena(self)
+    self:SetupInterruptTracking()
+end
+
+local originalLeaveArena = Gladius.LeaveArena
+function Gladius:LeaveArena()
+    originalLeaveArena(self)
+    self:StopInterruptTracking()
+end
