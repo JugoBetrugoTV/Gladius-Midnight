@@ -56,6 +56,9 @@ GladiusMixin.defaultSettings = {
         desaturateTrinketCD = true,
         colorTrinket = false,
         removeUnequippedTrinketTexture = false,
+        forceShowTrinketOnHuman = false,
+        replaceHumanRacialWithTrinket = false,
+        swapRacialTrinket = false,
 
         -- Dispel
         desaturateDispelCD = true,
@@ -64,6 +67,12 @@ GladiusMixin.defaultSettings = {
         showDecimalsDR = true,
         colorDRCooldownText = false,
         blackDRBorder = false,
+        drStaticIcons = false,
+        drResetTime = 18.5,
+        drCategoriesPerClass = false,
+        drCategoriesPerSpec = false,
+        dynamicIconsPerClass = false,
+        dynamicIconsPerSpec = false,
 
         -- Swipe Animations
         disableSwipeEdge = false,

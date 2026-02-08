@@ -1080,6 +1080,42 @@ local tabCastBar = {
             "Use thin pixel borders on the cast bar.", rfConfigTest),
         lToggle("Thin Pixel Border", "castBarThinPixelBorder",
             "Use a thinner pixel border style.", rfConfigTest),
+        { type = "header", label = "CastBar Icon Position" },
+        {
+            type = "slider", label = "Icon X Offset",
+            desc = "Horizontal offset of the spell icon relative to the cast bar.",
+            min = -200, max = 200, step = 1,
+            get = function()
+                local ls = getLS()
+                local cb = ls and ls.castBar
+                return cb and cb.iconPosX or 0
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "castBar"); ls.castBar.iconPosX = val
+                if GladiusMidnight then GladiusMidnight:UpdateCastBarSettings(ls.castBar) end
+            end,
+        },
+        {
+            type = "slider", label = "Icon Y Offset",
+            desc = "Vertical offset of the spell icon relative to the cast bar.",
+            min = -200, max = 200, step = 1,
+            get = function()
+                local ls = getLS()
+                local cb = ls and ls.castBar
+                return cb and cb.iconPosY or 0
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "castBar"); ls.castBar.iconPosY = val
+                if GladiusMidnight then GladiusMidnight:UpdateCastBarSettings(ls.castBar) end
+            end,
+        },
+        { type = "header", label = "CastBar Behavior" },
+        lToggle("Recolor CastBar by State", "recolorCastbar",
+            "Recolor the cast bar based on interruptible/uninterruptible state.", rfConfigTest),
+        lToggle("Interrupt Status Color", "interruptStatusColorOn",
+            "Change cast bar color based on your interrupt cooldown status.", rfConfigTest),
         { type = "header", label = "CastBar Colors" },
         { type = "desc", label = "Customize the colors for different cast bar states." },
         {
@@ -1171,6 +1207,54 @@ local tabTrinket = {
             "Gray out the trinket icon while it is on cooldown."),
         pToggle("Hide Unequipped Trinket Texture", "removeUnequippedTrinketTexture",
             "Hide the trinket icon entirely if no PvP trinket is equipped."),
+        pToggle("Force Show Trinket on Human", "forceShowTrinketOnHuman",
+            "Always show a trinket icon for Human players even without PvP trinket equipped."),
+        pToggle("Replace Human Racial with Trinket", "replaceHumanRacialWithTrinket",
+            "For Human players, show PvP trinket in the racial slot instead of the racial ability."),
+        { type = "header", label = "Trinket/Racial Font Size" },
+        {
+            type = "slider", label = "Trinket CD Font Size",
+            desc = "Font size for cooldown text on the trinket icon.",
+            min = 4, max = 28, step = 1,
+            get = function()
+                local ls = getLS()
+                local tr = ls and ls.trinket
+                return tr and tr.fontSize or 12
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "trinket"); ls.trinket.fontSize = val; rfConfigTest()
+            end,
+        },
+        {
+            type = "slider", label = "Racial CD Font Size",
+            desc = "Font size for cooldown text on the racial icon.",
+            min = 4, max = 28, step = 1,
+            get = function()
+                local ls = getLS()
+                local rc = ls and ls.racial
+                return rc and rc.fontSize or 12
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "racial"); ls.racial.fontSize = val; rfConfigTest()
+            end,
+        },
+        {
+            type = "slider", label = "Dispel CD Font Size",
+            desc = "Font size for cooldown text on the dispel icon.",
+            min = 4, max = 28, step = 1,
+            get = function()
+                local ls = getLS()
+                local dp = ls and ls.dispel
+                return dp and dp.fontSize or 12
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "dispel"); ls.dispel.fontSize = val; rfConfigTest()
+            end,
+        },
+        { type = "header", label = "Cooldown Swipe" },
         {
             type = "checkbox",
             label = "Invert Trinket/Racial Cooldown Swipe",
@@ -1214,6 +1298,47 @@ local tabDR = {
             end),
         pToggle("Black DR Border", "blackDRBorder",
             "Force DR icon borders to be black instead of colored by severity.", rfTest),
+        pToggle("Use Static DR Icons", "drStaticIcons",
+            "Use fixed DR category icons instead of spell-specific icons.", rfTest),
+        pSlider("DR Reset Time", "drResetTime",
+            "Time in seconds before a DR category fully resets.",
+            15, 20, 0.1, rfConfigTest),
+        { type = "header", label = "DR Border Styles" },
+        lToggle("Disable DR Border", "disableDRBorder",
+            "Hide the colored border around DR icons completely.", rfConfigTest),
+        lToggle("Bright DR Border", "brightDRBorder",
+            "Use a brighter, more visible DR border glow.", rfConfigTest),
+        lToggle("DR Border Glow Off", "drBorderGlowOff",
+            "Disable the animated glow effect on DR borders.", rfConfigTest),
+        lToggle("Thin Pixel Border (DR)", "drThinPixelBorder",
+            "Use thin pixel-style borders on DR icons.", rfConfigTest),
+        lToggle("Thick Pixel Border (DR)", "drThickPixelBorder",
+            "Use thick pixel-style borders on DR icons.", rfConfigTest),
+        { type = "header", label = "DR Text" },
+        lToggle("Show DR Text", "showDRText",
+            "Show the DR severity text (1/2, 1/4, immune) on DR icons.", rfConfigTest),
+        {
+            type = "slider", label = "DR Font Size",
+            desc = "Font size for DR countdown and severity text.",
+            min = 4, max = 28, step = 1,
+            get = function()
+                local ls = getLS(); local dr = ls and ls.dr
+                return dr and dr.fontSize or 12
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "dr"); ls.dr.fontSize = val; rfConfigTest()
+            end,
+        },
+        { type = "header", label = "DR Per-Class/Spec" },
+        pToggle("DR Categories Per Class", "drCategoriesPerClass",
+            "Use different DR category filters per enemy class.", rfTest),
+        pToggle("DR Categories Per Spec", "drCategoriesPerSpec",
+            "Use different DR category filters per enemy specialization.", rfTest),
+        pToggle("DR Icons Per Class", "dynamicIconsPerClass",
+            "Use different DR icons per enemy class.", rfTest),
+        pToggle("DR Icons Per Spec", "dynamicIconsPerSpec",
+            "Use different DR icons per enemy specialization.", rfTest),
         { type = "header", label = "DR Layout (Per-Layout)" },
         {
             type = "dropdown",
@@ -1633,6 +1758,28 @@ local tabTextures = {
                 if GladiusMidnight then GladiusMidnight:UpdateTextures() end
             end,
         },
+        {
+            type = "dropdown",
+            label = "Uninterruptible CastBar Texture",
+            desc = "Texture used for the cast bar when the spell cannot be interrupted.",
+            values = function()
+                local list = getStatusBarList()
+                local t = {}
+                for _, k in ipairs(list) do t[#t + 1] = { key = k, name = k } end
+                return t
+            end,
+            get = function()
+                local ls = getLS()
+                local t = ls and ls.textures
+                return (t and t.castbarUninterruptibleTexture) or "Gladius Default"
+            end,
+            set = function(val)
+                local ls = getLS(); if not ls then return end
+                ensureTable(ls, "textures")
+                ls.textures.castbarUninterruptibleTexture = val
+                if GladiusMidnight then GladiusMidnight:UpdateTextures() end
+            end,
+        },
         { type = "header", label = "Background" },
         {
             type = "dropdown",
@@ -1739,12 +1886,30 @@ local tabPositioning = {
         { type = "header", label = "Trinket Position" },
         posNestedSlider("trinket", "posX", "X Offset"),
         posNestedSlider("trinket", "posY", "Y Offset"),
+        {
+            type = "slider", label = "Trinket Scale",
+            desc = "Scale of the trinket icon.", min = 0.1, max = 5, step = 0.01, isPercent = true,
+            get = function() local ls = getLS(); local t = ls and ls.trinket; return t and t.scale or 1 end,
+            set = function(val) local ls = getLS(); if not ls then return end; ensureTable(ls, "trinket"); ls.trinket.scale = val; refreshConfig() end,
+        },
         { type = "header", label = "Racial Position" },
         posNestedSlider("racial", "posX", "X Offset"),
         posNestedSlider("racial", "posY", "Y Offset"),
+        {
+            type = "slider", label = "Racial Scale",
+            desc = "Scale of the racial icon.", min = 0.1, max = 5, step = 0.01, isPercent = true,
+            get = function() local ls = getLS(); local t = ls and ls.racial; return t and t.scale or 1 end,
+            set = function(val) local ls = getLS(); if not ls then return end; ensureTable(ls, "racial"); ls.racial.scale = val; refreshConfig() end,
+        },
         { type = "header", label = "Dispel Position" },
         posNestedSlider("dispel", "posX", "X Offset"),
         posNestedSlider("dispel", "posY", "Y Offset"),
+        {
+            type = "slider", label = "Dispel Scale",
+            desc = "Scale of the dispel icon.", min = 0.1, max = 5, step = 0.01, isPercent = true,
+            get = function() local ls = getLS(); local t = ls and ls.dispel; return t and t.scale or 1 end,
+            set = function(val) local ls = getLS(); if not ls then return end; ensureTable(ls, "dispel"); ls.dispel.scale = val; refreshConfig() end,
+        },
         { type = "header", label = "Class Icon Position" },
         posNestedSlider("classIcon", "posX", "X Offset"),
         posNestedSlider("classIcon", "posY", "Y Offset"),
