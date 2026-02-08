@@ -38,19 +38,19 @@ local defaults = {
         enabled = true,
         locked = true,
 
-        -- Frame settings (balanced proportions)
-        frameWidth = 220,
-        frameHeight = 50,
-        scale = 1.0,
-        spacing = 40,  -- Space for auras/castbar between frames
+        -- Frame settings (sArena Gladiuish style)
+        frameWidth = 168,
+        frameHeight = 44,
+        scale = 1.15,
+        spacing = 35,
         growDirection = "DOWN",
 
         -- Layout style (mirrored = class icon on LEFT, bars on RIGHT)
         mirrored = true,  -- sArena Gladiuish style
 
         -- Position
-        posX = 500,
-        posY = 0,
+        posX = 355,
+        posY = 131,
 
         -- Minimap
         minimap = {
@@ -69,19 +69,24 @@ local defaults = {
             auras = true,
         },
 
-        -- Visual settings
+        -- Visual settings (sArena style)
         targetHighlight = true,
         immunityGlow = true,
         hideBlizzardFrames = true,
+        classColors = true,
+        showNames = true,
+        desaturateCooldowns = true,
+        invertCooldownSwipe = true,
 
-        -- Module-specific settings (balanced sizes)
+        -- Module-specific settings (sArena Gladiuish sizes)
         classIcon = {
-            size = 42,
+            size = 44,
             position = "LEFT",
             showSpec = true,
+            fontSize = 14,
         },
         health = {
-            height = 18,
+            height = 22,
             showText = true,
             showPercent = true,
             showAbsolute = true,
@@ -90,31 +95,41 @@ local defaults = {
             colorByClass = true,
         },
         power = {
-            height = 5,
+            height = 9,
             showText = false,
         },
         trinket = {
-            size = 24,
+            size = 32,
             position = "RIGHT",
             showTimer = true,
+            fontSize = 14,
         },
         racial = {
-            size = 24,
+            size = 26,
             position = "RIGHT",
             showTimer = true,
+            fontSize = 14,
         },
         drTracker = {
-            iconSize = 22,
-            showTimer = true,
-            maxIcons = 3,
+            iconSize = 28,
+            showTimer = false,
+            maxIcons = 4,
+            borderSize = 2.5,
+            fontSize = 12,
+            spacing = 6,
+            growDirection = "LEFT",
         },
         castBar = {
-            height = 12,
+            height = 14,
+            width = 108,
             showIcon = true,
-            insideFrame = true,
+            insideFrame = false,
+            posX = 8,
+            posY = -23.5,
+            scale = 1.35,
         },
         auras = {
-            iconSize = 20,
+            iconSize = 24,
             maxAuras = 4,
         },
     }
