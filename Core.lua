@@ -1023,7 +1023,11 @@ function GladiusMixin:Initialize()
             end
             if TestTitle then TestTitle:Hide() end
         elseif msg == "" or msg == "config" or msg == "options" then
-            Settings.OpenToCategory("Gladius Midnight")
+            if self.ToggleSettingsUI then
+                self:ToggleSettingsUI()
+            else
+                Settings.OpenToCategory("Gladius Midnight")
+            end
         else
             self:Print("Commands: /gladius test | hide | config")
         end

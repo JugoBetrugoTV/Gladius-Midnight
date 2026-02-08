@@ -39,6 +39,7 @@
 
     <!-- Configuration -->
     <Script file="Config.lua"/>
+    <Script file="SettingsUI.lua"/>
 
     <!-- Layouts -->
     <Script file="Layouts\BlizzArena.lua"/>
