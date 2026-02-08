@@ -21,13 +21,14 @@ local addonName, addon = ...
 -- This is the same approach as sArena_Reloaded
 -- ============================================================================
 
--- Global callback table that XML OnEvent will call
-GladiusMidnightEventCallbacks = GladiusMidnightEventCallbacks or {}
-
 -- Create main addon object using Ace3
 local GladiusMidnight = LibStub("AceAddon-3.0"):NewAddon(addonName, "AceConsole-3.0")
 addon.Core = GladiusMidnight
-addon.EventCallbacks = GladiusMidnightEventCallbacks
+
+-- Event frame reference (created in XML at UI load time)
+local eventFrame = nil
+local eventsRegistered = false
+local pendingEventRegistration = false
 
 -- ============================================================================
 -- Default Settings (Gladius Classic Style)
@@ -535,35 +536,91 @@ local function ShouldHideBlizzardFrames()
     return instanceType == "arena" and GladiusMidnight.db and GladiusMidnight.db.profile and GladiusMidnight.db.profile.enabled
 end
 
-function GladiusMidnight:SetupEventCallbacks()
-    -- Route events from XML frame to addon methods
-    -- Events are registered in GladiusMidnight.xml (at UI load, before combat)
+-- ============================================================================
+-- Event Registration (Midnight 12.0 Combat-Safe)
+-- RegisterEvent is protected during combat - we MUST check InCombatLockdown()
+-- ============================================================================
+
+local eventsToRegister = {
+    "ARENA_OPPONENT_UPDATE",
+    "ARENA_PREP_OPPONENT_SPECIALIZATIONS",
+    "PLAYER_ENTERING_WORLD",
+    "ZONE_CHANGED_NEW_AREA",
+    "PLAYER_TARGET_CHANGED",
+    "UNIT_HEALTH",
+    "UNIT_MAXHEALTH",
+    "UNIT_POWER_UPDATE",
+    "UNIT_MAXPOWER",
+    "UNIT_SPELLCAST_SUCCEEDED",
+    "UNIT_AURA",
+    "UNIT_SPELLCAST_START",
+    "UNIT_SPELLCAST_STOP",
+    "UNIT_SPELLCAST_FAILED",
+    "UNIT_SPELLCAST_INTERRUPTED",
+    "UNIT_SPELLCAST_CHANNEL_START",
+    "UNIT_SPELLCAST_CHANNEL_STOP",
+    "PLAYER_REGEN_ENABLED",
+    -- NOTE: COMBAT_LOG_EVENT_UNFILTERED is problematic in Midnight 12.0
+    -- sArena skips it entirely for Midnight - we do the same
+}
+
+function GladiusMidnight:RegisterAllEvents()
+    -- CRITICAL: Never call RegisterEvent during combat lockdown
+    if InCombatLockdown() then
+        -- Mark that we need to register events later
+        pendingEventRegistration = true
+        return false
+    end
+
+    if eventsRegistered then
+        return true
+    end
+
+    -- Get the event frame created in XML
+    eventFrame = _G["GladiusMidnightEventFrame"]
+    if not eventFrame then
+        self:Print("|cFFFF0000Error: Event frame not found!|r")
+        return false
+    end
+
+    -- Set up OnEvent handler
     local self = self
-    GladiusMidnightEventCallbacks["ARENA_OPPONENT_UPDATE"] = function(event, ...) self:ARENA_OPPONENT_UPDATE(event, ...) end
-    GladiusMidnightEventCallbacks["ARENA_PREP_OPPONENT_SPECIALIZATIONS"] = function(event, ...) self:ARENA_PREP_OPPONENT_SPECIALIZATIONS(event, ...) end
-    GladiusMidnightEventCallbacks["PLAYER_ENTERING_WORLD"] = function(event, ...) self:PLAYER_ENTERING_WORLD(event, ...) end
-    GladiusMidnightEventCallbacks["ZONE_CHANGED_NEW_AREA"] = function(event, ...) self:ZONE_CHANGED_NEW_AREA(event, ...) end
-    GladiusMidnightEventCallbacks["PLAYER_TARGET_CHANGED"] = function(event, ...) self:PLAYER_TARGET_CHANGED(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_HEALTH"] = function(event, ...) self:UNIT_HEALTH(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_MAXHEALTH"] = function(event, ...) self:UNIT_MAXHEALTH(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_POWER_UPDATE"] = function(event, ...) self:UNIT_POWER_UPDATE(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_MAXPOWER"] = function(event, ...) self:UNIT_MAXPOWER(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_SUCCEEDED"] = function(event, ...) self:UNIT_SPELLCAST_SUCCEEDED(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_AURA"] = function(event, ...) self:UNIT_AURA(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_START"] = function(event, ...) self:UNIT_SPELLCAST_START(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_STOP"] = function(event, ...) self:UNIT_SPELLCAST_STOP(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_FAILED"] = function(event, ...) self:UNIT_SPELLCAST_FAILED(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_INTERRUPTED"] = function(event, ...) self:UNIT_SPELLCAST_INTERRUPTED(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_CHANNEL_START"] = function(event, ...) self:UNIT_SPELLCAST_CHANNEL_START(event, ...) end
-    GladiusMidnightEventCallbacks["UNIT_SPELLCAST_CHANNEL_STOP"] = function(event, ...) self:UNIT_SPELLCAST_CHANNEL_STOP(event, ...) end
-    GladiusMidnightEventCallbacks["PLAYER_REGEN_ENABLED"] = function(event, ...) self:PLAYER_REGEN_ENABLED(event, ...) end
-    GladiusMidnightEventCallbacks["COMBAT_LOG_EVENT_UNFILTERED"] = function(event, ...) self:COMBAT_LOG_EVENT_UNFILTERED(event, ...) end
+    eventFrame:SetScript("OnEvent", function(_, event, ...)
+        local handler = self[event]
+        if handler then
+            handler(self, event, ...)
+        end
+    end)
+
+    -- Register all events (safe - not in combat)
+    for _, event in ipairs(eventsToRegister) do
+        eventFrame:RegisterEvent(event)
+    end
+
+    eventsRegistered = true
+    pendingEventRegistration = false
+    return true
+end
+
+function GladiusMidnight:SetupEventCallbacks()
+    -- This is now handled by RegisterAllEvents()
+    -- Kept for compatibility
 end
 
 function GladiusMidnight:OnEnable()
-    -- Set up event callbacks to route to addon methods
-    -- Events are already registered at file load time (before combat can occur)
-    self:SetupEventCallbacks()
+    -- Register events with combat-safe checks
+    -- If in combat, will defer until combat ends via PLAYER_REGEN_ENABLED
+    if not self:RegisterAllEvents() then
+        -- We're in combat - set up a temporary frame to wait for combat end
+        local waitFrame = CreateFrame("Frame")
+        waitFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+        waitFrame:SetScript("OnEvent", function(f)
+            f:UnregisterAllEvents()
+            f:SetScript("OnEvent", nil)
+            self:RegisterAllEvents()
+            self:Print("Events registered after combat")
+        end)
+    end
 
     for name, module in pairs(self.modules) do
         if module.OnEnable then
@@ -1317,8 +1374,10 @@ function GladiusMidnight:COMBAT_LOG_EVENT_UNFILTERED()
 end
 
 function GladiusMidnight:PLAYER_REGEN_ENABLED()
-    -- Combat ended - events are already registered at file load time
-    -- This handler can be used for any post-combat initialization if needed
+    -- Combat ended - check if we have pending event registration
+    if pendingEventRegistration then
+        self:RegisterAllEvents()
+    end
 end
 
 function GladiusMidnight:CheckArenaStatus()

@@ -1,72 +1,7 @@
 <Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
 
-    <!--
-        Event Frame - Midnight 12.0
-        RegisterEvent is protected during combat
-        Use OnUpdate to wait until combat ends before registering
-    -->
-    <Frame name="GladiusMidnightEventFrame" parent="UIParent" hidden="true">
-        <Scripts>
-            <OnLoad>
-                -- All events we need
-                self.allEvents = {
-                    "PLAYER_LOGIN",
-                    "PLAYER_ENTERING_WORLD",
-                    "PLAYER_REGEN_ENABLED",
-                    "ZONE_CHANGED_NEW_AREA",
-                    "ARENA_OPPONENT_UPDATE",
-                    "ARENA_PREP_OPPONENT_SPECIALIZATIONS",
-                    "PLAYER_TARGET_CHANGED",
-                    "UNIT_HEALTH",
-                    "UNIT_MAXHEALTH",
-                    "UNIT_POWER_UPDATE",
-                    "UNIT_MAXPOWER",
-                    "UNIT_SPELLCAST_SUCCEEDED",
-                    "UNIT_AURA",
-                    "UNIT_SPELLCAST_START",
-                    "UNIT_SPELLCAST_STOP",
-                    "UNIT_SPELLCAST_FAILED",
-                    "UNIT_SPELLCAST_INTERRUPTED",
-                    "UNIT_SPELLCAST_CHANNEL_START",
-                    "UNIT_SPELLCAST_CHANNEL_STOP",
-                    "COMBAT_LOG_EVENT_UNFILTERED",
-                }
-                self.eventsRegistered = false
-
-                -- Only register events if NOT in combat (Midnight 12.0 protection)
-                if not InCombatLockdown() then
-                    for _, event in ipairs(self.allEvents) do
-                        self:RegisterEvent(event)
-                    end
-                    self.eventsRegistered = true
-                else
-                    -- In combat - enable OnUpdate to wait for combat end
-                    self:SetScript("OnUpdate", self.WaitForCombatEnd)
-                end
-            </OnLoad>
-            <OnEvent>
-                -- Route events to addon callbacks
-                local callbacks = GladiusMidnightEventCallbacks
-                if callbacks and callbacks[event] then
-                    callbacks[event](event, ...)
-                end
-            </OnEvent>
-        </Scripts>
-    </Frame>
-
-    <Script>
-        -- OnUpdate function to wait for combat to end
-        function GladiusMidnightEventFrame:WaitForCombatEnd(elapsed)
-            if not InCombatLockdown() then
-                -- Combat ended, register all events
-                for _, event in ipairs(self.allEvents) do
-                    self:RegisterEvent(event)
-                end
-                self.eventsRegistered = true
-                -- Disable OnUpdate
-                self:SetScript("OnUpdate", nil)
-            end
-        end
-    </Script>
+    <!-- Event Frame - NO inline scripts, NO RegisterEvent calls -->
+    <!-- All event registration happens in Core.lua after combat check -->
+    <Frame name="GladiusMidnightEventFrame" parent="UIParent" hidden="true"/>
 
 </Ui>
