@@ -9,34 +9,6 @@ local isMidnight = GladiusMixin.isMidnight
 local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
 
 -----------------------------------------------------------------------
--- FindTrinket: Triggered when an enemy uses their PvP trinket (120s CD)
------------------------------------------------------------------------
-function GladiusFrameMixin:FindTrinket()
-    local trinketFrame = self.Trinket
-    if not trinketFrame then return end
-    trinketFrame.Cooldown:SetCooldown(GetTime(), 120)
-end
-
------------------------------------------------------------------------
--- GetFactionTrinketIcon: Returns Alliance or Horde trinket texture
------------------------------------------------------------------------
-function GladiusFrameMixin:GetFactionTrinketIcon()
-    local faction = UnitFactionGroup(self.unit)
-    if faction == "Alliance" then
-        return 133452
-    else
-        return 133453
-    end
-end
-
------------------------------------------------------------------------
--- Helper: Check if racial should be forced on trinket for Human (MoP)
------------------------------------------------------------------------
-function GladiusFrameMixin:ShouldForceHumanTrinket()
-    return false  -- Midnight does not need MoP-specific logic
-end
-
------------------------------------------------------------------------
 -- UpdateTrinketIcon: Set trinket texture state (available/on cooldown)
 -----------------------------------------------------------------------
 function GladiusFrameMixin:UpdateTrinketIcon(available)

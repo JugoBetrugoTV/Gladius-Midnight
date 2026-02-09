@@ -1130,6 +1130,9 @@ function GladiusMixin:OnEvent(event, ...)
             end
 
             self:ResetShadowsightTimer()
+            if self.ResetDetectedDispels then
+                self:ResetDetectedDispels()
+            end
         end
 
     elseif event == "PLAYER_SPECIALIZATION_CHANGED" then

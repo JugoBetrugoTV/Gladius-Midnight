@@ -21,15 +21,6 @@ local SEVERITY_COLORS = {
 }
 
 -----------------------------------------------------------------------
--- UpdateDRTimeSetting: Allow DB override of DR reset time
------------------------------------------------------------------------
-function GladiusMixin:UpdateDRTimeSetting()
-    if self.db and self.db.profile then
-        DR_RESET_TIME = self.db.profile.drResetTime or 18.5
-    end
-end
-
------------------------------------------------------------------------
 -- FindDR: Process a DR combat log event for this frame
 -----------------------------------------------------------------------
 function GladiusFrameMixin:FindDR(combatEvent, spellID)
@@ -196,21 +187,6 @@ function GladiusFrameMixin:FindDR(combatEvent, spellID)
 end
 
 -----------------------------------------------------------------------
--- UpdateDRCooldownReverse: Toggle cooldown fill direction
------------------------------------------------------------------------
-function GladiusFrameMixin:UpdateDRCooldownReverse()
-    if not drCategories then return end
-    local reversed = self.parent.db and self.parent.db.profile.invertDRCooldown
-    for i = 1, #drCategories do
-        local cat = drCategories[i]
-        local drFrame = self[cat]
-        if drFrame and drFrame.Cooldown then
-            drFrame.Cooldown:SetReverse(reversed or false)
-        end
-    end
-end
-
------------------------------------------------------------------------
 -- UpdateDRPositions: Arrange visible DR icons along a growth direction
 -- Growth directions: 1=Up, 2=Down, 3=Left, 4=Right
 -----------------------------------------------------------------------
@@ -281,34 +257,3 @@ function GladiusFrameMixin:ResetDR()
     end
 end
 
------------------------------------------------------------------------
--- ResetDRCooldownTextColors: Reset custom text colors to white
------------------------------------------------------------------------
-function GladiusFrameMixin:ResetDRCooldownTextColors()
-    if GladiusMixin.isMidnight then
-        -- Midnight: reset real DR frames
-        if self.drFrames then
-            for _, drFrame in ipairs(self.drFrames) do
-                if drFrame and drFrame.Cooldown and drFrame.Cooldown.gladiusText then
-                    drFrame.Cooldown.gladiusText:SetTextColor(1, 1, 1, 1)
-                end
-            end
-        end
-        -- Also reset fake DR frames from test mode
-        if self.fakeDRFrames then
-            for _, fakeDR in ipairs(self.fakeDRFrames) do
-                if fakeDR and fakeDR.Cooldown and fakeDR.Cooldown.gladiusText then
-                    fakeDR.Cooldown.gladiusText:SetTextColor(1, 1, 1, 1)
-                end
-            end
-        end
-    else
-        if not drCategories then return end
-        for i = 1, #drCategories do
-            local drFrame = self[drCategories[i]]
-            if drFrame and drFrame.Cooldown and drFrame.Cooldown.gladiusText then
-                drFrame.Cooldown.gladiusText:SetTextColor(1, 1, 1, 1)
-            end
-        end
-    end
-end
