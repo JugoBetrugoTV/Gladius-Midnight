@@ -177,12 +177,26 @@ function layout:Initialize(frame)
     healthText:SetJustifyH("CENTER")
     healthText:SetPoint("CENTER", healthBar, "CENTER", 0, 0)
     healthText:SetDrawLayer("OVERLAY", 4)
-    local font, size, flags = healthText:GetFont()
-    healthText:SetFont(font, size, "OUTLINE")
+    local font, size = healthText:GetFont()
+    if not font then
+        healthText:SetFontObject("GameFontNormalSmall")
+        font, size = healthText:GetFont()
+    end
+    size = (size and size > 0) and size or 12
+    if font then
+        healthText:SetFont(font, size, "OUTLINE")
+    end
 
     local specNameText = frame.SpecNameText
-    local font, size, flags = specNameText:GetFont()
-    specNameText:SetFont(font, size, "OUTLINE")
+    local sfont, ssize = specNameText:GetFont()
+    if not sfont then
+        specNameText:SetFontObject("GameFontNormalSmall")
+        sfont, ssize = specNameText:GetFont()
+    end
+    ssize = (ssize and ssize > 0) and ssize or 12
+    if sfont then
+        specNameText:SetFont(sfont, ssize, "OUTLINE")
+    end
 
     local powerText = frame.PowerText
     powerText:SetDrawLayer("OVERLAY", 4)

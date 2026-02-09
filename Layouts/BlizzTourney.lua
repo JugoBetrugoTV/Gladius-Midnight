@@ -275,16 +275,27 @@ function layout:Initialize(frame)
     frame.PowerBar:SetHeight(10)
 
     local fn, fs = frame.HealthText:GetFont()
-    fn = fn or "Fonts\\FRIZQT__.TTF"
+    if not fn then
+        frame.HealthText:SetFontObject("GameFontNormalSmall")
+        frame.PowerText:SetFontObject("GameFontNormalSmall")
+        fn, fs = frame.HealthText:GetFont()
+    end
     fs = (fs and fs > 0) and fs or 12
-    frame.HealthText:SetFont(fn, fs, "OUTLINE")
-    frame.PowerText:SetFont(fn, fs, "OUTLINE")
+    if fn then
+        frame.HealthText:SetFont(fn, fs, "OUTLINE")
+        frame.PowerText:SetFont(fn, fs, "OUTLINE")
+    end
     frame.PowerText:SetAlpha(frame.parent.db.profile.hidePowerText and 0 or 1)
 
     local sfn, sfs = frame.SpecNameText:GetFont()
-    sfn = sfn or "Fonts\\FRIZQT__.TTF"
+    if not sfn then
+        frame.SpecNameText:SetFontObject("GameFontNormalSmall")
+        sfn, sfs = frame.SpecNameText:GetFont()
+    end
     sfs = (sfs and sfs > 0) and sfs or 12
-    frame.SpecNameText:SetFont(sfn, sfs, "OUTLINE")
+    if sfn then
+        frame.SpecNameText:SetFont(sfn, sfs, "OUTLINE")
+    end
     frame.SpecNameText:SetTextColor(1,1,1)
 
     if not frame._tourneyUnderlay then

@@ -21,6 +21,7 @@ local TOGGLE_W, TOGGLE_H = 40, 20
 local CARD_H = 78
 local CARD_GAP = 10
 local CARD_COLS = 2
+local CHECK_SIZE = 20
 local DETAIL_HEADER_H = 44
 
 -----------------------------------------------------------------------

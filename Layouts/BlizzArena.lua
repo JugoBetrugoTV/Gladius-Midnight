@@ -254,14 +254,27 @@ function layout:Initialize(frame)
     f:SetPoint("CENTER", frame.HealthBar, "CENTER")
     f:SetSize(26, 26)
 
-    local fn, fs, fstyle = frame.HealthText:GetFont()
-    frame.HealthText:SetFont(fn, 10, "OUTLINE")
-    local fn, fs, fstyle = frame.HealthText:GetFont()
-    frame.PowerText:SetFont(fn, 10, "OUTLINE")
+    local fn = frame.HealthText:GetFont()
+    if not fn then
+        frame.HealthText:SetFontObject("GameFontNormalSmall")
+        frame.PowerText:SetFontObject("GameFontNormalSmall")
+        fn = frame.HealthText:GetFont()
+    end
+    if fn then
+        frame.HealthText:SetFont(fn, 10, "OUTLINE")
+        frame.PowerText:SetFont(fn, 10, "OUTLINE")
+    end
     frame.PowerText:SetAlpha(frame.parent.db.profile.hidePowerText and 0 or 1)
 
-    local fn, fs, fstyle = frame.SpecNameText:GetFont()
-    frame.SpecNameText:SetFont(fn, fs, "OUTLINE")
+    local sfn, sfs = frame.SpecNameText:GetFont()
+    if not sfn then
+        frame.SpecNameText:SetFontObject("GameFontNormalSmall")
+        sfn, sfs = frame.SpecNameText:GetFont()
+    end
+    sfs = (sfs and sfs > 0) and sfs or 12
+    if sfn then
+        frame.SpecNameText:SetFont(sfn, sfs, "OUTLINE")
+    end
     frame.SpecNameText:SetTextColor(1,1,1)
 
     frame.AuraStacks:SetPoint("BOTTOMLEFT", frame.ClassIcon, "BOTTOMLEFT", 1, -4)

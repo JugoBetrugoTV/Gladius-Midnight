@@ -215,9 +215,15 @@ function layout:Initialize(frame)
 
     frame.PowerText:SetPoint("CENTER", frame.PowerBar)
     local fn = frame.HealthText:GetFont()
-    fn = fn or "Fonts\\FRIZQT__.TTF"
-    frame.HealthText:SetFont(fn, 10, "OUTLINE")
-    frame.PowerText:SetFont(fn, 10, "OUTLINE")
+    if not fn then
+        frame.HealthText:SetFontObject("GameFontNormalSmall")
+        frame.PowerText:SetFontObject("GameFontNormalSmall")
+        fn = frame.HealthText:GetFont()
+    end
+    if fn then
+        frame.HealthText:SetFont(fn, 10, "OUTLINE")
+        frame.PowerText:SetFont(fn, 10, "OUTLINE")
+    end
     frame.PowerText:SetShadowOffset(0, 0)
     frame.HealthText:SetShadowOffset(0, 0)
 
