@@ -14,7 +14,7 @@ end
 
 local function getLS()
     local p = getProfile()
-    if not p then return nil end
+    if not p or not p.layoutSettings then return nil end
     local ln = p.currentLayout or "Gladiuish"
     p.layoutSettings[ln] = p.layoutSettings[ln] or {}
     return p.layoutSettings[ln]
@@ -27,7 +27,7 @@ end
 
 local function getLayoutTable()
     local t = {}
-    for k, v in pairs(GladiusMixin.layouts) do
+    for k, v in pairs(GladiusMixin.layouts or {}) do
         t[k] = (v.name and v.name) or k
     end
     return t
@@ -226,6 +226,7 @@ GladiusMixin.optionsTable = {
                                 if GladiusMidnight then
                                     GladiusMidnight.stealthAlpha = val
                                 end
+                                refreshTest()
                             end,
                         },
                         shadowSightTimer = {
@@ -340,6 +341,7 @@ GladiusMixin.optionsTable = {
                                 p.statusText.formatNumbers = val
                                 if val then p.statusText.usePercentage = false end
                                 refreshTest()
+                                notifyChange()
                             end,
                         },
                         usePercentage = {
@@ -359,6 +361,7 @@ GladiusMixin.optionsTable = {
                                 p.statusText.usePercentage = val
                                 if val then p.statusText.formatNumbers = false end
                                 refreshTest()
+                                notifyChange()
                             end,
                         },
                         hideStatusText = {
@@ -416,6 +419,7 @@ GladiusMixin.optionsTable = {
                                 local p = getProfile()
                                 if not p then return end
                                 p.testUnits = val
+                                refreshTest()
                             end,
                         },
                         testButton = {
@@ -787,6 +791,7 @@ GladiusMixin.optionsTable = {
                                 local p = getProfile()
                                 if not p then return end
                                 p.desaturateTrinketCD = val
+                                refreshTest()
                             end,
                         },
                         invertTrinketCooldown = {
@@ -847,6 +852,7 @@ GladiusMixin.optionsTable = {
                                 local p = getProfile()
                                 if not p then return end
                                 p.desaturateDispelCD = val
+                                refreshTest()
                             end,
                         },
                     },
@@ -2138,13 +2144,20 @@ function GladiusMixin:GetLayoutOptionsTable(layoutName)
     local LSM = LibStub("LibSharedMedia-3.0")
 
     local function LDB(info)
-        return info.handler.db.profile.layoutSettings[layoutName]
+        local h = info.handler
+        if not (h and h.db and h.db.profile) then return nil end
+        local ls = h.db.profile.layoutSettings
+        if not ls then return nil end
+        ls[layoutName] = ls[layoutName] or {}
+        return ls[layoutName]
     end
     local function getSetting(info)
-        return LDB(info)[info[#info]]
+        local db = LDB(info)
+        return db and db[info[#info]]
     end
     local function setSetting(info, val)
         local db = LDB(info)
+        if not db then return end
         db[info[#info]] = val
         if self.RefreshConfig then self:RefreshConfig() end
     end
