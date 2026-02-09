@@ -1383,6 +1383,9 @@ function GladiusMixin:Test()
             -- Name
             local displayName = db.showNames and tp.name or ("arena" .. i)
             if f.Name then
+                if not f.Name:GetFont() then
+                    f.Name:SetFontObject("GameFontNormal")
+                end
                 f.Name:SetText(displayName)
                 if db.classColors then
                     local cc = RAID_CLASS_COLORS[tp.class]
@@ -1394,6 +1397,9 @@ function GladiusMixin:Test()
 
             -- SpecNameText
             if f.SpecNameText then
+                if not f.SpecNameText:GetFont() then
+                    f.SpecNameText:SetFontObject("GameFontNormalSmall")
+                end
                 f.SpecNameText:SetText(tp.specName)
             end
 
@@ -1421,6 +1427,9 @@ function GladiusMixin:Test()
 
             -- Health / Power text
             if f.HealthText then
+                if not f.HealthText:GetFont() then
+                    f.HealthText:SetFontObject("GameFontNormal")
+                end
                 if ls.statusText and ls.statusText.usePercentage then
                     f.HealthText:SetText(string.format("%d%%", hpPct * 100))
                 else
@@ -1429,6 +1438,9 @@ function GladiusMixin:Test()
                 f.HealthText:Show()
             end
             if f.PowerText then
+                if not f.PowerText:GetFont() then
+                    f.PowerText:SetFontObject("GameFontNormalSmall")
+                end
                 if ls.statusText and ls.statusText.usePercentage then
                     f.PowerText:SetText("100%")
                 else

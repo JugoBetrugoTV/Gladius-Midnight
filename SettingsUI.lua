@@ -2439,7 +2439,7 @@ local function CreateMainFrame()
     f.cards = cards
 
     -- Position cards in a 2-column grid
-    local function LayoutCards(filterText)
+    local function LayoutCards(_, filterText)
         local ft = filterText and filterText:lower() or ""
         local visIdx = 0
         for _, card in ipairs(cards) do

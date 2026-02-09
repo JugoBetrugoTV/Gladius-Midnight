@@ -245,8 +245,9 @@ function layout:Initialize(frame)
     f:SetHeight(12)
     f:SetFont("Fonts\\FRIZQT__.TTF", 11, "")
 
-    f = frame.CastBar
-    f:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    if frame.CastBar then
+        frame.CastBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    end
 
     f = frame.DeathIcon
     f:ClearAllPoints()

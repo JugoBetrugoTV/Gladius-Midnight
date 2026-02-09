@@ -263,8 +263,9 @@ function layout:Initialize(frame)
     specBorder:SetPoint("BOTTOMRIGHT", frame.SpecIcon, "BOTTOMRIGHT", 5, -5)
     specBorder:Show()
 
-    f = frame.CastBar
-    f:SetStatusBarTexture("Interface\\RaidFrame\\Raid-Bar-Hp-Fill")
+    if frame.CastBar then
+        frame.CastBar:SetStatusBarTexture("Interface\\RaidFrame\\Raid-Bar-Hp-Fill")
+    end
 
     f = frame.DeathIcon
     f:ClearAllPoints()
