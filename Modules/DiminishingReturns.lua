@@ -70,10 +70,10 @@ function GladiusFrameMixin:FindDR(combatEvent, spellID)
         cdStart = cdStart / 1000
         cdDuration = cdDuration / 1000
 
-        -- Guard against division by zero
+        -- Guard against division by zero or expired cooldown
         if cdDuration == 0 then return end
         local fraction = 1 - ((now - cdStart) / cdDuration)
-        if fraction == 0 then return end
+        if fraction <= 0 then return end
 
         local extendedDuration = DR_RESET_TIME / fraction
         local extendedStart = DR_RESET_TIME + now - extendedDuration

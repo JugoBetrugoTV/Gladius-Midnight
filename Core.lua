@@ -543,15 +543,12 @@ function GladiusMixin:CreateCustomCooldown(cooldown, showDecimals, isDR)
             end
 
             local now = GetTime()
-            local timeLeft = (startTime + duration) / 1000 - now
-            if duration > 0 then
-                timeLeft = startTime / 1000 + duration / 1000 - now
-                -- GetCooldownTimes returns ms on Midnight
-                if startTime > 1000000 then
-                    timeLeft = (startTime + duration) / 1000 - now
-                else
-                    timeLeft = startTime + duration - now
-                end
+            local timeLeft
+            -- GetCooldownTimes returns ms on some clients, seconds on others
+            if startTime > 1000000 then
+                timeLeft = (startTime + duration) / 1000 - now
+            else
+                timeLeft = startTime + duration - now
             end
 
             if timeLeft <= 0 then
