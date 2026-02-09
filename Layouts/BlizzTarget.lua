@@ -265,7 +265,7 @@ function layout:UpdateOrientation(frame)
     local specName = frame.SpecNameText
     local healthText = frame.HealthText
     local powerText = frame.PowerText
-    local castbarText = frame.CastBar.Text
+    local castbarText = frame.CastBar and frame.CastBar.Text
 
     if self.db.widgets then
         local w = self.db.widgets
@@ -319,7 +319,7 @@ function layout:UpdateOrientation(frame)
         name:SetScale(txt.nameSize or 1)
         healthText:SetScale(txt.healthSize or 1)
         specName:SetScale(txt.specNameSize or 1)
-        castbarText:SetScale(txt.castbarSize or 1)
+        if castbarText then castbarText:SetScale(txt.castbarSize or 1) end
         powerText:SetScale(txt.powerSize or 1)
 
         -- Name
@@ -363,14 +363,16 @@ function layout:UpdateOrientation(frame)
         end
 
         -- Castbar Text
-        castbarText:ClearAllPoints()
-        local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
-        if (txt.castbarAnchor or "CENTER") == "LEFT" then
-            castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
-            castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        else
-            castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+        if castbarText then
+            castbarText:ClearAllPoints()
+            local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
+            if (txt.castbarAnchor or "CENTER") == "LEFT" then
+                castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
+                castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            else
+                castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            end
         end
     end
 

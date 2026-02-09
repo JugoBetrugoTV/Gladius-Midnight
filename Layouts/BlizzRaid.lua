@@ -233,9 +233,13 @@ function GladiusFrameMixin:AddPixelBorderToFrame()
     end
 
     CreatePixelTextureBorder(self.SpecIcon, self.SpecIcon, "specIcon", size, offset)
-    CreatePixelTextureBorder(self.CastBar, self.CastBar, "castBar", size, offset)
-    CreatePixelTextureBorder(self.CastBar, self.CastBar.Icon, "castBarIcon", size, offset)
-    self:SetTextureCrop(self.CastBar.Icon, true)
+    if self.CastBar then
+        CreatePixelTextureBorder(self.CastBar, self.CastBar, "castBar", size, offset)
+        if self.CastBar.Icon then
+            CreatePixelTextureBorder(self.CastBar, self.CastBar.Icon, "castBarIcon", size, offset)
+            self:SetTextureCrop(self.CastBar.Icon, true)
+        end
+    end
 
     borders:Show()
 end
@@ -269,19 +273,23 @@ function GladiusMixin:RemovePixelBorders()
         hideBorder(borders, "dispel")
         hideBorder(borders, "racial")
         hideBorder(frame.SpecIcon, "specIcon")
-        hideBorder(frame.CastBar, "castBar")
-        hideBorder(frame.CastBar, "castBarIcon")
+        if frame.CastBar then
+            hideBorder(frame.CastBar, "castBar")
+            hideBorder(frame.CastBar, "castBarIcon")
+        end
 
         -- Reset ClassIcon scale
         frame.ClassIcon:SetScale(1)
 
         -- Reset cast bar icon position
-        frame.CastBar.Icon:ClearAllPoints()
-        frame.CastBar.Icon:SetPoint("RIGHT", frame.CastBar, "LEFT", -5, 0)
-        local newLayout = self.db and self.db.profile and self.db.profile.currentLayout
-        local newLayoutSettings = self.db and self.db.profile and self.db.profile.layoutSettings and self.db.profile.layoutSettings[newLayout]
-        local newCropIcons = newLayoutSettings and newLayoutSettings.cropIcons or false
-        frame:SetTextureCrop(frame.CastBar.Icon, newCropIcons)
+        if frame.CastBar and frame.CastBar.Icon then
+            frame.CastBar.Icon:ClearAllPoints()
+            frame.CastBar.Icon:SetPoint("RIGHT", frame.CastBar, "LEFT", -5, 0)
+            local newLayout = self.db and self.db.profile and self.db.profile.currentLayout
+            local newLayoutSettings = self.db and self.db.profile and self.db.profile.layoutSettings and self.db.profile.layoutSettings[newLayout]
+            local newCropIcons = newLayoutSettings and newLayoutSettings.cropIcons or false
+            frame:SetTextureCrop(frame.CastBar.Icon, newCropIcons)
+        end
 
         for n = 1, #self.drCategories do
             local drFrame = frame[self.drCategories[n]]
@@ -645,7 +653,7 @@ function layout:UpdateOrientation(frame)
     local specName = frame.SpecNameText
     local healthText = frame.HealthText
     local powerText = frame.PowerText
-    local castbarText = frame.CastBar.Text
+    local castbarText = frame.CastBar and frame.CastBar.Text
 
     if self.db.widgets then
         local w = self.db.widgets
@@ -699,7 +707,7 @@ function layout:UpdateOrientation(frame)
         name:SetScale(txt.nameSize or 1)
         healthText:SetScale(txt.healthSize or 1)
         specName:SetScale(txt.specNameSize or 1)
-        castbarText:SetScale(txt.castbarSize or 1)
+        if castbarText then castbarText:SetScale(txt.castbarSize or 1) end
         powerText:SetScale(txt.powerSize or 1)
 
         -- Name
@@ -743,14 +751,16 @@ function layout:UpdateOrientation(frame)
         end
 
         -- Castbar Text
-        castbarText:ClearAllPoints()
-        local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
-        if (txt.castbarAnchor or "CENTER") == "LEFT" then
-            castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
-            castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        else
-            castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+        if castbarText then
+            castbarText:ClearAllPoints()
+            local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
+            if (txt.castbarAnchor or "CENTER") == "LEFT" then
+                castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
+                castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            else
+                castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            end
         end
     end
 

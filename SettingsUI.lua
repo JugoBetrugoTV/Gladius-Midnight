@@ -1998,7 +1998,9 @@ local tabProfiles = {
             type = "button", label = "Open AceDB Profiles",
             width = 200,
             func = function()
-                Settings.OpenToCategory("Gladius Midnight")
+                if Settings and Settings.OpenToCategory then
+                    pcall(Settings.OpenToCategory, "Gladius Midnight")
+                end
             end,
         },
         { type = "spacer" },
