@@ -514,10 +514,15 @@ function GladiusMixin:CreateCustomCooldown(cooldown, showDecimals, isDR)
     if not cooldown.gladiusText then
         local fs = cooldown:CreateFontString(nil, "OVERLAY")
         fs:SetPoint("CENTER", 0, 0)
+        local fontSet = false
         if cooldown.Text then
             local path, size, flags = cooldown.Text:GetFont()
-            fs:SetFont(path, size, flags)
-        else
+            if path then
+                fs:SetFont(path, size, flags)
+                fontSet = true
+            end
+        end
+        if not fontSet then
             fs:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
         end
         cooldown.gladiusText = fs
@@ -534,12 +539,6 @@ function GladiusMixin:CreateCustomCooldown(cooldown, showDecimals, isDR)
             self._elapsed = (self._elapsed or 0) + elapsed
             if self._elapsed < 0.1 then return end
             self._elapsed = 0
-
-            local remaining = self:GetCooldownTimes()
-            if not remaining then
-                self.gladiusText:SetText("")
-                return
-            end
 
             local startTime, duration = self:GetCooldownTimes()
             if not startTime or startTime == 0 then
@@ -1027,8 +1026,8 @@ function GladiusMixin:Initialize()
         elseif msg == "" or msg == "config" or msg == "options" then
             if self.ToggleSettingsUI then
                 self:ToggleSettingsUI()
-            else
-                Settings.OpenToCategory("Gladius Midnight")
+            elseif Settings and Settings.OpenToCategory then
+                pcall(Settings.OpenToCategory, "Gladius Midnight")
             end
         else
             self:Print("Commands: /gladius test | hide | config")
@@ -1280,7 +1279,6 @@ function GladiusMixin:HandleCombatLog()
     if combatEvent == "SPELL_INTERRUPT" then
         -- The interrupted target gets the lockout
         if destFrame and destFrame.FindInterrupt then
-            local _, _, _, _, _, _, _, _, _, _, _, _, _, extraSpellID = CombatLogGetCurrentEventInfo()
             destFrame:FindInterrupt(combatEvent, spellID, sourceName, sourceGUID)
         end
     end

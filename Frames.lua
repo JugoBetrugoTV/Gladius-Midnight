@@ -704,12 +704,12 @@ function GladiusFrameMixin:SetLifeState()
     if not UnitExists(unit) then return end
 
     local feignDeath = false
-    -- Check for feign death on hunters
-    if self.class == "HUNTER" and GladiusMixin.FEIGN_DEATH then
+    -- Check for feign death on hunters (use spellId for locale-independence)
+    if self.class == "HUNTER" then
         for i = 1, 40 do
-            local name = UnitBuff(unit, i)
-            if not name then break end
-            if name == GladiusMixin.FEIGN_DEATH then
+            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+            if not auraData then break end
+            if auraData.spellId == GladiusMixin.feignDeathID then
                 feignDeath = true
                 break
             end
