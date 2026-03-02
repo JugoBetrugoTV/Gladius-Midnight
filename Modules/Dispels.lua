@@ -349,7 +349,8 @@ function GladiusFrameMixin:UpdateDispel()
     local db = self.parent.db
     if not db then return end
 
-    local showDispels = db.profile.showDispels
+    local ls = db.profile.layoutSettings[db.profile.currentLayout]
+    local showDispels = not ls or ls.showDispels ~= false
     local dispelInfo = self:GetDispelData()
 
     local shouldShow = showDispels and dispelInfo ~= nil

@@ -1231,7 +1231,9 @@ function GladiusFrameMixin:ResetLayout()
         for fs, saved in pairs(self.changedFonts) do
             if saved then
                 local path, size, flags = unpack(saved)
-                fs:SetFont(path, size, flags)
+                if path then
+                    fs:SetFont(path, size, flags)
+                end
             end
         end
         self.changedFonts = nil

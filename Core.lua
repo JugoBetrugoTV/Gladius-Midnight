@@ -280,6 +280,7 @@ local ogFonts = {}
 local function captureFont(fs)
     if not fs then return nil end
     local path, size, flags = fs:GetFont()
+    if not path then return nil end
     return { path, size, flags }
 end
 
@@ -396,12 +397,12 @@ function GladiusMixin:UpdateTextures()
     local ls = self.db.profile.layoutSettings[layoutName]
     if not ls or not ls.textures then return end
 
-    local generalTex = LSM:Fetch(LSM.MediaType.STATUSBAR,
-        ls.textures.generalStatusBarTexture or "Blizzard RetailBar")
+    local generalName = ls.textures.generalStatusBarTexture or "Blizzard RetailBar"
+    local generalTex = LSM:Fetch(LSM.MediaType.STATUSBAR, generalName)
     local healerTex = LSM:Fetch(LSM.MediaType.STATUSBAR,
-        ls.textures.healStatusBarTexture or generalTex)
+        ls.textures.healStatusBarTexture or generalName)
     local castTex = LSM:Fetch(LSM.MediaType.STATUSBAR,
-        ls.textures.castbarStatusBarTexture or generalTex)
+        ls.textures.castbarStatusBarTexture or generalName)
 
     local isClassStacking = self:CheckClassStacking()
 

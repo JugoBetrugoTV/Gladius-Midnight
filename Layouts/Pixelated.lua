@@ -217,7 +217,8 @@ function GladiusFrameMixin:AddPixelBorderToFrame()
     CreatePixelTextureBorder(borders, self.Racial, "racial", size, offset)
     CreatePixelTextureBorder(borders, self.Dispel, "dispel", size, offset)
 
-    if not self.parent.db.profile.showDispels then
+    local pxLS = self.parent.db.profile.layoutSettings[self.parent.db.profile.currentLayout]
+    if pxLS and pxLS.showDispels == false then
         borders.dispel:Hide()
     end
 
@@ -579,7 +580,9 @@ function layout:Initialize(frame)
 
     if not frame.Dispel.DispelPixelBorderHook then
         hooksecurefunc(frame.Dispel.Texture, "SetTexture", function(self, t)
-            if not frame.parent.db.profile.showDispels or not t or not GladiusMixin.showPixelBorder then
+            local pxLS2 = frame.parent.db.profile.layoutSettings[frame.parent.db.profile.currentLayout]
+            local dispelsOn = not pxLS2 or pxLS2.showDispels ~= false
+            if not dispelsOn or not t or not GladiusMixin.showPixelBorder then
                 frame.PixelBorders.dispel:Hide()
             else
                 frame.PixelBorders.dispel:Show()
@@ -591,7 +594,8 @@ function layout:Initialize(frame)
         frame.Dispel.DispelPixelBorderHook = true
     end
 
-    if not frame.parent.db.profile.showDispels then
+    local pxLS3 = frame.parent.db.profile.layoutSettings[frame.parent.db.profile.currentLayout]
+    if pxLS3 and pxLS3.showDispels == false then
         frame.PixelBorders.dispel:Hide()
     end
 
