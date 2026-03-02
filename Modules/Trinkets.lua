@@ -52,7 +52,18 @@ function GladiusFrameMixin:UpdateTrinket()
 
     -- If the spell changed, update the trinket display
     if spellID ~= self.Trinket.spellID then
-        local _, spellTextureNoOverride = GetSpellTexture(spellID)
+        local spellTexture, spellTextureNoOverride = GetSpellTexture(spellID)
+
+        -- In WoW 12.0+, C_Spell.GetSpellTexture returns only one value.
+        -- Detect racial overrides by spell ID instead of relying on textureNoOverride.
+        if not spellTextureNoOverride and spellTexture then
+            local isKnownRacial = GladiusMixin.racialSpells
+                and GladiusMixin.racialSpells[spellID]
+                and GladiusMixin.racialSpells[spellID] > 0
+            if not isKnownRacial then
+                spellTextureNoOverride = spellTexture
+            end
+        end
 
         local hadRacialOnTrinket = self.updateRacialOnTrinketSlot
         self.Trinket.spellID = spellID

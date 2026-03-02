@@ -438,7 +438,12 @@ function GladiusFrameMixin:GetClass()
 
     local specID = GetArenaOpponentSpec and GetArenaOpponentSpec(self:GetID())
     if specID and specID > 0 then
-        local _, specName, _, specIcon, _, classFile = GetSpecializationInfoByID(specID)
+        local _, specName, _, specIcon, _, classFile
+        if C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfoByID then
+            _, specName, _, specIcon, _, classFile = C_SpecializationInfo.GetSpecializationInfoByID(specID)
+        elseif GetSpecializationInfoByID then
+            _, specName, _, specIcon, _, classFile = GetSpecializationInfoByID(specID)
+        end
         self.class = classFile
         self.specName = specName
         self.specID = specID

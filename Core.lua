@@ -260,7 +260,12 @@ function GladiusMixin:UpdatePlayerSpec()
         specIndex = GetSpecialization()
     end
     if specIndex then
-        local specID, specName = GetSpecializationInfo(specIndex)
+        local specID, specName
+        if C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo then
+            specID, specName = C_SpecializationInfo.GetSpecializationInfo(specIndex)
+        elseif GetSpecializationInfo then
+            specID, specName = GetSpecializationInfo(specIndex)
+        end
         self.playerSpecID = specID
         self.playerSpecName = specName
     end
