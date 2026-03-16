@@ -10,6 +10,21 @@
 -----------------------------------------------------------------------
 local interruptList = GladiusMixin.interruptList
 
+local function GetSpellCooldownCompat(spellID)
+    if not spellID then return nil, nil end
+    if C_Spell and C_Spell.GetSpellCooldown then
+        local info = C_Spell.GetSpellCooldown(spellID)
+        if info then
+            return info.startTime, info.duration
+        end
+    end
+    if GetSpellCooldown then
+        local startTime, duration = GetSpellCooldown(spellID)
+        return startTime, duration
+    end
+    return nil, nil
+end
+
 -----------------------------------------------------------------------
 -- Detect the player's interrupt spell from known spells / pet spells
 -----------------------------------------------------------------------
@@ -72,9 +87,9 @@ local function SyncInterruptCooldown(iconFrame)
     end
     if not playerKickSpellID then return end
 
-    local cdInfo = C_Spell.GetSpellCooldown(playerKickSpellID)
-    if cdInfo then
-        iconFrame.cooldown:SetCooldown(cdInfo.startTime, cdInfo.duration)
+    local startTime, duration = GetSpellCooldownCompat(playerKickSpellID)
+    if startTime and duration then
+        iconFrame.cooldown:SetCooldown(startTime, duration)
     end
 end
 
@@ -85,9 +100,9 @@ local function OnInterruptEvent(_, event, unit, _, spellID)
     if event == "UNIT_SPELLCAST_SUCCEEDED" then
         -- Player used their interrupt
         if interruptList[spellID] then
-            local cdInfo = C_Spell.GetSpellCooldown(spellID)
-            if cdInfo then
-                GladiusMixin.interruptIcon.cooldown:SetCooldown(cdInfo.startTime, cdInfo.duration)
+            local startTime, duration = GetSpellCooldownCompat(spellID)
+            if startTime and duration then
+                GladiusMixin.interruptIcon.cooldown:SetCooldown(startTime, duration)
             end
             GladiusMixin.interruptReady = false
             GladiusMixin:UpdateCastbarInterruptStatus()

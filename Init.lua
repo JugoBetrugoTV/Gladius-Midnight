@@ -10,6 +10,8 @@ GladiusCastBarExtMixin = {}
 
 local buildVersion = select(1, GetBuildInfo())
 GladiusMixin.isMidnight = buildVersion:match("^12")
+GladiusMixin.isMoP = buildVersion:match("^5%.")
+GladiusMixin.isTBC = buildVersion:match("^2%.")
 GladiusMixin.isRetail = (WOW_PROJECT_ID == WOW_PROJECT_MAINLINE)
 
 GladiusMixin.layouts = {}

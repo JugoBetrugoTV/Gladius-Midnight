@@ -1,17 +1,17 @@
 --[[
-    Gladius Midnight - Custom Settings UI
-    A dark-themed settings panel with sidebar tabs.
-    Replaces the AceConfig dialog with a hand-crafted GUI.
-    All settings from Config.lua are preserved and wired up.
+    Gladius Midnight - Control Deck UI
+    Custom settings window with search, category tabs, and card-like rows.
+    Provides a distinctly styled alternative to AceConfig dialogs.
 ]]
 
 local addonName = "GladiusMidnight"
 local LSM = LibStub("LibSharedMedia-3.0")
+local tUnpack = unpack or table.unpack
 
 -----------------------------------------------------------------------
 -- Constants
 -----------------------------------------------------------------------
-local PANEL_W, PANEL_H = 840, 600
+local PANEL_W, PANEL_H = 880, 620
 local SIDEBAR_W = 175
 local TOPBAR_H = 52
 local PAD = 12
@@ -19,30 +19,31 @@ local ROW_H = 28
 local SLIDER_W = 180
 local DROPDOWN_W = 180
 local CHECK_SIZE = 18
+local SEARCH_W = 190
 
 -----------------------------------------------------------------------
 -- Color palette
 -----------------------------------------------------------------------
 local C = {
-    bg        = CreateColor(0.06, 0.06, 0.06, 0.97),
-    sidebar   = CreateColor(0.04, 0.04, 0.04, 1),
-    tabNorm   = CreateColor(0.11, 0.11, 0.11, 1),
-    tabHover  = CreateColor(0.18, 0.18, 0.18, 1),
-    tabActive = CreateColor(0.06, 0.40, 0.06, 0.95),
-    accent    = CreateColor(0.00, 0.80, 0.00, 1),
-    title     = CreateColor(1, 1, 1, 1),
-    header    = CreateColor(0.85, 0.85, 0.85, 1),
-    text      = CreateColor(0.78, 0.78, 0.78, 1),
-    sub       = CreateColor(0.50, 0.50, 0.50, 1),
-    divider   = CreateColor(0.20, 0.20, 0.20, 1),
-    inputBg   = CreateColor(0.10, 0.10, 0.10, 1),
-    sliderBg  = CreateColor(0.14, 0.14, 0.14, 1),
-    sliderFill= CreateColor(0.00, 0.65, 0.00, 0.85),
-    btnBg     = CreateColor(0.14, 0.14, 0.14, 1),
-    btnHover  = CreateColor(0.22, 0.22, 0.22, 1),
-    checkOn   = CreateColor(0.00, 0.75, 0.00, 1),
-    checkOff  = CreateColor(0.25, 0.25, 0.25, 1),
-    red       = CreateColor(0.90, 0.20, 0.20, 1),
+    bg         = CreateColor(0.07, 0.08, 0.10, 0.98),
+    sidebar    = CreateColor(0.06, 0.07, 0.09, 1),
+    tabNorm    = CreateColor(0.12, 0.14, 0.18, 1),
+    tabHover   = CreateColor(0.18, 0.21, 0.28, 1),
+    tabActive  = CreateColor(0.18, 0.30, 0.46, 1),
+    accent     = CreateColor(0.36, 0.71, 1.00, 1),
+    title      = CreateColor(0.96, 0.97, 1.00, 1),
+    header     = CreateColor(0.88, 0.90, 0.95, 1),
+    text       = CreateColor(0.78, 0.82, 0.88, 1),
+    sub        = CreateColor(0.55, 0.60, 0.66, 1),
+    divider    = CreateColor(0.20, 0.24, 0.30, 1),
+    inputBg    = CreateColor(0.12, 0.14, 0.18, 1),
+    sliderBg   = CreateColor(0.16, 0.18, 0.24, 1),
+    sliderFill = CreateColor(0.33, 0.64, 0.95, 0.9),
+    btnBg      = CreateColor(0.14, 0.16, 0.22, 1),
+    btnHover   = CreateColor(0.22, 0.26, 0.34, 1),
+    checkOn    = CreateColor(0.33, 0.70, 0.95, 1),
+    checkOff   = CreateColor(0.30, 0.34, 0.42, 1),
+    red        = CreateColor(0.90, 0.28, 0.35, 1),
 }
 
 -----------------------------------------------------------------------
@@ -63,6 +64,12 @@ end
 local function ensureTable(parent, key)
     if not parent[key] then parent[key] = {} end
     return parent[key]
+end
+
+local function getUIState()
+    local p = getProfile()
+    if not p then return nil end
+    return ensureTable(p, "settingsUI")
 end
 
 -- Deep get: getNested(tbl, "a.b.c") -> tbl.a.b.c
@@ -225,12 +232,32 @@ local function CreateSettingsDesc(parent, yOff, label)
     return fs, h
 end
 
+local function AddControlCard(frame)
+    local bg = frame:CreateTexture(nil, "BACKGROUND")
+    bg:SetPoint("TOPLEFT", -6, 2)
+    bg:SetPoint("BOTTOMRIGHT", 6, -2)
+    bg:SetColorTexture(0.10, 0.12, 0.16, 0.35)
+
+    local border = frame:CreateTexture(nil, "BORDER")
+    border:SetPoint("TOPLEFT", bg, "TOPLEFT", 0, 0)
+    border:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", 0, 0)
+    border:SetColorTexture(C.divider:GetRGBA())
+
+    frame:HookScript("OnEnter", function()
+        bg:SetColorTexture(0.14, 0.17, 0.23, 0.55)
+    end)
+    frame:HookScript("OnLeave", function()
+        bg:SetColorTexture(0.10, 0.12, 0.16, 0.35)
+    end)
+end
+
 -- ===== CHECKBOX =====
 local function CreateSettingsCheckbox(parent, yOff, def)
     local id = nextID()
     local frame = CreateFrame("Frame", "GladiusSettingsCheck" .. id, parent)
     frame:SetSize(parent:GetWidth() - PAD * 2, ROW_H)
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, yOff)
+    AddControlCard(frame)
 
     -- Check box
     local box = CreateFrame("Frame", nil, frame)
@@ -307,6 +334,7 @@ local function CreateSettingsSlider(parent, yOff, def)
     local frame = CreateFrame("Frame", "GladiusSettingsSlider" .. id, parent)
     frame:SetSize(parent:GetWidth() - PAD * 2, h)
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, yOff)
+    AddControlCard(frame)
 
     -- Label
     local label = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -383,6 +411,7 @@ local function CreateSettingsDropdown(parent, yOff, def)
     local frame = CreateFrame("Frame", "GladiusSettingsDrop" .. id, parent)
     frame:SetSize(parent:GetWidth() - PAD * 2, h)
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, yOff)
+    AddControlCard(frame)
 
     -- Label
     local label = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -564,6 +593,7 @@ local function CreateSettingsColor(parent, yOff, def)
     local frame = CreateFrame("Frame", "GladiusSettingsColor" .. id, parent)
     frame:SetSize(parent:GetWidth() - PAD * 2, ROW_H)
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, yOff)
+    AddControlCard(frame)
 
     -- Swatch
     local swatch = CreateFrame("Button", nil, frame)
@@ -662,6 +692,7 @@ local function CreateSettingsMultiSelect(parent, yOff, def)
     local frame = CreateFrame("Frame", "GladiusSettingsMulti" .. id, parent)
     frame:SetSize(parent:GetWidth() - PAD * 2, totalH)
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, yOff)
+    AddControlCard(frame)
 
     frame._checks = {}
     local colW = (frame:GetWidth() - 10) / cols
@@ -2000,7 +2031,26 @@ local tabProfiles = {
             type = "button", label = "Open AceDB Profiles",
             width = 200,
             func = function()
-                Settings.OpenToCategory("Gladius Midnight")
+                if LibStub and LibStub("AceConfigDialog-3.0", true) then
+                    LibStub("AceConfigDialog-3.0"):Open("GladiusMidnight")
+                else
+                    Settings.OpenToCategory("Gladius Midnight")
+                end
+            end,
+        },
+        { type = "spacer" },
+        {
+            type = "button", label = "Reset Window Layout",
+            width = 180,
+            func = function()
+                local p = getProfile()
+                if not p then return end
+                p.settingsUI = nil
+                if GladiusMidnightSettings then
+                    GladiusMidnightSettings:ClearAllPoints()
+                    GladiusMidnightSettings:SetPoint("CENTER")
+                    GladiusMidnightSettings:SetSize(PANEL_W, PANEL_H)
+                end
             end,
         },
         { type = "spacer" },
@@ -2037,18 +2087,95 @@ local allTabs = {
 -----------------------------------------------------------------------
 -- BUILD CONTENT from a tab definition
 -----------------------------------------------------------------------
-local function BuildTabContent(scrollChild, tabDef)
+local function normalizeFilter(text)
+    if not text then return nil end
+    local trimmed = text:lower():gsub("^%s+", ""):gsub("%s+$", "")
+    if trimmed == "" then return nil end
+    return trimmed
+end
+
+local function controlMatches(def, filter)
+    if not filter then return true end
+    local label = def.label or ""
+    local desc = def.desc or ""
+    local haystack = (label .. " " .. desc):lower()
+    return haystack:find(filter, 1, true) ~= nil
+end
+
+local function filterControls(controls, filter)
+    if not filter then return controls end
+    local filtered = {}
+    local pendingHeader
+    for _, def in ipairs(controls) do
+        if def.type == "header" then
+            pendingHeader = def
+        elseif controlMatches(def, filter) then
+            if pendingHeader then
+                filtered[#filtered + 1] = pendingHeader
+                pendingHeader = nil
+            end
+            filtered[#filtered + 1] = def
+        end
+    end
+    return filtered
+end
+
+local function getTabMatchCount(tabDef, filter)
+    if not filter then return #tabDef.controls end
+    local controls = filterControls(tabDef.controls, filter)
+    local count = 0
+    for _, def in ipairs(controls) do
+        if def.type ~= "header" and def.type ~= "spacer" then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+local function BuildTabContent(scrollChild, tabDef, filterText, ownerFrame)
     -- Clear previous children
     local kids = { scrollChild:GetChildren() }
     for _, kid in ipairs(kids) do kid:Hide(); kid:SetParent(nil) end
-    -- Also clear fontstrings we may have created as descriptions
-    -- (They're regions, not children, so we track them separately)
 
     scrollChild._controls = {}
     local yOff = -PAD
-    local contentW = scrollChild:GetWidth()
 
-    for _, def in ipairs(tabDef.controls) do
+    local filter = normalizeFilter(filterText)
+    local controls = filterControls(tabDef.controls, filter)
+
+    if filter then
+        controls = {
+            { type = "desc", label = string.format("Filtering '%s' in %s.", filterText, tabDef.name) },
+            tUnpack(controls),
+        }
+    end
+
+    if filter and #controls <= 1 then
+        controls = {
+            { type = "desc", label = "No settings match your filter in this tab." },
+            { type = "header", label = "Matching Tabs" },
+        }
+
+        for idx, otherTab in ipairs(allTabs) do
+            local matches = getTabMatchCount(otherTab, filter)
+            if matches > 0 then
+                controls[#controls + 1] = {
+                    type = "button",
+                    label = string.format("%s (%d)", otherTab.name, matches),
+                    width = 220,
+                    func = function()
+                        if ownerFrame then ownerFrame:SelectTab(idx) end
+                    end,
+                }
+            end
+        end
+
+        if #controls == 2 then
+            controls[#controls + 1] = { type = "desc", label = "No settings found in any tab." }
+        end
+    end
+
+    for _, def in ipairs(controls) do
         local widget, h
 
         if def.type == "header" then
@@ -2103,6 +2230,13 @@ local function CreateMainFrame()
     f:SetFrameLevel(100)
     f:SetMovable(true)
     f:EnableMouse(true)
+    f:EnableKeyboard(true)
+    f:SetResizable(true)
+    if f.SetResizeBounds then
+        f:SetResizeBounds(760, 520, 1200, 860)
+    elseif f.SetMinResize then
+        f:SetMinResize(760, 520)
+    end
     f:SetClampedToScreen(true)
     f:Hide()
 
@@ -2123,11 +2257,18 @@ local function CreateMainFrame()
     titleBar:EnableMouse(true)
     titleBar:RegisterForDrag("LeftButton")
     titleBar:SetScript("OnDragStart", function() f:StartMoving() end)
-    titleBar:SetScript("OnDragStop", function() f:StopMovingOrSizing() end)
+    titleBar:SetScript("OnDragStop", function()
+        f:StopMovingOrSizing()
+        local ui = getUIState()
+        if ui then
+            local pnt, _, relPoint, x, y = f:GetPoint(1)
+            ui.point, ui.relPoint, ui.x, ui.y = pnt, relPoint, x, y
+        end
+    end)
 
     local titleBg = titleBar:CreateTexture(nil, "BACKGROUND")
     titleBg:SetAllPoints()
-    titleBg:SetColorTexture(0.03, 0.03, 0.03, 1)
+    titleBg:SetColorTexture(0.05, 0.06, 0.08, 1)
 
     local titleDivider = titleBar:CreateTexture(nil, "ARTWORK")
     titleDivider:SetHeight(1)
@@ -2138,7 +2279,8 @@ local function CreateMainFrame()
     -- Title text
     local titleText = titleBar:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     titleText:SetPoint("LEFT", SIDEBAR_W + PAD, 0)
-    titleText:SetText("Gladius |cff00ff00Midnight|r")
+    titleText:SetText("Gladius Midnight  |cff7fb3ffCtrl+F|r")
+    titleText:SetTextColor(C.title:GetRGBA())
 
     -- Close button
     local closeBtn = CreateFrame("Button", nil, titleBar)
@@ -2150,6 +2292,24 @@ local function CreateMainFrame()
     closeBtn:SetScript("OnClick", function() f:Hide() end)
     closeBtn:SetScript("OnEnter", function() closeTex:SetAlpha(0.8) end)
     closeBtn:SetScript("OnLeave", function() closeTex:SetAlpha(1) end)
+
+    local resizeGrip = CreateFrame("Button", nil, f)
+    resizeGrip:SetSize(16, 16)
+    resizeGrip:SetPoint("BOTTOMRIGHT", -4, 4)
+    local rgTex = resizeGrip:CreateTexture(nil, "OVERLAY")
+    rgTex:SetAllPoints()
+    rgTex:SetAtlas("UI-HUD-ActionBar-Expand")
+    rgTex:SetAlpha(0.55)
+    resizeGrip:SetScript("OnMouseDown", function() f:StartSizing("BOTTOMRIGHT") end)
+    resizeGrip:SetScript("OnMouseUp", function()
+        f:StopMovingOrSizing()
+        local ui = getUIState()
+        if ui then
+            ui.w, ui.h = f:GetSize()
+        end
+    end)
+    resizeGrip:SetScript("OnEnter", function() rgTex:SetAlpha(0.9) end)
+    resizeGrip:SetScript("OnLeave", function() rgTex:SetAlpha(0.55) end)
 
     -- Layout dropdown in title bar
     local layoutLabel = titleBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -2178,6 +2338,70 @@ local function CreateMainFrame()
 
     f.layoutBtnText = layoutBtnText
 
+    -- Search box
+    local searchBox = CreateFrame("EditBox", nil, titleBar, "InputBoxTemplate")
+    searchBox:SetSize(SEARCH_W, 22)
+    searchBox:SetPoint("RIGHT", layoutLabel, "LEFT", -12, 0)
+    searchBox:SetAutoFocus(false)
+    searchBox:SetTextInsets(6, 6, 0, 0)
+    searchBox:SetFontObject("GameFontHighlightSmall")
+    searchBox:SetTextColor(C.text:GetRGBA())
+
+    local searchBg = searchBox:CreateTexture(nil, "BACKGROUND")
+    searchBg:SetAllPoints()
+    searchBg:SetColorTexture(C.inputBg:GetRGBA())
+
+    local searchHint = searchBox:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    searchHint:SetPoint("LEFT", 8, 0)
+    searchHint:SetText("Filter settings...")
+    searchHint:SetTextColor(C.sub:GetRGBA())
+
+    local clearSearchBtn = CreateFrame("Button", nil, titleBar)
+    clearSearchBtn:SetSize(20, 20)
+    clearSearchBtn:SetPoint("LEFT", searchBox, "RIGHT", 4, 0)
+    local clearText = clearSearchBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    clearText:SetPoint("CENTER")
+    clearText:SetText("×")
+    clearText:SetTextColor(C.sub:GetRGBA())
+    clearSearchBtn:SetScript("OnEnter", function() clearText:SetTextColor(C.accent:GetRGBA()) end)
+    clearSearchBtn:SetScript("OnLeave", function() clearText:SetTextColor(C.sub:GetRGBA()) end)
+    clearSearchBtn:SetScript("OnClick", function()
+        searchBox:SetText("")
+        searchBox:ClearFocus()
+        clearSearchBtn:Hide()
+    end)
+    clearSearchBtn:Hide()
+
+    searchBox:SetScript("OnEditFocusGained", function() searchHint:Hide() end)
+    searchBox:SetScript("OnEditFocusLost", function(self)
+        if self:GetText() == "" then
+            searchHint:Show()
+        end
+    end)
+    searchBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    f.searchBox = searchBox
+
+    searchBox:SetScript("OnTextChanged", function(self)
+        local text = self:GetText() or ""
+        if text == "" then
+            searchHint:Show()
+        else
+            searchHint:Hide()
+        end
+        f.searchFilter = text
+        if text == "" then
+            clearSearchBtn:Hide()
+        else
+            clearSearchBtn:Show()
+        end
+        local ui = getUIState()
+        if ui then ui.filter = text end
+        f:RefreshTabSearchState()
+        if f.currentTabIndex and f.scrollChild then
+            BuildTabContent(f.scrollChild, allTabs[f.currentTabIndex], f.searchFilter, f)
+        end
+    end)
+
     -- Layout dropdown list
     local layoutList
     local function closeLayoutList()
@@ -2198,11 +2422,11 @@ local function CreateMainFrame()
             layoutList:SetFrameStrata("TOOLTIP")
             local bg = layoutList:CreateTexture(nil, "BACKGROUND")
             bg:SetAllPoints()
-            bg:SetColorTexture(0.08, 0.08, 0.08, 0.98)
+            bg:SetColorTexture(C.sidebar:GetRGBA())
             local border = CreateFrame("Frame", nil, layoutList, "BackdropTemplate")
             border:SetAllPoints()
             border:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-            border:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+            border:SetBackdropBorderColor(C.divider:GetRGBA())
             layoutList._items = {}
         end
 
@@ -2234,7 +2458,7 @@ local function CreateMainFrame()
                 itemText:SetTextColor(C.text:GetRGBA())
             end
 
-            itemBtn:SetScript("OnEnter", function() itemBg:SetColorTexture(0.2, 0.2, 0.2, 0.6) end)
+            itemBtn:SetScript("OnEnter", function() itemBg:SetColorTexture(C.tabHover:GetRGBA()) end)
             itemBtn:SetScript("OnLeave", function() itemBg:SetColorTexture(0, 0, 0, 0) end)
             itemBtn:SetScript("OnClick", function()
                 if GladiusMidnight and GladiusMidnight.SetLayout then
@@ -2244,7 +2468,7 @@ local function CreateMainFrame()
                 updateLayoutDisplay()
                 -- Rebuild current tab to reflect new layout settings
                 if f.currentTabIndex and f.scrollChild then
-                    BuildTabContent(f.scrollChild, allTabs[f.currentTabIndex])
+                    BuildTabContent(f.scrollChild, allTabs[f.currentTabIndex], f.searchFilter, f)
                 end
             end)
 
@@ -2258,7 +2482,7 @@ local function CreateMainFrame()
     -- Test / Hide buttons in title bar
     local testBtn = CreateFrame("Button", nil, titleBar)
     testBtn:SetSize(50, 22)
-    testBtn:SetPoint("RIGHT", layoutLabel, "LEFT", -12, 0)
+    testBtn:SetPoint("RIGHT", searchBox, "LEFT", -8, 0)
     local testBg = testBtn:CreateTexture(nil, "BACKGROUND")
     testBg:SetAllPoints()
     testBg:SetColorTexture(C.btnBg:GetRGBA())
@@ -2313,8 +2537,8 @@ local function CreateMainFrame()
     -- Sidebar title
     local sideTitle = sidebar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     sideTitle:SetPoint("TOPLEFT", PAD, -PAD)
-    sideTitle:SetText("|cff00ff00GM|r Settings")
-    sideTitle:SetTextColor(C.header:GetRGBA())
+    sideTitle:SetText("Control Deck")
+    sideTitle:SetTextColor(C.accent:GetRGBA())
 
     -- Tab buttons
     f.tabButtons = {}
@@ -2344,6 +2568,7 @@ local function CreateMainFrame()
         tabLabel:SetPoint("LEFT", tabDef.icon and 30 or 8, 0)
         tabLabel:SetText(tabDef.name)
         tabLabel:SetTextColor(C.text:GetRGBA())
+        tabBtn.baseName = tabDef.name
         tabBtn.label = tabLabel
 
         tabBtn:SetScript("OnEnter", function()
@@ -2386,6 +2611,19 @@ local function CreateMainFrame()
         scrollChild:SetWidth(w)
     end)
 
+    function f:RefreshTabSearchState()
+        local filter = normalizeFilter(self.searchFilter)
+        for i, btn in ipairs(self.tabButtons) do
+            local base = btn.baseName or (allTabs[i] and allTabs[i].name) or "Tab"
+            if filter then
+                local matches = getTabMatchCount(allTabs[i], filter)
+                btn.label:SetText(string.format("%s |cff7fb3ff(%d)|r", base, matches))
+            else
+                btn.label:SetText(base)
+            end
+        end
+    end
+
     ---------------------------------------------------------------
     -- TAB SELECTION
     ---------------------------------------------------------------
@@ -2402,11 +2640,21 @@ local function CreateMainFrame()
         end
 
         self.currentTabIndex = idx
+        local ui = getUIState()
+        if ui then ui.tab = idx end
+        self:RefreshTabSearchState()
         -- Reset scroll position
         self.scrollFrame:SetVerticalScroll(0)
         -- Build content
-        BuildTabContent(self.scrollChild, allTabs[idx])
+        BuildTabContent(self.scrollChild, allTabs[idx], self.searchFilter, self)
     end
+
+    f:SetScript("OnKeyDown", function(self, key)
+        if IsControlKeyDown() and key == "F" and self.searchBox then
+            self.searchBox:SetFocus()
+            self.searchBox:HighlightText()
+        end
+    end)
 
     ---------------------------------------------------------------
     -- ESCAPE TO CLOSE
@@ -2415,7 +2663,30 @@ local function CreateMainFrame()
 
     -- On show: refresh layout display and select first tab
     f:SetScript("OnShow", function(self)
+        local ui = getUIState()
+        if ui then
+            if ui.w and ui.h then
+                self:SetSize(ui.w, ui.h)
+            end
+            if ui.point and ui.relPoint and ui.x and ui.y then
+                self:ClearAllPoints()
+                self:SetPoint(ui.point, UIParent, ui.relPoint, ui.x, ui.y)
+            end
+        end
+        if ui then
+            self.currentTabIndex = ui.tab or self.currentTabIndex
+            self.searchFilter = ui.filter or self.searchFilter
+            if self.searchBox then
+                self.searchBox:SetText(self.searchFilter or "")
+                if (self.searchFilter or "") == "" then
+                    clearSearchBtn:Hide()
+                else
+                    clearSearchBtn:Show()
+                end
+            end
+        end
         updateLayoutDisplay()
+        self:RefreshTabSearchState()
         self:SelectTab(self.currentTabIndex or 1)
         PlaySound(SOUNDKIT.IG_CHARACTER_INFO_OPEN)
     end)

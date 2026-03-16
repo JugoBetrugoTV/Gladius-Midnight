@@ -5,8 +5,12 @@
     Complete dispel spell database with spec-to-dispel mapping.
 ]]
 
+if GladiusMixin.isMidnight then
+    return
+end
+
 local GetTime = GetTime
-local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
+local GetSpellTexture = GetSpellTexture or (C_Spell and C_Spell.GetSpellTexture)
 local L = GladiusMixin.L
 
 -----------------------------------------------------------------------

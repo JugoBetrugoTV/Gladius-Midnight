@@ -19,8 +19,8 @@ local UnitClass = UnitClass
 local UnitRace = UnitRace
 local UnitName = UnitName
 local GetTime = GetTime
-local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
-local GetSpellName = GetSpellName or C_Spell.GetSpellName
+local GetSpellTexture = GetSpellTexture or (C_Spell and C_Spell.GetSpellTexture)
+local GetSpellName = GetSpellName or (C_Spell and C_Spell.GetSpellName)
 
 -----------------------------------------------------------------------
 -- OnLoad: called when each enemy frame is created from XML template
@@ -170,10 +170,32 @@ function GladiusFrameMixin:HookBlizzardArenaFrame(id)
     -- Hook trinket from CcRemoverFrame
     if blizzFrame.CcRemoverFrame then
         local ccFrame = blizzFrame.CcRemoverFrame
+
         if ccFrame.Cooldown then
             hooksecurefunc(ccFrame.Cooldown, "SetCooldown", function(_, start, duration)
                 if self.Trinket and self.Trinket.Cooldown and start and duration then
                     self.Trinket.Cooldown:SetCooldown(start, duration)
+                    if self.UpdateTrinketIcon then
+                        self:UpdateTrinketIcon(false)
+                    end
+                end
+            end)
+
+            hooksecurefunc(ccFrame.Cooldown, "Clear", function()
+                if self.Trinket and self.Trinket.Cooldown then
+                    self.Trinket.Cooldown:Clear()
+                    if self.UpdateTrinketIcon then
+                        self:UpdateTrinketIcon(true)
+                    end
+                end
+            end)
+        end
+
+        if ccFrame.Icon and ccFrame.Icon.SetTexture then
+            hooksecurefunc(ccFrame.Icon, "SetTexture", function(_, tex)
+                if not tex or not self.Trinket or not self.Trinket.Texture then return end
+                if not self.updateRacialOnTrinketSlot then
+                    self.Trinket.Texture:SetTexture(tex)
                 end
             end)
         end
@@ -181,6 +203,70 @@ function GladiusFrameMixin:HookBlizzardArenaFrame(id)
 
     -- Store reference for DR frame hooks
     self.blizzArenaFrame = blizzFrame
+
+    -- Hook Blizzard DR tray for Midnight
+    self:SetupMidnightDRTray()
+end
+
+-----------------------------------------------------------------------
+-- Midnight DR tray setup (Blizzard SpellDiminishStatusTray)
+-----------------------------------------------------------------------
+function GladiusFrameMixin:SetupMidnightDRTray()
+    if not isMidnight then return end
+    local blizzFrame = self.blizzArenaFrame or _G["CompactArenaFrameMember" .. self:GetID()]
+    if not blizzFrame or not blizzFrame.SpellDiminishStatusTray then return end
+
+    local drTray = blizzFrame.SpellDiminishStatusTray
+    self.drTray = drTray
+    drTray:SetParent(self)
+    drTray:SetFrameStrata("MEDIUM")
+    drTray:SetFrameLevel(10)
+    drTray:EnableMouse(false)
+    if drTray.SetMouseClickEnabled then
+        drTray:SetMouseClickEnabled(false)
+    end
+
+    local drFrames = { drTray:GetChildren() }
+    self.drFrames = drFrames
+    for _, drFrame in ipairs(drFrames) do
+        if drFrame then
+            drFrame:SetFrameStrata("MEDIUM")
+            drFrame:SetFrameLevel(11)
+            drFrame:EnableMouse(false)
+            if drFrame.SetMouseClickEnabled then
+                drFrame:SetMouseClickEnabled(false)
+            end
+            if drFrame.Icon then
+                drFrame.Icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+            end
+        end
+    end
+
+    self:UpdateMidnightDRPosition()
+end
+
+function GladiusFrameMixin:UpdateMidnightDRPosition()
+    if not isMidnight or not self.drTray then return end
+    local db = self.parent and self.parent.db
+    if not db then return end
+    local ls = db.profile.layoutSettings[db.profile.currentLayout]
+    if not ls or not ls.dr then return end
+
+    local drSize = ls.dr.size or 28
+    local baseX = ls.dr.posX or 0
+    local baseY = ls.dr.posY or 0
+    local growDir = ls.dr.growthDirection or 4
+    local scale = drSize / 28
+
+    local anchorPoint = "RIGHT"
+    if growDir == 3 then
+        anchorPoint = "LEFT"
+    end
+
+    local offset = drSize / 2
+    self.drTray:ClearAllPoints()
+    self.drTray:SetScale(scale)
+    self.drTray:SetPoint(anchorPoint, self, "CENTER", baseX + offset, baseY)
 end
 
 -----------------------------------------------------------------------
@@ -1121,7 +1207,10 @@ end
 -- DR position update
 -----------------------------------------------------------------------
 function GladiusFrameMixin:UpdateDRPositions()
-    if isMidnight then return end -- Midnight uses Blizzard's tray
+    if isMidnight then
+        self:UpdateMidnightDRPosition()
+        return
+    end -- Midnight uses Blizzard's tray
     if not GladiusMixin.drCategories then return end
 
     local db = self.parent.db
