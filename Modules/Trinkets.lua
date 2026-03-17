@@ -6,7 +6,33 @@
 ]]
 
 local isMidnight = GladiusMixin.isMidnight
-local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
+local isRetail = GladiusMixin.isRetail
+local GetSpellTexture = GetSpellTexture or (C_Spell and C_Spell.GetSpellTexture)
+
+local function NormalizeCooldownSeconds(startTime, duration)
+    if not startTime or not duration then return nil, nil end
+    if startTime > 100000 then
+        startTime = startTime / 1000
+    end
+    if duration > 100000 then
+        duration = duration / 1000
+    end
+    return startTime, duration
+end
+
+local function GetArenaCCInfoCompat(unit)
+    if not C_PvP or not C_PvP.GetArenaCrowdControlInfo then
+        return nil, 0, 0
+    end
+
+    if isRetail or isMidnight then
+        local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(unit)
+        return spellID, startTime, duration
+    end
+
+    local spellID, _, startTime, duration = C_PvP.GetArenaCrowdControlInfo(unit)
+    return spellID, startTime, duration
+end
 
 -----------------------------------------------------------------------
 -- UpdateTrinketIcon: Set trinket texture state (available/on cooldown)
@@ -44,7 +70,7 @@ end
 -- UpdateTrinket: Poll C_PvP API for current trinket / CC-break state
 -----------------------------------------------------------------------
 function GladiusFrameMixin:UpdateTrinket()
-    local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(self.unit)
+    local spellID, startTime, duration = GetArenaCCInfoCompat(self.unit)
     if not spellID then return end
 
     local db = self.parent.db
@@ -103,35 +129,28 @@ function GladiusFrameMixin:UpdateTrinket()
     end
 
     -- Update cooldown display based on start/duration
-    if isMidnight then
-        -- Midnight: cooldown data handled via hooks in Frames.lua
-    else
-        if startTime ~= 0 and duration ~= 0 and self.Trinket.spellID then
-            if self.Trinket.Texture:GetTexture() ~= GladiusMixin.noTrinketTexture then
-                if self.updateRacialOnTrinketSlot then
-                    local racialDur = self:GetRacialDuration()
-                    if racialDur then
-                        self.Trinket.Cooldown:SetCooldown(startTime / 1000.0, racialDur)
-                    end
-                else
-                    self.Trinket.Cooldown:SetCooldown(startTime / 1000.0, duration / 1000.0)
+    local cdStart, cdDuration = NormalizeCooldownSeconds(startTime, duration)
+    if cdStart and cdDuration and cdStart ~= 0 and cdDuration ~= 0 and self.Trinket.spellID then
+        if self.Trinket.Texture:GetTexture() ~= GladiusMixin.noTrinketTexture then
+            if self.updateRacialOnTrinketSlot then
+                local racialDur = self:GetRacialDuration()
+                if racialDur then
+                    self.Trinket.Cooldown:SetCooldown(cdStart, racialDur)
                 end
-            end
-            if db.profile.colorTrinket then
-                self.Trinket.Texture:SetColorTexture(1, 0, 0)
             else
-                if not self.updateRacialOnTrinketSlot then
-                    self.Trinket.Texture:SetDesaturated(db.profile.desaturateTrinketCD)
-                end
-            end
-        else
-            self.Trinket.Cooldown:Clear()
-            if db.profile.colorTrinket then
-                self.Trinket.Texture:SetColorTexture(0, 1, 0)
-            else
-                self.Trinket.Texture:SetDesaturated(false)
+                self.Trinket.Cooldown:SetCooldown(cdStart, cdDuration)
             end
         end
+        self:UpdateTrinketIcon(false)
+    else
+        self.Trinket.Cooldown:Clear()
+        self:UpdateTrinketIcon(true)
+    end
+
+    if isMidnight and self.UpdateRacial then
+        -- Midnight can update trinket/racial state out-of-order after round transitions.
+        -- Re-evaluate racial placement each update to keep slots consistent.
+        self:UpdateRacial()
     end
 end
 

@@ -8,6 +8,17 @@
 local GetTime = GetTime
 local isMidnight = GladiusMixin.isMidnight
 
+local function GetSpellTextureCompat(spellID)
+    if GetSpellTexture then
+        local a,b = GetSpellTexture(spellID)
+        return b or a
+    end
+    if C_Spell and C_Spell.GetSpellTexture then
+        return C_Spell.GetSpellTexture(spellID)
+    end
+    return nil
+end
+
 local racialSpells
 local racialData
 local trinkets
@@ -93,32 +104,32 @@ trinkets = {
 -- Racial data per race: texture, shared CD with trinket, primary spell
 -----------------------------------------------------------------------
 racialData = {
-    ["Human"]              = { texture = C_Spell.GetSpellTexture(59752),   sharedCD = 90,  spellID = 59752 },
-    ["Scourge"]            = { texture = C_Spell.GetSpellTexture(7744),    sharedCD = 30,  spellID = 7744 },
-    ["Dwarf"]              = { texture = C_Spell.GetSpellTexture(20594),   sharedCD = 30,  spellID = 20594 },
-    ["NightElf"]           = { texture = C_Spell.GetSpellTexture(58984),   sharedCD = 0,   spellID = 58984 },
-    ["Gnome"]              = { texture = C_Spell.GetSpellTexture(20589),   sharedCD = 0,   spellID = 20589 },
-    ["Draenei"]            = { texture = C_Spell.GetSpellTexture(59542),   sharedCD = 0,   spellID = 59542 },
-    ["Worgen"]             = { texture = C_Spell.GetSpellTexture(68992),   sharedCD = 0,   spellID = 68992 },
-    ["Pandaren"]           = { texture = C_Spell.GetSpellTexture(107079),  sharedCD = 0,   spellID = 107079 },
-    ["Orc"]                = { texture = C_Spell.GetSpellTexture(33697),   sharedCD = 0,   spellID = 33697 },
-    ["Tauren"]             = { texture = C_Spell.GetSpellTexture(20549),   sharedCD = 0,   spellID = 20549 },
-    ["Troll"]              = { texture = C_Spell.GetSpellTexture(26297),   sharedCD = 0,   spellID = 26297 },
-    ["BloodElf"]           = { texture = C_Spell.GetSpellTexture(202719),  sharedCD = 0,   spellID = 202719 },
-    ["Goblin"]             = { texture = C_Spell.GetSpellTexture(69070),   sharedCD = 0,   spellID = 69070 },
-    ["LightforgedDraenei"] = { texture = C_Spell.GetSpellTexture(255647),  sharedCD = 0,   spellID = 255647 },
-    ["HighmountainTauren"] = { texture = C_Spell.GetSpellTexture(255654),  sharedCD = 0,   spellID = 255654 },
-    ["Nightborne"]         = { texture = C_Spell.GetSpellTexture(260364),  sharedCD = 0,   spellID = 260364 },
-    ["MagharOrc"]          = { texture = C_Spell.GetSpellTexture(274738),  sharedCD = 0,   spellID = 274738 },
-    ["DarkIronDwarf"]      = { texture = C_Spell.GetSpellTexture(265221),  sharedCD = 30,  spellID = 265221 },
-    ["ZandalariTroll"]     = { texture = C_Spell.GetSpellTexture(291944),  sharedCD = 0,   spellID = 291944 },
-    ["VoidElf"]            = { texture = C_Spell.GetSpellTexture(256948),  sharedCD = 0,   spellID = 256948 },
-    ["KulTiran"]           = { texture = C_Spell.GetSpellTexture(287712),  sharedCD = 0,   spellID = 287712 },
-    ["Mechagnome"]         = { texture = C_Spell.GetSpellTexture(312924),  sharedCD = 0,   spellID = 312924 },
-    ["Vulpera"]            = { texture = C_Spell.GetSpellTexture(312411),  sharedCD = 0,   spellID = 312411 },
-    ["Dracthyr"]           = { texture = C_Spell.GetSpellTexture(368970),  sharedCD = 0,   spellID = 368970 },
-    ["EarthenDwarf"]       = { texture = C_Spell.GetSpellTexture(436344),  sharedCD = 0,   spellID = 436344 },
-    ["Harronir"]           = { texture = C_Spell.GetSpellTexture(1237885), sharedCD = 0,   spellID = 1237885 },
+    ["Human"]              = { texture = GetSpellTextureCompat(59752),   sharedCD = 90,  spellID = 59752 },
+    ["Scourge"]            = { texture = GetSpellTextureCompat(7744),    sharedCD = 30,  spellID = 7744 },
+    ["Dwarf"]              = { texture = GetSpellTextureCompat(20594),   sharedCD = 30,  spellID = 20594 },
+    ["NightElf"]           = { texture = GetSpellTextureCompat(58984),   sharedCD = 0,   spellID = 58984 },
+    ["Gnome"]              = { texture = GetSpellTextureCompat(20589),   sharedCD = 0,   spellID = 20589 },
+    ["Draenei"]            = { texture = GetSpellTextureCompat(59542),   sharedCD = 0,   spellID = 59542 },
+    ["Worgen"]             = { texture = GetSpellTextureCompat(68992),   sharedCD = 0,   spellID = 68992 },
+    ["Pandaren"]           = { texture = GetSpellTextureCompat(107079),  sharedCD = 0,   spellID = 107079 },
+    ["Orc"]                = { texture = GetSpellTextureCompat(33697),   sharedCD = 0,   spellID = 33697 },
+    ["Tauren"]             = { texture = GetSpellTextureCompat(20549),   sharedCD = 0,   spellID = 20549 },
+    ["Troll"]              = { texture = GetSpellTextureCompat(26297),   sharedCD = 0,   spellID = 26297 },
+    ["BloodElf"]           = { texture = GetSpellTextureCompat(202719),  sharedCD = 0,   spellID = 202719 },
+    ["Goblin"]             = { texture = GetSpellTextureCompat(69070),   sharedCD = 0,   spellID = 69070 },
+    ["LightforgedDraenei"] = { texture = GetSpellTextureCompat(255647),  sharedCD = 0,   spellID = 255647 },
+    ["HighmountainTauren"] = { texture = GetSpellTextureCompat(255654),  sharedCD = 0,   spellID = 255654 },
+    ["Nightborne"]         = { texture = GetSpellTextureCompat(260364),  sharedCD = 0,   spellID = 260364 },
+    ["MagharOrc"]          = { texture = GetSpellTextureCompat(274738),  sharedCD = 0,   spellID = 274738 },
+    ["DarkIronDwarf"]      = { texture = GetSpellTextureCompat(265221),  sharedCD = 30,  spellID = 265221 },
+    ["ZandalariTroll"]     = { texture = GetSpellTextureCompat(291944),  sharedCD = 0,   spellID = 291944 },
+    ["VoidElf"]            = { texture = GetSpellTextureCompat(256948),  sharedCD = 0,   spellID = 256948 },
+    ["KulTiran"]           = { texture = GetSpellTextureCompat(287712),  sharedCD = 0,   spellID = 287712 },
+    ["Mechagnome"]         = { texture = GetSpellTextureCompat(312924),  sharedCD = 0,   spellID = 312924 },
+    ["Vulpera"]            = { texture = GetSpellTextureCompat(312411),  sharedCD = 0,   spellID = 312411 },
+    ["Dracthyr"]           = { texture = GetSpellTextureCompat(368970),  sharedCD = 0,   spellID = 368970 },
+    ["EarthenDwarf"]       = { texture = GetSpellTextureCompat(436344),  sharedCD = 0,   spellID = 436344 },
+    ["Harronir"]           = { texture = GetSpellTextureCompat(1237885), sharedCD = 0,   spellID = 1237885 },
 }
 
 -- Store references on the main mixin for other modules

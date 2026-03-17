@@ -12,7 +12,7 @@ local L = GladiusMixin.L
 -- Global state
 -----------------------------------------------------------------------
 GladiusMixin.playerClass = select(2, UnitClass("player"))
-GladiusMixin.maxArenaOpponents = 3
+GladiusMixin.maxArenaOpponents = 5
 GladiusMixin.showPixelBorder = false
 GladiusMixin.interruptReady = true
 GladiusMixin.beenInArena = false
@@ -45,8 +45,8 @@ GladiusMixin.pFont = LSM:Fetch(LSM.MediaType.FONT, "Prototype")
 -----------------------------------------------------------------------
 -- Cached API
 -----------------------------------------------------------------------
-local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
-local GetSpellName = GetSpellName or C_Spell.GetSpellName
+local GetSpellTexture = GetSpellTexture or (C_Spell and C_Spell.GetSpellTexture)
+local GetSpellName = GetSpellName or (C_Spell and C_Spell.GetSpellName)
 local CombatLogGetCurrentEventInfo = CombatLogGetCurrentEventInfo
 local UnitGUID = UnitGUID
 local GetTime = GetTime

@@ -5,11 +5,31 @@
     Handles interrupt lockout display and aura stack counts.
 ]]
 
-local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
+if GladiusMixin.isMidnight then
+    return
+end
+
+local GetSpellTexture = GetSpellTexture or (C_Spell and C_Spell.GetSpellTexture)
 local auraList = GladiusMixin.auraList
 local interruptList = GladiusMixin.interruptList
 local tooltipInfoAuras = GladiusMixin.tooltipInfoAuras
 local spellLockReducer = GladiusMixin.spellLockReducer
+
+local function GetAuraDataByIndexCompat(unit, slot, filter)
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        return C_UnitAuras.GetAuraDataByIndex(unit, slot, filter)
+    end
+
+    local name, icon, applications, _, duration, expirationTime, _, _, _, spellId = UnitAura(unit, slot, filter)
+    if not name then return nil end
+    return {
+        spellId = spellId,
+        icon = icon,
+        applications = applications,
+        duration = duration,
+        expirationTime = expirationTime,
+    }
+end
 
 -----------------------------------------------------------------------
 -- Tooltip scanner for special aura information
@@ -104,7 +124,7 @@ function GladiusFrameMixin:FindInterrupt(event, spellID, sourceName, sourceGUID)
         local shortName = strsplit("-", sourceName)
         local colorHex = "ffFFFFFF"
 
-        if C_PlayerInfo.GUIDIsPlayer(sourceGUID) then
+        if C_PlayerInfo and C_PlayerInfo.GUIDIsPlayer and C_PlayerInfo.GUIDIsPlayer(sourceGUID) then
             local _, engClass = GetPlayerInfoByGUID(sourceGUID)
             if engClass and RAID_CLASS_COLORS[engClass] then
                 colorHex = RAID_CLASS_COLORS[engClass].colorStr
@@ -122,7 +142,7 @@ function GladiusFrameMixin:FindInterrupt(event, spellID, sourceName, sourceGUID)
 
     -- Check for spell lock duration reducers (e.g. Concentration Aura)
     for slot = 1, 30 do
-        local auraInfo = C_UnitAuras.GetAuraDataByIndex(unit, slot, "HELPFUL")
+        local auraInfo = GetAuraDataByIndexCompat(unit, slot, "HELPFUL")
         if not auraInfo then break end
         local reducer = spellLockReducer[auraInfo.spellId]
         if reducer then
@@ -178,7 +198,7 @@ function GladiusFrameMixin:FindAura()
     local filters = { "HELPFUL", "HARMFUL" }
     for _, filter in ipairs(filters) do
         for slot = 1, 30 do
-            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, slot, filter)
+            local auraData = GetAuraDataByIndexCompat(unit, slot, filter)
             if not auraData then break end
 
             local sid = auraData.spellId

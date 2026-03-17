@@ -5,10 +5,30 @@
     DR reset time: 18.5s (retail), severity: 1=half, 2=quarter, 3=immune.
 ]]
 
+if GladiusMixin.isMidnight then
+    return
+end
+
 local drCategories = GladiusMixin.drCategories
 local drList = GladiusMixin.drList
-local GetSpellTexture = GetSpellTexture or C_Spell.GetSpellTexture
+local GetSpellTexture = GetSpellTexture or (C_Spell and C_Spell.GetSpellTexture)
 local GetTime = GetTime
+
+local function GetAuraDataByIndexCompat(unit, slot, filter)
+    if C_UnitAuras and C_UnitAuras.GetAuraDataByIndex then
+        return C_UnitAuras.GetAuraDataByIndex(unit, slot, filter)
+    end
+
+    local name, icon, applications, _, duration, expirationTime, _, _, _, spellId = UnitAura(unit, slot, filter)
+    if not name then return nil end
+    return {
+        spellId = spellId,
+        icon = icon,
+        applications = applications,
+        duration = duration,
+        expirationTime = expirationTime,
+    }
+end
 
 -- DR reset duration (18.5s on retail with leeway)
 local DR_RESET_TIME = 18.5
@@ -91,7 +111,7 @@ function GladiusFrameMixin:FindDR(combatEvent, spellID)
 
         -- Find the actual debuff duration on the target
         for slot = 1, 30 do
-            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, slot, "HARMFUL")
+            local auraData = GetAuraDataByIndexCompat(unit, slot, "HARMFUL")
             if not auraData then break end
             if auraData.spellId == spellID and auraData.duration then
                 drFrame:Show()
