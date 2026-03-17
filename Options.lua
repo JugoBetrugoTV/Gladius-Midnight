@@ -1,6 +1,6 @@
 --[[
     Gladius Midnight - Options
-    AceConfig-3.0 settings panel
+    Standalone AceGUI configuration window with minimap button
 ]]
 
 local addonName, addon = ...
@@ -8,6 +8,40 @@ local GladiusMidnight = addon.Core
 
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
+local AceGUI = LibStub("AceGUI-3.0")
+local LDB = LibStub("LibDataBroker-1.1", true)
+local LDBIcon = LibStub("LibDBIcon-1.0", true)
+
+-- ============================================================================
+-- Minimap Button
+-- ============================================================================
+
+local minimapButton = nil
+
+local function CreateMinimapButton()
+    if not LDB or not LDBIcon then return end
+
+    minimapButton = LDB:NewDataObject("GladiusMidnight", {
+        type = "launcher",
+        text = "Gladius Midnight",
+        icon = "Interface\\Icons\\Achievement_Arena_2v2_7",
+        OnClick = function(_, button)
+            if button == "LeftButton" then
+                GladiusMidnight:ToggleOptions()
+            elseif button == "RightButton" then
+                GladiusMidnight:ToggleTest()
+            end
+        end,
+        OnTooltipShow = function(tooltip)
+            tooltip:AddLine("|cFF00FF00Gladius Midnight|r")
+            tooltip:AddLine(" ")
+            tooltip:AddLine("|cFFFFFFFFLinksklick:|r Einstellungen")
+            tooltip:AddLine("|cFFFFFFFFRechtsklick:|r Test Modus")
+        end,
+    })
+
+    LDBIcon:Register("GladiusMidnight", minimapButton, GladiusMidnight.db.profile.minimap)
+end
 
 -- ============================================================================
 -- Options Table
@@ -32,31 +66,59 @@ local options = {
                 enabled = {
                     order = 1,
                     type = "toggle",
-                    name = "Addon aktiviert",
-                    desc = "Aktiviert oder deaktiviert das Addon",
+                    name = "Aktiviert",
+                    desc = "Addon aktivieren/deaktivieren",
+                    width = "full",
                     get = function() return GladiusMidnight.db.profile.enabled end,
                     set = function(_, val)
                         GladiusMidnight.db.profile.enabled = val
                         GladiusMidnight:CheckArenaStatus()
                     end,
-                    width = "normal",
                 },
                 locked = {
                     order = 2,
                     type = "toggle",
                     name = "Frames fixiert",
                     desc = "Verhindert das Verschieben der Frames",
+                    width = "full",
                     get = function() return GladiusMidnight.db.profile.locked end,
                     set = function(_, val) GladiusMidnight.db.profile.locked = val end,
-                    width = "normal",
                 },
-                test = {
+                minimapIcon = {
                     order = 3,
+                    type = "toggle",
+                    name = "Minimap Icon",
+                    desc = "Zeigt das Icon an der Minimap",
+                    width = "full",
+                    get = function() return not GladiusMidnight.db.profile.minimap.hide end,
+                    set = function(_, val)
+                        GladiusMidnight.db.profile.minimap.hide = not val
+                        if val then
+                            LDBIcon:Show("GladiusMidnight")
+                        else
+                            LDBIcon:Hide("GladiusMidnight")
+                        end
+                    end,
+                },
+                spacer1 = { order = 4, type = "description", name = "\n" },
+                testButton = {
+                    order = 5,
                     type = "execute",
                     name = "Test Modus",
                     desc = "Zeigt Test-Frames an",
                     func = function() GladiusMidnight:ToggleTest() end,
-                    width = "normal",
+                },
+                resetButton = {
+                    order = 6,
+                    type = "execute",
+                    name = "Zurücksetzen",
+                    desc = "Setzt alle Einstellungen zurück",
+                    confirm = true,
+                    confirmText = "Alle Einstellungen zurücksetzen?",
+                    func = function()
+                        GladiusMidnight.db:ResetProfile()
+                        GladiusMidnight:UpdateAllFrames()
+                    end,
                 },
                 spacer = {
                     order = 10,
@@ -618,10 +680,29 @@ local options = {
 }
 
 -- ============================================================================
+-- Standalone GUI Window
+-- ============================================================================
+
+local optionsFrame = nil
+
+function GladiusMidnight:ToggleOptions()
+    if optionsFrame and optionsFrame:IsShown() then
+        optionsFrame:Hide()
+    else
+        AceConfigDialog:Open(addonName)
+    end
+end
+
+-- ============================================================================
 -- Setup Options
 -- ============================================================================
 
 function GladiusMidnight:SetupOptions()
+    -- Add minimap settings to defaults
+    if not self.db.profile.minimap then
+        self.db.profile.minimap = { hide = false }
+    end
+
     -- Add profile options
     options.args.profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db)
     options.args.profiles.order = 100

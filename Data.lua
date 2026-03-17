@@ -109,6 +109,43 @@ addon.Data.TrinketShareRacials = {
     [7744] = true,   -- Will of the Forsaken (Undead)
 }
 
+-- Race to Primary Racial SpellID (for displaying icon)
+-- Key is the race token returned by UnitRace (second return value)
+addon.Data.RaceToRacialSpell = {
+    -- Alliance
+    ["Human"] = 59752,           -- Will to Survive
+    ["Dwarf"] = 20594,           -- Stoneform
+    ["NightElf"] = 58984,        -- Shadowmeld
+    ["Gnome"] = 20589,           -- Escape Artist
+    ["Draenei"] = 28880,         -- Gift of the Naaru
+    ["Worgen"] = 68992,          -- Darkflight
+    ["VoidElf"] = 256948,        -- Spatial Rift
+    ["LightforgedDraenei"] = 255647, -- Light's Judgment
+    ["DarkIronDwarf"] = 265221,  -- Fireblood
+    ["KulTiran"] = 287712,       -- Haymaker
+    ["Mechagnome"] = 312924,     -- Emergency Failsafe
+
+    -- Horde
+    ["Orc"] = 33697,             -- Blood Fury
+    ["Scourge"] = 7744,          -- Will of the Forsaken (Undead)
+    ["Tauren"] = 20549,          -- War Stomp
+    ["Troll"] = 26297,           -- Berserking
+    ["BloodElf"] = 28730,        -- Arcane Torrent
+    ["Goblin"] = 69070,          -- Rocket Jump
+    ["Nightborne"] = 260364,     -- Arcane Pulse
+    ["HighmountainTauren"] = 255654, -- Bull Rush
+    ["MagharOrc"] = 274738,      -- Ancestral Call
+    ["ZandalariTroll"] = 291944, -- Regeneratin'
+    ["Vulpera"] = 312411,        -- Bag of Tricks
+
+    -- Neutral
+    ["Pandaren"] = 107079,       -- Quaking Palm
+    ["Dracthyr"] = 368970,       -- Tail Swipe
+
+    -- TWW
+    ["Earthen"] = 436343,        -- Azerite Surge
+}
+
 -- ============================================================================
 -- PvP Trinket Data
 -- ============================================================================
@@ -210,7 +247,8 @@ addon.Data.DRIcons = {
 -- ============================================================================
 
 function addon.Data.GetSpellIcon(spellID)
-    if not spellID then return nil end
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return nil end
 
     -- 12.0 API (primary)
     if C_Spell and C_Spell.GetSpellInfo then
@@ -241,4 +279,40 @@ end
 
 function addon.Data.GetPowerColor(powerType)
     return addon.Data.PowerColors[powerType] or addon.Data.PowerColors[Enum.PowerType.Mana]
+end
+
+-- ============================================================================
+-- Immunity Spells (ArenaCore style - Magic vs Total)
+-- ============================================================================
+
+-- Magic-Only Immunities (GREEN glow)
+addon.Data.MagicImmunities = {
+    [31224] = true,   -- Cloak of Shadows (Rogue)
+    [204018] = true,  -- Blessing of Spellwarding (Paladin)
+    [48707] = true,   -- Anti-Magic Shell (Death Knight)
+    [212295] = true,  -- Nether Ward (Warlock)
+    [47585] = true,   -- Dispersion (Priest - 90% reduction)
+    [213602] = true,  -- Greater Fade (Priest)
+    [204336] = true,  -- Grounding Totem (Shaman)
+}
+
+-- Total Immunities - Physical + Magic (WHITE glow)
+addon.Data.TotalImmunities = {
+    [642] = true,     -- Divine Shield (Paladin)
+    [45438] = true,   -- Ice Block (Mage)
+    [186265] = true,  -- Aspect of the Turtle (Hunter)
+    [196555] = true,  -- Netherwalk (Demon Hunter)
+    [1022] = true,    -- Blessing of Protection (Paladin - physical only but important)
+}
+
+-- Check if a spell is an immunity and what type
+function addon.Data.GetImmunityType(spellID)
+    -- In Midnight 12.0, spellID may be "secret" for arena opponents
+    if not spellID or type(spellID) ~= "number" then return nil end
+    if addon.Data.TotalImmunities[spellID] then
+        return "total"
+    elseif addon.Data.MagicImmunities[spellID] then
+        return "magic"
+    end
+    return nil
 end

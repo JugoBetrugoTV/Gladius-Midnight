@@ -1,32 +1,37 @@
 --[[
     Gladius Midnight - Trinket Module
     Tracks PvP trinket usage and cooldown
+    Gladius style: Shows timer text below icon in "2m'54" format
+    Updated for Midnight 12.0 API
 ]]
 
 local addonName, addon = ...
 local Trinket = {}
 
--- PvP Trinket spell IDs (comprehensive list for all expansions)
+-- PvP Trinket spell IDs (Patch 12.0 - 90 second cooldown)
 local TRINKET_SPELLS = {
-    -- Current (Midnight 12.0)
-    [336126] = 120,   -- Gladiator's Medallion
-    [336135] = 120,   -- Adaptation
-
-    -- The War Within / Dragonflight
-    [363117] = 120,   -- Gladiator's Medallion (DF)
-    [370613] = 120,   -- Precognition Immunity
-
-    -- Shadowlands
-    [208683] = 120,   -- Gladiator's Medallion (SL)
-
-    -- Legacy
-    [195710] = 120,   -- Honorable Medallion
-    [42292] = 120,    -- PvP Trinket (generic)
-
-    -- Racial CC-breaks (also trigger trinket CD)
-    [59752] = 120,    -- Every Man for Himself (Human) - shares CD
-    [7744] = 30,      -- Will of the Forsaken (Undead) - own CD but affects trinket
+    [336126] = 90,    -- Gladiator's Medallion
+    [336135] = 90,    -- Adaptation
+    [363117] = 90,    -- Gladiator's Medallion (DF/TWW)
+    [370613] = 90,    -- Precognition Immunity
+    [208683] = 90,    -- Gladiator's Medallion (SL)
+    [195710] = 90,    -- Honorable Medallion
+    [42292] = 90,     -- PvP Trinket (generic)
+    [59752] = 90,     -- Every Man for Himself (Human)
+    [7744] = 30,      -- Will of the Forsaken (Undead)
 }
+
+-- Format cooldown as "2m'54" or "54" style
+local function FormatCooldownText(seconds)
+    if seconds <= 0 then return "" end
+    if seconds >= 60 then
+        local mins = math.floor(seconds / 60)
+        local secs = math.floor(seconds % 60)
+        return string.format("%dm'%02d", mins, secs)
+    else
+        return tostring(math.floor(seconds))
+    end
+end
 
 -- ============================================================================
 -- Module Registration
@@ -67,7 +72,17 @@ function Trinket:CreateElements(frame)
     cooldown:SetAllPoints(icon)
     cooldown:SetDrawSwipe(true)
     cooldown:SetDrawEdge(false)
-    cooldown:SetHideCountdownNumbers(false)
+    cooldown:SetHideCountdownNumbers(true)
+    cooldown.noCooldownCount = true
+    cooldown.noOCC = true
+
+    -- Timer text BELOW icon (Gladius style: "2m'54")
+    local timerText = container:CreateFontString(nil, "OVERLAY")
+    timerText:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    timerText:SetPoint("TOP", container, "BOTTOM", 0, -1)
+    timerText:SetTextColor(1, 0.82, 0)  -- Gold color
+    timerText:SetJustifyH("CENTER")
+    container.timerText = timerText
 
     container.icon = icon
     container.cooldown = cooldown
@@ -89,12 +104,12 @@ function Trinket:Update(frame, testData)
     if not container then return end
 
     local db = self.core.db.profile.trinket
+    local mirrored = self.core.db.profile.mirrored
 
-    -- Size and position
+    -- Size and position (Mirrored: RIGHT side, Normal: LEFT side)
     container:SetSize(db.size, db.size)
     container:ClearAllPoints()
-
-    if db.position == "RIGHT" then
+    if mirrored then
         container:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -2, -2)
     else
         container:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
@@ -104,16 +119,20 @@ function Trinket:Update(frame, testData)
     container.icon:SetTexture(addon.Data.TrinketIcon)
     container.icon:SetDesaturated(container.onCooldown)
 
+    -- Test mode timer
+    if testData then
+        container.timerText:SetText("2m'54")
+    end
+
     container:Show()
 end
 
 function Trinket:OnSpellCast(frame, spellID)
     if not spellID then return end
+    if issecretvalue and issecretvalue(spellID) then return end
 
-    -- Check if it's a trinket spell (includes CC-break racials)
     local cooldownDuration = TRINKET_SPELLS[spellID]
     if cooldownDuration then
-        -- Update icon to match the spell used
         local iconTexture = addon.Data.GetSpellIcon(spellID)
         if iconTexture then
             local container = frame.moduleFrames.trinket
@@ -121,14 +140,15 @@ function Trinket:OnSpellCast(frame, spellID)
                 container.icon:SetTexture(iconTexture)
             end
         end
-
         self:TriggerCooldown(frame, cooldownDuration)
         return
     end
 
-    -- Fallback: Check Data.lua trinket-sharing racials
-    if addon.Data.TrinketShareRacials[spellID] then
-        self:TriggerCooldown(frame, 90)
+    if addon.Data.TrinketShareRacials then
+        local isTrinketRacial = addon.Data.TrinketShareRacials[spellID]
+        if isTrinketRacial then
+            self:TriggerCooldown(frame, 90)
+        end
     end
 end
 
@@ -136,37 +156,73 @@ function Trinket:TriggerCooldown(frame, duration)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
+    if duration > 180 or duration <= 0 then
+        duration = 90
+    end
+
     container.startTime = GetTime()
     container.duration = duration
     container.onCooldown = true
 
     container.cooldown:SetCooldown(container.startTime, duration)
     container.icon:SetDesaturated(true)
+
+    self:UpdateTimerText(container)
+end
+
+function Trinket:UpdateTimerText(container)
+    if not container.onCooldown or container.startTime == 0 then
+        container.timerText:SetText("")
+        return
+    end
+
+    local remaining = (container.startTime + container.duration) - GetTime()
+
+    if remaining <= 0 or remaining > 180 then
+        container.timerText:SetText("")
+        if remaining > 180 then
+            container.onCooldown = false
+            container.startTime = 0
+            container.duration = 0
+            container.icon:SetDesaturated(false)
+        end
+        return
+    end
+
+    container.timerText:SetText(FormatCooldownText(remaining))
 end
 
 function Trinket:OnUpdate(frame)
     local container = frame.moduleFrames.trinket
     if not container then return end
 
-    -- Check C_PvP API for trinket cooldown (12.0)
-    -- This API returns CC break ability info for arena opponents
+    local now = GetTime()
+
+    -- Check Blizzard API for trinket cooldown
     if C_PvP and C_PvP.GetArenaCrowdControlInfo and UnitExists(frame.unit) then
         local spellID, startTime, duration = C_PvP.GetArenaCrowdControlInfo(frame.unit)
 
-        -- API returned valid cooldown data
-        if spellID and startTime and duration and duration > 0 then
-            -- New cooldown detected or updated
-            if startTime ~= container.startTime or duration ~= container.duration then
-                container.startTime = startTime
-                container.duration = duration
-                container.onCooldown = true
-                container.cooldown:SetCooldown(startTime, duration)
-                container.icon:SetDesaturated(true)
+        if spellID and startTime and duration then
+            local isSecret = issecretvalue and (issecretvalue(startTime) or issecretvalue(duration))
 
-                -- Update icon to match the spell used
-                local iconTexture = addon.Data.GetSpellIcon(spellID)
-                if iconTexture then
-                    container.icon:SetTexture(iconTexture)
+            if not isSecret then
+                local isValid = duration > 0 and duration <= 180 and startTime > 0 and (now - startTime) < 300
+                if isValid then
+                    local isNewData = startTime ~= container.startTime or duration ~= container.duration
+                    if isNewData then
+                        container.startTime = startTime
+                        container.duration = duration
+                        container.onCooldown = true
+                        container.cooldown:SetCooldown(startTime, duration)
+                        container.icon:SetDesaturated(true)
+
+                        if not (issecretvalue and issecretvalue(spellID)) then
+                            local iconTexture = addon.Data.GetSpellIcon(spellID)
+                            if iconTexture then
+                                container.icon:SetTexture(iconTexture)
+                            end
+                        end
+                    end
                 end
             end
         end
@@ -174,14 +230,16 @@ function Trinket:OnUpdate(frame)
 
     -- Check if cooldown expired
     if container.onCooldown and container.startTime > 0 and container.duration > 0 then
-        local elapsed = GetTime() - container.startTime
-        if elapsed >= container.duration then
+        local elapsed = now - container.startTime
+        if elapsed >= container.duration or elapsed < 0 then
             container.onCooldown = false
             container.icon:SetDesaturated(false)
             container.startTime = 0
             container.duration = 0
-            -- Reset to default trinket icon
+            container.timerText:SetText("")
             container.icon:SetTexture(addon.Data.TrinketIcon)
+        else
+            self:UpdateTimerText(container)
         end
     end
 end
@@ -195,6 +253,37 @@ function Trinket:Reset(frame)
         container.cooldown:Clear()
         container.icon:SetDesaturated(false)
         container.icon:SetTexture(addon.Data.TrinketIcon)
+        container.timerText:SetText("")
+    end
+end
+
+function Trinket:OnBlizzardTrinketCooldown(frame, start, duration)
+    if self.core.testMode then return end
+
+    local container = frame.moduleFrames.trinket
+    if not container then return end
+
+    if not start or not duration then return end
+
+    local isSecret = issecretvalue and (issecretvalue(start) or issecretvalue(duration))
+
+    if isSecret then
+        container.cooldown:SetCooldown(start, duration)
+        container.onCooldown = true
+        container.icon:SetDesaturated(true)
+    else
+        local isValid = start > 0 and duration > 0 and duration <= 180
+        if not isValid then return end
+
+        local isNewData = start ~= container.startTime or duration ~= container.duration
+        if isNewData then
+            container.startTime = start
+            container.duration = duration
+            container.onCooldown = true
+            container.cooldown:SetCooldown(start, duration)
+            container.icon:SetDesaturated(true)
+            self:UpdateTimerText(container)
+        end
     end
 end
 

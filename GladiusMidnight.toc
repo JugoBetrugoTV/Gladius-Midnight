@@ -12,6 +12,9 @@ Libs\embeds.xml
 # Data
 Data.lua
 
+# Main XML (creates event frame at UI load, before combat can occur)
+GladiusMidnight.xml
+
 # Core
 Core.lua
 
@@ -29,3 +32,4 @@ Modules\TargetIndicator.lua
 
 # Options (must be last)
 Options.lua
+OptionsUI.lua
