@@ -524,7 +524,12 @@ function GladiusFrameMixin:GetClass()
 
     local specID = GetArenaOpponentSpec and GetArenaOpponentSpec(self:GetID())
     if specID and specID > 0 then
-        local _, specName, _, specIcon, _, classFile = GetSpecializationInfoByID(specID)
+        local _, specName, _, specIcon, _, classFile
+        if C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfoByID then
+            _, specName, _, specIcon, _, classFile = C_SpecializationInfo.GetSpecializationInfoByID(specID)
+        elseif GetSpecializationInfoByID then
+            _, specName, _, specIcon, _, classFile = GetSpecializationInfoByID(specID)
+        end
         self.class = classFile
         self.specName = specName
         self.specID = specID
@@ -785,12 +790,12 @@ function GladiusFrameMixin:SetLifeState()
     if not UnitExists(unit) then return end
 
     local feignDeath = false
-    -- Check for feign death on hunters
-    if self.class == "HUNTER" and GladiusMixin.FEIGN_DEATH then
+    -- Check for feign death on hunters (use spellId for locale-independence)
+    if self.class == "HUNTER" then
         for i = 1, 40 do
-            local name = UnitBuff(unit, i)
-            if not name then break end
-            if name == GladiusMixin.FEIGN_DEATH then
+            local auraData = C_UnitAuras.GetAuraDataByIndex(unit, i, "HELPFUL")
+            if not auraData then break end
+            if auraData.spellId == GladiusMixin.feignDeathID then
                 feignDeath = true
                 break
             end
@@ -1315,7 +1320,9 @@ function GladiusFrameMixin:ResetLayout()
         for fs, saved in pairs(self.changedFonts) do
             if saved then
                 local path, size, flags = unpack(saved)
-                fs:SetFont(path, size, flags)
+                if path then
+                    fs:SetFont(path, size, flags)
+                end
             end
         end
         self.changedFonts = nil

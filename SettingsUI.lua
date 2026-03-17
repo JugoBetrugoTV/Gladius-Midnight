@@ -1,7 +1,8 @@
 --[[
-    Gladius Midnight - Control Deck UI
-    Custom settings window with search, category tabs, and card-like rows.
-    Provides a distinctly styled alternative to AceConfig dialogs.
+    Gladius Midnight - Custom Settings UI
+    A modern card-dashboard settings panel with drill-down navigation.
+    Replaces the AceConfig dialog with a hand-crafted GUI.
+    All settings from Config.lua are preserved and wired up.
 ]]
 
 local addonName = "GladiusMidnight"
@@ -11,39 +12,46 @@ local tUnpack = unpack or table.unpack
 -----------------------------------------------------------------------
 -- Constants
 -----------------------------------------------------------------------
-local PANEL_W, PANEL_H = 880, 620
-local SIDEBAR_W = 175
-local TOPBAR_H = 52
-local PAD = 12
-local ROW_H = 28
-local SLIDER_W = 180
-local DROPDOWN_W = 180
-local CHECK_SIZE = 18
-local SEARCH_W = 190
+local PANEL_W, PANEL_H = 860, 640
+local TOPBAR_H = 50
+local PAD = 14
+local ROW_H = 30
+local SLIDER_W = 200
+local DROPDOWN_W = 200
+local TOGGLE_W, TOGGLE_H = 40, 20
+local CARD_H = 78
+local CARD_GAP = 10
+local CARD_COLS = 2
+local CHECK_SIZE = 20
+local DETAIL_HEADER_H = 44
 
 -----------------------------------------------------------------------
--- Color palette
+-- Color palette (modern dark with teal-green accent)
 -----------------------------------------------------------------------
 local C = {
-    bg         = CreateColor(0.07, 0.08, 0.10, 0.98),
-    sidebar    = CreateColor(0.06, 0.07, 0.09, 1),
-    tabNorm    = CreateColor(0.12, 0.14, 0.18, 1),
-    tabHover   = CreateColor(0.18, 0.21, 0.28, 1),
-    tabActive  = CreateColor(0.18, 0.30, 0.46, 1),
-    accent     = CreateColor(0.36, 0.71, 1.00, 1),
-    title      = CreateColor(0.96, 0.97, 1.00, 1),
-    header     = CreateColor(0.88, 0.90, 0.95, 1),
-    text       = CreateColor(0.78, 0.82, 0.88, 1),
-    sub        = CreateColor(0.55, 0.60, 0.66, 1),
-    divider    = CreateColor(0.20, 0.24, 0.30, 1),
-    inputBg    = CreateColor(0.12, 0.14, 0.18, 1),
-    sliderBg   = CreateColor(0.16, 0.18, 0.24, 1),
-    sliderFill = CreateColor(0.33, 0.64, 0.95, 0.9),
-    btnBg      = CreateColor(0.14, 0.16, 0.22, 1),
-    btnHover   = CreateColor(0.22, 0.26, 0.34, 1),
-    checkOn    = CreateColor(0.33, 0.70, 0.95, 1),
-    checkOff   = CreateColor(0.30, 0.34, 0.42, 1),
-    red        = CreateColor(0.90, 0.28, 0.35, 1),
+    bg        = CreateColor(0.05, 0.05, 0.08, 0.98),
+    card      = CreateColor(0.09, 0.09, 0.13, 1),
+    cardHover = CreateColor(0.12, 0.12, 0.17, 1),
+    cardOpen  = CreateColor(0.08, 0.10, 0.14, 1),
+    accent    = CreateColor(0.00, 0.82, 0.44, 1),
+    accentDim = CreateColor(0.00, 0.55, 0.30, 0.85),
+    title     = CreateColor(1, 1, 1, 1),
+    header    = CreateColor(0.90, 0.92, 0.90, 1),
+    text      = CreateColor(0.80, 0.80, 0.82, 1),
+    sub       = CreateColor(0.45, 0.45, 0.50, 1),
+    divider   = CreateColor(0.16, 0.16, 0.22, 1),
+    inputBg   = CreateColor(0.07, 0.07, 0.10, 1),
+    sliderBg  = CreateColor(0.12, 0.12, 0.16, 1),
+    sliderFill= CreateColor(0.00, 0.72, 0.38, 0.90),
+    btnBg     = CreateColor(0.10, 0.10, 0.14, 1),
+    btnHover  = CreateColor(0.16, 0.16, 0.22, 1),
+    toggleOn  = CreateColor(0.00, 0.75, 0.40, 1),
+    toggleOff = CreateColor(0.18, 0.18, 0.22, 1),
+    checkOn   = CreateColor(0.00, 0.75, 0.40, 1),
+    checkOff  = CreateColor(0.18, 0.18, 0.22, 1),
+    red       = CreateColor(0.90, 0.25, 0.25, 1),
+    stripe    = CreateColor(0.00, 0.82, 0.44, 0.80),
+    badge     = CreateColor(0.20, 0.20, 0.28, 1),
 }
 
 -----------------------------------------------------------------------
@@ -232,92 +240,64 @@ local function CreateSettingsDesc(parent, yOff, label)
     return fs, h
 end
 
-local function AddControlCard(frame)
-    local bg = frame:CreateTexture(nil, "BACKGROUND")
-    bg:SetPoint("TOPLEFT", -6, 2)
-    bg:SetPoint("BOTTOMRIGHT", 6, -2)
-    bg:SetColorTexture(0.10, 0.12, 0.16, 0.35)
-
-    local border = frame:CreateTexture(nil, "BORDER")
-    border:SetPoint("TOPLEFT", bg, "TOPLEFT", 0, 0)
-    border:SetPoint("BOTTOMRIGHT", bg, "BOTTOMRIGHT", 0, 0)
-    border:SetColorTexture(C.divider:GetRGBA())
-
-    frame:HookScript("OnEnter", function()
-        bg:SetColorTexture(0.14, 0.17, 0.23, 0.55)
-    end)
-    frame:HookScript("OnLeave", function()
-        bg:SetColorTexture(0.10, 0.12, 0.16, 0.35)
-    end)
-end
-
--- ===== CHECKBOX =====
+-- ===== TOGGLE SWITCH (replaces checkbox) =====
 local function CreateSettingsCheckbox(parent, yOff, def)
     local id = nextID()
-    local frame = CreateFrame("Frame", "GladiusSettingsCheck" .. id, parent)
+    local frame = CreateFrame("Frame", "GladiusSettingsToggle" .. id, parent)
     frame:SetSize(parent:GetWidth() - PAD * 2, ROW_H)
     frame:SetPoint("TOPLEFT", parent, "TOPLEFT", PAD, yOff)
     AddControlCard(frame)
 
-    -- Check box
-    local box = CreateFrame("Frame", nil, frame)
-    box:SetSize(CHECK_SIZE, CHECK_SIZE)
-    box:SetPoint("LEFT", 0, 0)
-
-    local boxBg = box:CreateTexture(nil, "BACKGROUND")
-    boxBg:SetAllPoints()
-    boxBg:SetColorTexture(C.checkOff:GetRGBA())
-    box.bg = boxBg
-
-    local checkMark = box:CreateTexture(nil, "OVERLAY")
-    checkMark:SetSize(CHECK_SIZE - 4, CHECK_SIZE - 4)
-    checkMark:SetPoint("CENTER")
-    checkMark:SetAtlas("checkmark-minimal")
-    checkMark:SetDesaturated(true)
-    checkMark:SetVertexColor(1, 1, 1)
-    checkMark:Hide()
-    box.check = checkMark
-
-    -- Label
+    -- Label on left
     local label = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    label:SetPoint("LEFT", box, "RIGHT", 8, 0)
+    label:SetPoint("LEFT", 0, 0)
+    label:SetPoint("RIGHT", frame, "RIGHT", -(TOGGLE_W + 10), 0)
+    label:SetJustifyH("LEFT")
     label:SetText(def.label)
     label:SetTextColor(C.text:GetRGBA())
 
-    -- State
+    -- Toggle track on right
+    local track = CreateFrame("Frame", nil, frame)
+    track:SetSize(TOGGLE_W, TOGGLE_H)
+    track:SetPoint("RIGHT", 0, 0)
+
+    local trackBg = track:CreateTexture(nil, "BACKGROUND")
+    trackBg:SetAllPoints()
+    trackBg:SetColorTexture(C.toggleOff:GetRGBA())
+
+    -- Thumb indicator
+    local thumb = track:CreateTexture(nil, "OVERLAY")
+    thumb:SetSize(TOGGLE_H - 4, TOGGLE_H - 4)
+
     local function updateVisual()
         local val = def.get()
+        thumb:ClearAllPoints()
         if val then
-            boxBg:SetColorTexture(C.checkOn:GetRGBA())
-            checkMark:Show()
+            trackBg:SetColorTexture(C.toggleOn:GetRGBA())
+            thumb:SetPoint("RIGHT", track, "RIGHT", -2, 0)
+            thumb:SetColorTexture(1, 1, 1, 0.95)
         else
-            boxBg:SetColorTexture(C.checkOff:GetRGBA())
-            checkMark:Hide()
+            trackBg:SetColorTexture(C.toggleOff:GetRGBA())
+            thumb:SetPoint("LEFT", track, "LEFT", 2, 0)
+            thumb:SetColorTexture(0.55, 0.55, 0.55, 0.8)
         end
         local disabled = def.disabled and def.disabled()
-        if disabled then
-            frame:SetAlpha(0.4)
-        else
-            frame:SetAlpha(1)
-        end
+        frame:SetAlpha(disabled and 0.35 or 1)
     end
     frame.Refresh = updateVisual
 
-    -- Click
+    -- Click anywhere on the row
     frame:EnableMouse(true)
     frame:SetScript("OnMouseDown", function()
         if def.disabled and def.disabled() then return end
         if InCombatLockdown() then return end
-        local cur = def.get()
-        def.set(not cur)
+        def.set(not def.get())
         updateVisual()
-        -- Also refresh sibling controls in the same tab (disabled states etc.)
         if frame:GetParent().RefreshAll then
             frame:GetParent():RefreshAll()
         end
     end)
 
-    -- Tooltip
     if def.desc then
         frame:SetScript("OnEnter", function(self) ShowTip(self, def.label, def.desc) end)
         frame:SetScript("OnLeave", GameTooltip_Hide)
@@ -2031,25 +2011,8 @@ local tabProfiles = {
             type = "button", label = "Open AceDB Profiles",
             width = 200,
             func = function()
-                if LibStub and LibStub("AceConfigDialog-3.0", true) then
-                    LibStub("AceConfigDialog-3.0"):Open("GladiusMidnight")
-                else
-                    Settings.OpenToCategory("Gladius Midnight")
-                end
-            end,
-        },
-        { type = "spacer" },
-        {
-            type = "button", label = "Reset Window Layout",
-            width = 180,
-            func = function()
-                local p = getProfile()
-                if not p then return end
-                p.settingsUI = nil
-                if GladiusMidnightSettings then
-                    GladiusMidnightSettings:ClearAllPoints()
-                    GladiusMidnightSettings:SetPoint("CENTER")
-                    GladiusMidnightSettings:SetSize(PANEL_W, PANEL_H)
+                if Settings and Settings.OpenToCategory then
+                    pcall(Settings.OpenToCategory, "Gladius Midnight")
                 end
             end,
         },
@@ -2082,6 +2045,24 @@ local allTabs = {
     tabPositioning,
     tabLayoutOptions,
     tabProfiles,
+}
+
+-----------------------------------------------------------------------
+-- CARD DESCRIPTIONS (for overview dashboard)
+-----------------------------------------------------------------------
+local cardDescriptions = {
+    ["General"] = "Health bars, names, dark mode, text",
+    ["Class Icon"] = "Display and cooldown settings",
+    ["CastBar"] = "Style, sizing, colors, behavior",
+    ["Trinket / Racial"] = "Display, font sizes, cooldowns",
+    ["Diminishing Returns"] = "Options, borders, text, categories",
+    ["Dispel"] = "Dispel icon display settings",
+    ["Widgets"] = "Overlay indicators and positioning",
+    ["Font"] = "Custom fonts, outlines, anchors",
+    ["Textures"] = "StatusBar and background textures",
+    ["Positioning"] = "Frame and element positions",
+    ["Layout Options"] = "Layout-specific sizing, borders",
+    ["Profiles"] = "Profile management and export",
 }
 
 -----------------------------------------------------------------------
@@ -2216,13 +2197,16 @@ local function BuildTabContent(scrollChild, tabDef, filterText, ownerFrame)
 end
 
 -----------------------------------------------------------------------
--- MAIN FRAME CREATION
+-- MAIN FRAME CREATION  (card-dashboard with drill-down)
 -----------------------------------------------------------------------
 local mainFrame
 
 local function CreateMainFrame()
     if mainFrame then return mainFrame end
 
+    -- ===============================================================
+    -- ROOT FRAME
+    -- ===============================================================
     local f = CreateFrame("Frame", "GladiusMidnightSettings", UIParent, "BackdropTemplate")
     f:SetSize(PANEL_W, PANEL_H)
     f:SetPoint("CENTER")
@@ -2240,9 +2224,8 @@ local function CreateMainFrame()
     f:SetClampedToScreen(true)
     f:Hide()
 
-    -- Background
     f:SetBackdrop({
-        bgFile = "Interface\\Buttons\\WHITE8X8",
+        bgFile   = "Interface\\Buttons\\WHITE8X8",
         edgeFile = "Interface\\Buttons\\WHITE8X8",
         edgeSize = 1,
     })
@@ -2317,7 +2300,7 @@ local function CreateMainFrame()
     layoutLabel:SetText("Layout:")
     layoutLabel:SetTextColor(C.sub:GetRGBA())
 
-    local layoutBtn = CreateFrame("Button", "GladiusMidnightSettingsLayoutBtn", titleBar)
+    local layoutBtn = CreateFrame("Button", "GladiusMidnightSettingsLayoutBtn", header)
     layoutBtn:SetSize(140, 22)
     layoutBtn:SetPoint("LEFT", layoutLabel, "RIGHT", 6, 0)
 
@@ -2469,6 +2452,9 @@ local function CreateMainFrame()
                 -- Rebuild current tab to reflect new layout settings
                 if f.currentTabIndex and f.scrollChild then
                     BuildTabContent(f.scrollChild, allTabs[f.currentTabIndex], f.searchFilter, f)
+                -- Rebuild detail view if we are inside one
+                if f.mode == "detail" and f.detailTabIdx then
+                    f:ShowDetail(f.detailTabIdx)
                 end
             end)
 
@@ -2476,36 +2462,33 @@ local function CreateMainFrame()
         end
         layoutList:Show()
     end)
-
     layoutBtn:SetScript("OnHide", closeLayoutList)
 
-    -- Test / Hide buttons in title bar
-    local testBtn = CreateFrame("Button", nil, titleBar)
+    -- Test / Hide buttons -------------------------------------------
+    local testBtn = CreateFrame("Button", nil, header)
     testBtn:SetSize(50, 22)
     testBtn:SetPoint("RIGHT", searchBox, "LEFT", -8, 0)
     local testBg = testBtn:CreateTexture(nil, "BACKGROUND")
     testBg:SetAllPoints()
     testBg:SetColorTexture(C.btnBg:GetRGBA())
-    local testText = testBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    testText:SetPoint("CENTER")
-    testText:SetText("Test")
+    local testTxt = testBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    testTxt:SetPoint("CENTER")
+    testTxt:SetText("Test")
     testBtn:SetScript("OnClick", function()
-        if GladiusMidnight and GladiusMidnight.Test then
-            GladiusMidnight:Test()
-        end
+        if GladiusMidnight and GladiusMidnight.Test then GladiusMidnight:Test() end
     end)
     testBtn:SetScript("OnEnter", function() testBg:SetColorTexture(C.btnHover:GetRGBA()) end)
     testBtn:SetScript("OnLeave", function() testBg:SetColorTexture(C.btnBg:GetRGBA()) end)
 
-    local hideBtn = CreateFrame("Button", nil, titleBar)
+    local hideBtn = CreateFrame("Button", nil, header)
     hideBtn:SetSize(50, 22)
     hideBtn:SetPoint("RIGHT", testBtn, "LEFT", -4, 0)
     local hideBg = hideBtn:CreateTexture(nil, "BACKGROUND")
     hideBg:SetAllPoints()
     hideBg:SetColorTexture(C.btnBg:GetRGBA())
-    local hideText = hideBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    hideText:SetPoint("CENTER")
-    hideText:SetText("Hide")
+    local hideTxt = hideBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    hideTxt:SetPoint("CENTER")
+    hideTxt:SetText("Hide")
     hideBtn:SetScript("OnClick", function()
         if not GladiusMidnight then return end
         for i = 1, GladiusMidnight.maxArenaOpponents do
@@ -2545,21 +2528,60 @@ local function CreateMainFrame()
     local tabBtnH = 30
     local tabStartY = -(TOPBAR_H + 4)
 
-    for idx, tabDef in ipairs(allTabs) do
-        local tabBtn = CreateFrame("Button", nil, sidebar)
-        tabBtn:SetSize(SIDEBAR_W - 2, tabBtnH)
-        tabBtn:SetPoint("TOPLEFT", 1, tabStartY - (idx - 1) * (tabBtnH + 1))
+    -- ===============================================================
+    -- BODY AREA (below the header bar)
+    -- ===============================================================
+    local body = CreateFrame("Frame", nil, f)
+    body:SetPoint("TOPLEFT", 0, -TOPBAR_H)
+    body:SetPoint("BOTTOMRIGHT", 0, 0)
 
-        local tabBg = tabBtn:CreateTexture(nil, "BACKGROUND")
-        tabBg:SetAllPoints()
-        tabBg:SetColorTexture(C.tabNorm:GetRGBA())
-        tabBtn.bg = tabBg
+    -- ===============================================================
+    -- OVERVIEW MODE : scrollable 2-column card grid
+    -- ===============================================================
+    local overviewFrame = CreateFrame("Frame", nil, body)
+    overviewFrame:SetAllPoints()
+
+    local ovScroll = CreateFrame("ScrollFrame", "GladiusMidnightSettingsOVScroll", overviewFrame, "UIPanelScrollFrameTemplate")
+    ovScroll:SetPoint("TOPLEFT", 0, 0)
+    ovScroll:SetPoint("BOTTOMRIGHT", -24, 0)
+
+    local ovChild = CreateFrame("Frame", nil, ovScroll)
+    ovChild:SetWidth(PANEL_W - 24)
+    ovChild:SetHeight(1)
+    ovScroll:SetScrollChild(ovChild)
+
+    ovScroll:SetScript("OnSizeChanged", function(self, w)
+        ovChild:SetWidth(w)
+    end)
+
+    -- Build cards
+    local cards = {}
+    local cardW = math.floor((PANEL_W - 24 - PAD * 2 - CARD_GAP * (CARD_COLS - 1)) / CARD_COLS)
+
+    for idx, tabDef in ipairs(allTabs) do
+        local card = CreateFrame("Button", nil, ovChild)
+        card:SetSize(cardW, CARD_H)
+        card.tabIdx = idx
+        card.tabDef = tabDef
+
+        -- card background
+        local cardBg = card:CreateTexture(nil, "BACKGROUND")
+        cardBg:SetAllPoints()
+        cardBg:SetColorTexture(C.card:GetRGBA())
+        card.bg = cardBg
+
+        -- green accent stripe (left edge)
+        local stripe = card:CreateTexture(nil, "ARTWORK")
+        stripe:SetWidth(3)
+        stripe:SetPoint("TOPLEFT", 0, 0)
+        stripe:SetPoint("BOTTOMLEFT", 0, 0)
+        stripe:SetColorTexture(C.stripe:GetRGBA())
 
         -- Icon
+        local icon = card:CreateTexture(nil, "ARTWORK")
+        icon:SetSize(28, 28)
+        icon:SetPoint("LEFT", 14, 0)
         if tabDef.icon then
-            local icon = tabBtn:CreateTexture(nil, "ARTWORK")
-            icon:SetSize(16, 16)
-            icon:SetPoint("LEFT", 8, 0)
             icon:SetTexture(tabDef.icon)
             icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
         end
@@ -2576,16 +2598,16 @@ local function CreateMainFrame()
                 tabBg:SetColorTexture(C.tabHover:GetRGBA())
             end
         end)
-        tabBtn:SetScript("OnLeave", function()
-            if f.currentTabIndex ~= idx then
-                tabBg:SetColorTexture(C.tabNorm:GetRGBA())
-            end
-        end)
-        tabBtn:SetScript("OnClick", function()
-            f:SelectTab(idx)
+        card:SetScript("OnLeave", function()
+            cardBg:SetColorTexture(C.card:GetRGBA())
         end)
 
-        f.tabButtons[idx] = tabBtn
+        -- Click -> drill into detail
+        card:SetScript("OnClick", function()
+            f:ShowDetail(idx)
+        end)
+
+        cards[idx] = card
     end
 
     ---------------------------------------------------------------
@@ -2634,10 +2656,120 @@ local function CreateMainFrame()
                 btn.bg:SetColorTexture(C.tabActive:GetRGBA())
                 btn.label:SetTextColor(1, 1, 1, 1)
             else
-                btn.bg:SetColorTexture(C.tabNorm:GetRGBA())
-                btn.label:SetTextColor(C.text:GetRGBA())
+                card:Hide()
             end
         end
+        local rows = math.ceil(visIdx / CARD_COLS)
+        ovChild:SetHeight(PAD * 2 + rows * (CARD_H + CARD_GAP))
+    end
+    f.LayoutCards = LayoutCards
+
+    -- ===============================================================
+    -- DETAIL MODE : back button + header + scroll frame with controls
+    -- ===============================================================
+    local detailFrame = CreateFrame("Frame", nil, body)
+    detailFrame:SetAllPoints()
+    detailFrame:Hide()
+
+    -- Detail header bar
+    local detailHeader = CreateFrame("Frame", nil, detailFrame)
+    detailHeader:SetHeight(DETAIL_HEADER_H)
+    detailHeader:SetPoint("TOPLEFT", 0, 0)
+    detailHeader:SetPoint("TOPRIGHT", 0, 0)
+
+    local detailHeaderBg = detailHeader:CreateTexture(nil, "BACKGROUND")
+    detailHeaderBg:SetAllPoints()
+    detailHeaderBg:SetColorTexture(C.cardOpen:GetRGBA())
+
+    local detailHeaderDiv = detailHeader:CreateTexture(nil, "ARTWORK")
+    detailHeaderDiv:SetHeight(1)
+    detailHeaderDiv:SetPoint("BOTTOMLEFT")
+    detailHeaderDiv:SetPoint("BOTTOMRIGHT")
+    detailHeaderDiv:SetColorTexture(C.divider:GetRGBA())
+
+    -- Back button
+    local backBtn = CreateFrame("Button", nil, detailHeader)
+    backBtn:SetSize(60, 26)
+    backBtn:SetPoint("LEFT", PAD, 0)
+
+    local backBg = backBtn:CreateTexture(nil, "BACKGROUND")
+    backBg:SetAllPoints()
+    backBg:SetColorTexture(C.btnBg:GetRGBA())
+
+    local backText = backBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    backText:SetPoint("CENTER")
+    backText:SetText("< Back")
+    backText:SetTextColor(C.accent:GetRGBA())
+
+    backBtn:SetScript("OnClick", function() f:ShowOverview() end)
+    backBtn:SetScript("OnEnter", function() backBg:SetColorTexture(C.btnHover:GetRGBA()) end)
+    backBtn:SetScript("OnLeave", function() backBg:SetColorTexture(C.btnBg:GetRGBA()) end)
+
+    -- Detail icon + title
+    local detailIcon = detailHeader:CreateTexture(nil, "ARTWORK")
+    detailIcon:SetSize(24, 24)
+    detailIcon:SetPoint("LEFT", backBtn, "RIGHT", 12, 0)
+    detailIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+
+    local detailTitle = detailHeader:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    detailTitle:SetPoint("LEFT", detailIcon, "RIGHT", 8, 0)
+    detailTitle:SetTextColor(C.header:GetRGBA())
+
+    -- Detail content scroll
+    local detailContent = CreateFrame("Frame", nil, detailFrame)
+    detailContent:SetPoint("TOPLEFT", 0, -DETAIL_HEADER_H)
+    detailContent:SetPoint("BOTTOMRIGHT", 0, 0)
+
+    local dtScroll = CreateFrame("ScrollFrame", "GladiusMidnightSettingsDTScroll", detailContent, "UIPanelScrollFrameTemplate")
+    dtScroll:SetPoint("TOPLEFT", 0, 0)
+    dtScroll:SetPoint("BOTTOMRIGHT", -24, 0)
+
+    local dtChild = CreateFrame("Frame", nil, dtScroll)
+    dtChild:SetWidth(PANEL_W - 24)
+    dtChild:SetHeight(1)
+    dtScroll:SetScrollChild(dtChild)
+
+    dtScroll:SetScript("OnSizeChanged", function(self, w)
+        dtChild:SetWidth(w)
+    end)
+
+    f.detailIcon   = detailIcon
+    f.detailTitle  = detailTitle
+    f.dtScroll     = dtScroll
+    f.dtChild      = dtChild
+
+    -- ===============================================================
+    -- MODE SWITCHING
+    -- ===============================================================
+    function f:ShowOverview()
+        self.mode = "overview"
+        self.detailTabIdx = nil
+        detailFrame:Hide()
+        overviewFrame:Show()
+        searchBox:SetText("")
+        searchBox:ClearFocus()
+        searchPlaceholder:Show()
+        self:LayoutCards("")
+        ovScroll:SetVerticalScroll(0)
+    end
+
+    function f:ShowDetail(tabIdx)
+        local tabDef = allTabs[tabIdx]
+        if not tabDef then return end
+
+        self.mode = "detail"
+        self.detailTabIdx = tabIdx
+        overviewFrame:Hide()
+        detailFrame:Show()
+
+        -- Update header
+        if tabDef.icon then
+            detailIcon:SetTexture(tabDef.icon)
+            detailIcon:Show()
+        else
+            detailIcon:Hide()
+        end
+        detailTitle:SetText(tabDef.name)
 
         self.currentTabIndex = idx
         local ui = getUIState()
@@ -2658,10 +2790,9 @@ local function CreateMainFrame()
 
     ---------------------------------------------------------------
     -- ESCAPE TO CLOSE
-    ---------------------------------------------------------------
+    -- ===============================================================
     tinsert(UISpecialFrames, "GladiusMidnightSettings")
 
-    -- On show: refresh layout display and select first tab
     f:SetScript("OnShow", function(self)
         local ui = getUIState()
         if ui then

@@ -263,8 +263,9 @@ function layout:Initialize(frame)
     specBorder:SetPoint("BOTTOMRIGHT", frame.SpecIcon, "BOTTOMRIGHT", 5, -5)
     specBorder:Show()
 
-    f = frame.CastBar
-    f:SetStatusBarTexture("Interface\\RaidFrame\\Raid-Bar-Hp-Fill")
+    if frame.CastBar then
+        frame.CastBar:SetStatusBarTexture("Interface\\RaidFrame\\Raid-Bar-Hp-Fill")
+    end
 
     f = frame.DeathIcon
     f:ClearAllPoints()
@@ -273,19 +274,37 @@ function layout:Initialize(frame)
 
     frame.PowerBar:SetHeight(10)
 
-    local fn, fs, fstyle = frame.HealthText:GetFont()
-    frame.HealthText:SetFont(fn, fs, "OUTLINE")
-    local fn, fs, fstyle = frame.HealthText:GetFont()
-    frame.PowerText:SetFont(fn, fs, "OUTLINE")
+    local fn, fs = frame.HealthText:GetFont()
+    if not fn then
+        frame.HealthText:SetFontObject("GameFontNormalSmall")
+        frame.PowerText:SetFontObject("GameFontNormalSmall")
+        fn, fs = frame.HealthText:GetFont()
+    end
+    fs = (fs and fs > 0) and fs or 12
+    if fn then
+        frame.HealthText:SetFont(fn, fs, "OUTLINE")
+        frame.PowerText:SetFont(fn, fs, "OUTLINE")
+    end
     frame.PowerText:SetAlpha(frame.parent.db.profile.hidePowerText and 0 or 1)
 
-    local fn, fs, fstyle = frame.SpecNameText:GetFont()
-    frame.SpecNameText:SetFont(fn, fs, "OUTLINE")
+    local sfn, sfs = frame.SpecNameText:GetFont()
+    if not sfn then
+        frame.SpecNameText:SetFontObject("GameFontNormalSmall")
+        sfn, sfs = frame.SpecNameText:GetFont()
+    end
+    sfs = (sfs and sfs > 0) and sfs or 12
+    if sfn then
+        frame.SpecNameText:SetFont(sfn, sfs, "OUTLINE")
+    end
     frame.SpecNameText:SetTextColor(1,1,1)
 
-    local underlay = frame.TexturePool:Acquire()
+    if not frame._tourneyUnderlay then
+        frame._tourneyUnderlay = frame:CreateTexture(nil, "BACKGROUND")
+    end
+    local underlay = frame._tourneyUnderlay
     underlay:SetDrawLayer("BACKGROUND", 1)
     underlay:SetColorTexture(0, 0, 0, 0.75)
+    underlay:ClearAllPoints()
     underlay:SetPoint("TOPLEFT", hp, "TOPLEFT")
     underlay:SetPoint("BOTTOMRIGHT", pp, "BOTTOMRIGHT")
     underlay:Show()
@@ -312,7 +331,7 @@ function layout:UpdateOrientation(frame)
     local specName = frame.SpecNameText
     local healthText = frame.HealthText
     local powerText = frame.PowerText
-    local castbarText = frame.CastBar.Text
+    local castbarText = frame.CastBar and frame.CastBar.Text
 
     healthBar:ClearAllPoints()
     powerBar:ClearAllPoints()
@@ -372,7 +391,7 @@ function layout:UpdateOrientation(frame)
         name:SetScale(txt.nameSize or 1)
         healthText:SetScale(txt.healthSize or 1)
         specName:SetScale(txt.specNameSize or 1)
-        castbarText:SetScale(txt.castbarSize or 1)
+        if castbarText then castbarText:SetScale(txt.castbarSize or 1) end
         powerText:SetScale(txt.powerSize or 1)
 
         -- Name
@@ -416,14 +435,16 @@ function layout:UpdateOrientation(frame)
         end
 
         -- Castbar Text
-        castbarText:ClearAllPoints()
-        local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
-        if (txt.castbarAnchor or "CENTER") == "LEFT" then
-            castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
-            castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        else
-            castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+        if castbarText then
+            castbarText:ClearAllPoints()
+            local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
+            if (txt.castbarAnchor or "CENTER") == "LEFT" then
+                castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
+                castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            else
+                castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            end
         end
     end
 

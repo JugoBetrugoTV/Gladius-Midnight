@@ -245,22 +245,36 @@ function layout:Initialize(frame)
     f:SetHeight(12)
     f:SetFont("Fonts\\FRIZQT__.TTF", 11, "")
 
-    f = frame.CastBar
-    f:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    if frame.CastBar then
+        frame.CastBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+    end
 
     f = frame.DeathIcon
     f:ClearAllPoints()
     f:SetPoint("CENTER", frame.HealthBar, "CENTER")
     f:SetSize(26, 26)
 
-    local fn, fs, fstyle = frame.HealthText:GetFont()
-    frame.HealthText:SetFont(fn, 10, "OUTLINE")
-    local fn, fs, fstyle = frame.HealthText:GetFont()
-    frame.PowerText:SetFont(fn, 10, "OUTLINE")
+    local fn = frame.HealthText:GetFont()
+    if not fn then
+        frame.HealthText:SetFontObject("GameFontNormalSmall")
+        frame.PowerText:SetFontObject("GameFontNormalSmall")
+        fn = frame.HealthText:GetFont()
+    end
+    if fn then
+        frame.HealthText:SetFont(fn, 10, "OUTLINE")
+        frame.PowerText:SetFont(fn, 10, "OUTLINE")
+    end
     frame.PowerText:SetAlpha(frame.parent.db.profile.hidePowerText and 0 or 1)
 
-    local fn, fs, fstyle = frame.SpecNameText:GetFont()
-    frame.SpecNameText:SetFont(fn, fs, "OUTLINE")
+    local sfn, sfs = frame.SpecNameText:GetFont()
+    if not sfn then
+        frame.SpecNameText:SetFontObject("GameFontNormalSmall")
+        sfn, sfs = frame.SpecNameText:GetFont()
+    end
+    sfs = (sfs and sfs > 0) and sfs or 12
+    if sfn then
+        frame.SpecNameText:SetFont(sfn, sfs, "OUTLINE")
+    end
     frame.SpecNameText:SetTextColor(1,1,1)
 
     frame.AuraStacks:SetPoint("BOTTOMLEFT", frame.ClassIcon, "BOTTOMLEFT", 1, -4)
@@ -284,7 +298,7 @@ function layout:UpdateOrientation(frame)
     local specName = frame.SpecNameText
     local healthText = frame.HealthText
     local powerText = frame.PowerText
-    local castbarText = frame.CastBar.Text
+    local castbarText = frame.CastBar and frame.CastBar.Text
 
     if self.db.widgets then
         local w = self.db.widgets
@@ -338,7 +352,7 @@ function layout:UpdateOrientation(frame)
         name:SetScale(txt.nameSize or 1)
         healthText:SetScale(txt.healthSize or 1)
         specName:SetScale(txt.specNameSize or 1)
-        castbarText:SetScale(txt.castbarSize or 1)
+        if castbarText then castbarText:SetScale(txt.castbarSize or 1) end
         powerText:SetScale(txt.powerSize or 1)
 
         -- Name
@@ -382,14 +396,16 @@ function layout:UpdateOrientation(frame)
         end
 
         -- Castbar Text
-        castbarText:ClearAllPoints()
-        local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
-        if (txt.castbarAnchor or "CENTER") == "LEFT" then
-            castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
-            castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
-        else
-            castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+        if castbarText then
+            castbarText:ClearAllPoints()
+            local simpleCastbar = self.db.castBar.simpleCastbar and modernCastbar
+            if (txt.castbarAnchor or "CENTER") == "LEFT" then
+                castbarText:SetPoint("LEFT", frame.CastBar, "LEFT", 3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            elseif (txt.castbarAnchor or "CENTER") == "RIGHT" then
+                castbarText:SetPoint("RIGHT", frame.CastBar, "RIGHT", -3 + (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            else
+                castbarText:SetPoint("CENTER", frame.CastBar, "CENTER", (txt.castbarOffsetX or 0), (modernCastbar and (simpleCastbar and 0 or -11) or 0) + (txt.castbarOffsetY or 0))
+            end
         end
     end
 

@@ -28,10 +28,20 @@ end
 -----------------------------------------------------------------------
 -- Detect the player's interrupt spell from known spells / pet spells
 -----------------------------------------------------------------------
+local function IsSpellKnownCompat(spellID, isPet)
+    if IsSpellKnownOrOverridesKnown then
+        return IsSpellKnownOrOverridesKnown(spellID, isPet)
+    end
+    if IsPlayerSpell then
+        return IsPlayerSpell(spellID)
+    end
+    return false
+end
+
 local function DetectPlayerInterrupt()
     for spellID, _ in pairs(interruptList) do
-        if IsSpellKnownOrOverridesKnown(spellID)
-            or (UnitExists("pet") and IsSpellKnownOrOverridesKnown(spellID, true))
+        if IsSpellKnownCompat(spellID)
+            or (UnitExists("pet") and IsSpellKnownCompat(spellID, true))
         then
             return spellID
         end

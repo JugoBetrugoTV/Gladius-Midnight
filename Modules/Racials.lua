@@ -160,7 +160,7 @@ end
 -- Human healers have reduced shared CD (60s instead of 90s)
 -----------------------------------------------------------------------
 function GladiusFrameMixin:GetSharedCD()
-    if self.race == "Human" and self.isHealer and self.Trinket.spellID == GladiusMixin.trinketID then
+    if self.race == "Human" and self.isHealer and self.Trinket and self.Trinket.spellID == GladiusMixin.trinketID then
         return 60
     end
     return racialData[self.race] and racialData[self.race].sharedCD
@@ -179,19 +179,19 @@ function GladiusFrameMixin:FindRacial(spellID)
     if not trinkets[spellID] then
         if self.updateRacialOnTrinketSlot then
             -- Racial is displayed on the trinket slot
-            if self.Trinket.spellID and self.Trinket.Texture:GetTexture() ~= GladiusMixin.noTrinketTexture then
+            if self.Trinket and self.Trinket.spellID and self.Trinket.Texture:GetTexture() ~= GladiusMixin.noTrinketTexture then
                 self.Trinket.Cooldown:SetCooldown(now, duration)
             end
             self:UpdateTrinketIcon(false)
         else
             -- Normal: apply cooldown to the racial slot
-            if self.Racial.Texture:GetTexture() then
+            if self.Racial and self.Racial.Texture:GetTexture() then
                 self.Racial.Cooldown:SetCooldown(now, duration)
             end
         end
 
         -- Handle shared CD: racial used -> trinket gets shared CD
-        if not self.updateRacialOnTrinketSlot and self.Trinket.spellID == GladiusMixin.trinketID then
+        if not self.updateRacialOnTrinketSlot and self.Trinket and self.Trinket.spellID == GladiusMixin.trinketID then
             local remainingCD = GetCooldownRemaining(self.Trinket.Cooldown)
             local sharedCD = self:GetSharedCD()
 
@@ -211,7 +211,7 @@ function GladiusFrameMixin:FindRacial(spellID)
         end
 
     -- Trinket spell used: handle shared CD in reverse (trinket -> racial)
-    elseif self.Racial.Texture:GetTexture() then
+    elseif self.Racial and self.Racial.Texture:GetTexture() then
         local remainingCD = GetCooldownRemaining(self.Racial.Cooldown)
         local sharedCD = self:GetSharedCD()
 
@@ -226,6 +226,7 @@ end
 -----------------------------------------------------------------------
 function GladiusFrameMixin:UpdateRacial()
     self.race = select(2, UnitRace(self.unit))
+    if not self.Racial then return end
     self.Racial.Texture:SetTexture(nil)
 
     if not self.race then return end
@@ -247,6 +248,7 @@ function GladiusFrameMixin:UpdateRacial()
 
     -- Handle swap display logic
     if swapEnabled then
+        if not self.Trinket then return end
         local trinketTex = self.Trinket.Texture:GetTexture()
 
         if not self.updateRacialOnTrinketSlot then

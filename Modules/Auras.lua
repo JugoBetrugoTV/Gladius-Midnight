@@ -38,6 +38,20 @@ local tooltipScanner = CreateFrame("GameTooltip", "GladiusTooltipScanner", nil, 
 tooltipScanner:SetOwner(WorldFrame, "ANCHOR_NONE")
 
 local function ScanAuraTooltipForText(unit, slotIndex, filter, searchStr)
+    -- WoW 12.0+: use C_TooltipInfo API
+    if C_TooltipInfo and C_TooltipInfo.GetUnitAura then
+        local data = C_TooltipInfo.GetUnitAura(unit, slotIndex, filter)
+        if data and data.lines then
+            for _, line in ipairs(data.lines) do
+                if TooltipUtil and TooltipUtil.SurfaceArgs then TooltipUtil.SurfaceArgs(line) end
+                if line.leftText and line.leftText:find(searchStr, 1, true) then
+                    return true
+                end
+            end
+        end
+        return false
+    end
+    -- Fallback: legacy SetUnitAura
     tooltipScanner:ClearLines()
     tooltipScanner:SetUnitAura(unit, slotIndex, filter)
 
@@ -54,6 +68,21 @@ local function ScanAuraTooltipForText(unit, slotIndex, filter, searchStr)
 end
 
 local function ScanAuraTooltipForPercent(unit, slotIndex, filter)
+    -- WoW 12.0+: use C_TooltipInfo API
+    if C_TooltipInfo and C_TooltipInfo.GetUnitAura then
+        local data = C_TooltipInfo.GetUnitAura(unit, slotIndex, filter)
+        if data and data.lines then
+            for _, line in ipairs(data.lines) do
+                if TooltipUtil and TooltipUtil.SurfaceArgs then TooltipUtil.SurfaceArgs(line) end
+                if line.leftText then
+                    local pctMatch = line.leftText:match("(%d+%%)")
+                    if pctMatch then return pctMatch end
+                end
+            end
+        end
+        return nil
+    end
+    -- Fallback: legacy SetUnitAura
     tooltipScanner:ClearLines()
     tooltipScanner:SetUnitAura(unit, slotIndex, filter)
 

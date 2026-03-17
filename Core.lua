@@ -260,7 +260,12 @@ function GladiusMixin:UpdatePlayerSpec()
         specIndex = GetSpecialization()
     end
     if specIndex then
-        local specID, specName = GetSpecializationInfo(specIndex)
+        local specID, specName
+        if C_SpecializationInfo and C_SpecializationInfo.GetSpecializationInfo then
+            specID, specName = C_SpecializationInfo.GetSpecializationInfo(specIndex)
+        elseif GetSpecializationInfo then
+            specID, specName = GetSpecializationInfo(specIndex)
+        end
         self.playerSpecID = specID
         self.playerSpecName = specName
     end
@@ -275,6 +280,7 @@ local ogFonts = {}
 local function captureFont(fs)
     if not fs then return nil end
     local path, size, flags = fs:GetFont()
+    if not path then return nil end
     return { path, size, flags }
 end
 
@@ -391,12 +397,12 @@ function GladiusMixin:UpdateTextures()
     local ls = self.db.profile.layoutSettings[layoutName]
     if not ls or not ls.textures then return end
 
-    local generalTex = LSM:Fetch(LSM.MediaType.STATUSBAR,
-        ls.textures.generalStatusBarTexture or "Blizzard RetailBar")
+    local generalName = ls.textures.generalStatusBarTexture or "Blizzard RetailBar"
+    local generalTex = LSM:Fetch(LSM.MediaType.STATUSBAR, generalName)
     local healerTex = LSM:Fetch(LSM.MediaType.STATUSBAR,
-        ls.textures.healStatusBarTexture or generalTex)
+        ls.textures.healStatusBarTexture or generalName)
     local castTex = LSM:Fetch(LSM.MediaType.STATUSBAR,
-        ls.textures.castbarStatusBarTexture or generalTex)
+        ls.textures.castbarStatusBarTexture or generalName)
 
     local isClassStacking = self:CheckClassStacking()
 
@@ -509,10 +515,15 @@ function GladiusMixin:CreateCustomCooldown(cooldown, showDecimals, isDR)
     if not cooldown.gladiusText then
         local fs = cooldown:CreateFontString(nil, "OVERLAY")
         fs:SetPoint("CENTER", 0, 0)
+        local fontSet = false
         if cooldown.Text then
             local path, size, flags = cooldown.Text:GetFont()
-            fs:SetFont(path, size, flags)
-        else
+            if path then
+                fs:SetFont(path, size, flags)
+                fontSet = true
+            end
+        end
+        if not fontSet then
             fs:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
         end
         cooldown.gladiusText = fs
@@ -530,12 +541,6 @@ function GladiusMixin:CreateCustomCooldown(cooldown, showDecimals, isDR)
             if self._elapsed < 0.1 then return end
             self._elapsed = 0
 
-            local remaining = self:GetCooldownTimes()
-            if not remaining then
-                self.gladiusText:SetText("")
-                return
-            end
-
             local startTime, duration = self:GetCooldownTimes()
             if not startTime or startTime == 0 then
                 self.gladiusText:SetText("")
@@ -543,15 +548,12 @@ function GladiusMixin:CreateCustomCooldown(cooldown, showDecimals, isDR)
             end
 
             local now = GetTime()
-            local timeLeft = (startTime + duration) / 1000 - now
-            if duration > 0 then
-                timeLeft = startTime / 1000 + duration / 1000 - now
-                -- GetCooldownTimes returns ms on Midnight
-                if startTime > 1000000 then
-                    timeLeft = (startTime + duration) / 1000 - now
-                else
-                    timeLeft = startTime + duration - now
-                end
+            local timeLeft
+            -- GetCooldownTimes returns ms on some clients, seconds on others
+            if startTime > 1000000 then
+                timeLeft = (startTime + duration) / 1000 - now
+            else
+                timeLeft = startTime + duration - now
             end
 
             if timeLeft <= 0 then
@@ -1025,8 +1027,8 @@ function GladiusMixin:Initialize()
         elseif msg == "" or msg == "config" or msg == "options" then
             if self.ToggleSettingsUI then
                 self:ToggleSettingsUI()
-            else
-                Settings.OpenToCategory("Gladius Midnight")
+            elseif Settings and Settings.OpenToCategory then
+                pcall(Settings.OpenToCategory, "Gladius Midnight")
             end
         else
             self:Print("Commands: /gladius test | hide | config")
@@ -1130,6 +1132,9 @@ function GladiusMixin:OnEvent(event, ...)
             end
 
             self:ResetShadowsightTimer()
+            if self.ResetDetectedDispels then
+                self:ResetDetectedDispels()
+            end
         end
 
     elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
@@ -1275,7 +1280,6 @@ function GladiusMixin:HandleCombatLog()
     if combatEvent == "SPELL_INTERRUPT" then
         -- The interrupted target gets the lockout
         if destFrame and destFrame.FindInterrupt then
-            local _, _, _, _, _, _, _, _, _, _, _, _, _, extraSpellID = CombatLogGetCurrentEventInfo()
             destFrame:FindInterrupt(combatEvent, spellID, sourceName, sourceGUID)
         end
     end
@@ -1383,6 +1387,9 @@ function GladiusMixin:Test()
             -- Name
             local displayName = db.showNames and tp.name or ("arena" .. i)
             if f.Name then
+                if not f.Name:GetFont() then
+                    f.Name:SetFontObject("GameFontNormal")
+                end
                 f.Name:SetText(displayName)
                 if db.classColors then
                     local cc = RAID_CLASS_COLORS[tp.class]
@@ -1394,6 +1401,9 @@ function GladiusMixin:Test()
 
             -- SpecNameText
             if f.SpecNameText then
+                if not f.SpecNameText:GetFont() then
+                    f.SpecNameText:SetFontObject("GameFontNormalSmall")
+                end
                 f.SpecNameText:SetText(tp.specName)
             end
 
@@ -1421,6 +1431,9 @@ function GladiusMixin:Test()
 
             -- Health / Power text
             if f.HealthText then
+                if not f.HealthText:GetFont() then
+                    f.HealthText:SetFontObject("GameFontNormal")
+                end
                 if ls.statusText and ls.statusText.usePercentage then
                     f.HealthText:SetText(string.format("%d%%", hpPct * 100))
                 else
@@ -1429,6 +1442,9 @@ function GladiusMixin:Test()
                 f.HealthText:Show()
             end
             if f.PowerText then
+                if not f.PowerText:GetFont() then
+                    f.PowerText:SetFontObject("GameFontNormalSmall")
+                end
                 if ls.statusText and ls.statusText.usePercentage then
                     f.PowerText:SetText("100%")
                 else

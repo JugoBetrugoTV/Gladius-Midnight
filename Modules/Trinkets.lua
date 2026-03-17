@@ -35,34 +35,6 @@ local function GetArenaCCInfoCompat(unit)
 end
 
 -----------------------------------------------------------------------
--- FindTrinket: Triggered when an enemy uses their PvP trinket (120s CD)
------------------------------------------------------------------------
-function GladiusFrameMixin:FindTrinket()
-    local trinketFrame = self.Trinket
-    if not trinketFrame then return end
-    trinketFrame.Cooldown:SetCooldown(GetTime(), 120)
-end
-
------------------------------------------------------------------------
--- GetFactionTrinketIcon: Returns Alliance or Horde trinket texture
------------------------------------------------------------------------
-function GladiusFrameMixin:GetFactionTrinketIcon()
-    local faction = UnitFactionGroup(self.unit)
-    if faction == "Alliance" then
-        return 133452
-    else
-        return 133453
-    end
-end
-
------------------------------------------------------------------------
--- Helper: Check if racial should be forced on trinket for Human (MoP)
------------------------------------------------------------------------
-function GladiusFrameMixin:ShouldForceHumanTrinket()
-    return false  -- Midnight does not need MoP-specific logic
-end
-
------------------------------------------------------------------------
 -- UpdateTrinketIcon: Set trinket texture state (available/on cooldown)
 -----------------------------------------------------------------------
 function GladiusFrameMixin:UpdateTrinketIcon(available)
@@ -106,7 +78,18 @@ function GladiusFrameMixin:UpdateTrinket()
 
     -- If the spell changed, update the trinket display
     if spellID ~= self.Trinket.spellID then
-        local _, spellTextureNoOverride = GetSpellTexture(spellID)
+        local spellTexture, spellTextureNoOverride = GetSpellTexture(spellID)
+
+        -- In WoW 12.0+, C_Spell.GetSpellTexture returns only one value.
+        -- Detect racial overrides by spell ID instead of relying on textureNoOverride.
+        if not spellTextureNoOverride and spellTexture then
+            local isKnownRacial = GladiusMixin.racialSpells
+                and GladiusMixin.racialSpells[spellID]
+                and GladiusMixin.racialSpells[spellID] > 0
+            if not isKnownRacial then
+                spellTextureNoOverride = spellTexture
+            end
+        end
 
         local hadRacialOnTrinket = self.updateRacialOnTrinketSlot
         self.Trinket.spellID = spellID
