@@ -61,13 +61,15 @@ local defaults = {
         -- Module toggles
         modules = {
             classIcon = true,
+            name = true,
             health = true,
             power = true,
             trinket = true,
             racial = true,
+            targetIndicator = true,
+            specIcon = true,
+            interrupt = true,
             drTracker = true,
-            castBar = true,
-            auras = true,
         },
 
         -- Visual settings (sArena style)
@@ -85,6 +87,11 @@ local defaults = {
             position = "LEFT",
             showSpec = true,
             fontSize = 14,
+        },
+        name = {
+            fontSize = 12,
+            showArenaId = true,
+            colorByClass = true,
         },
         health = {
             height = 22,
@@ -132,6 +139,22 @@ local defaults = {
         auras = {
             iconSize = 24,
             maxAuras = 4,
+        },
+        targetIndicator = {
+            enabledInTest = true,
+        },
+        specIcon = {
+            size = 22,
+            position = "RIGHT",
+        },
+        interrupt = {
+            size = 22,
+            position = "RIGHT",
+        },
+        drTracker = {
+            size = 18,
+            spacing = 2,
+            position = "BOTTOM",
         },
     }
 }
@@ -401,6 +424,11 @@ function GladiusMidnight:DetectArenaType()
         return
     end
 
+    if not self.db.profile.enabled then
+        self.db.profile.enabled = true
+    end
+
+    -- Solo Shuffle
     if C_PvP and C_PvP.IsSoloShuffle and C_PvP.IsSoloShuffle() then
         self.arenaSize = 3
         self:Print("Solo Shuffle erkannt")
@@ -434,6 +462,9 @@ function GladiusMidnight:ToggleTest()
         local classes = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
                           "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK",
                           "DRUID", "DEMONHUNTER", "EVOKER" }
+        local names = { "Aldarion", "Lyra", "Thorgal", "Mira", "Kael",
+                        "Seraph", "Borin", "Nyssa", "Riven", "Talos",
+                        "Eira", "Vorin", "Selene" }
 
         local specs = {
             MAGE = {62, 63, 64},       -- Arcane, Fire, Frost
@@ -446,22 +477,16 @@ function GladiusMidnight:ToggleTest()
             local frame = self.frames[i]
             if frame then
                 UnregisterUnitWatch(frame)
-
-                local testClass = classes[math.random(1, #classes)]
-                frame.class = testClass
-
-                -- Assign a spec if available
-                if specs[testClass] then
-                    frame.specID = specs[testClass][math.random(1, #specs[testClass])]
-                end
-
                 local testData = {
-                    class = testClass,
+                    class = classes[math.random(1, #classes)],
+                    name = names[math.random(1, #names)],
+                    arenaIndex = i,
                     health = math.random(20, 100),
                     maxHealth = 100,
                     power = math.random(0, 100),
                     maxPower = 100,
                     powerType = Enum.PowerType.Mana,
+                    isTarget = i == 1,
                 }
 
                 self:UpdateFrame(frame, testData)
@@ -474,24 +499,9 @@ function GladiusMidnight:ToggleTest()
         self:Print("Test Modus |cFFFF0000deaktiviert|r")
 
         for i = 1, 3 do
-            local frame = self.frames[i]
-            if frame then
-                frame:Hide()
-                frame.class = nil
-                frame.specID = nil
-                RegisterUnitWatch(frame)
-
-                if frame.moduleFrames then
-                    if frame.moduleFrames.drTracker then
-                        frame.moduleFrames.drTracker:Hide()
-                    end
-                    if frame.moduleFrames.castBar then
-                        frame.moduleFrames.castBar:Hide()
-                    end
-                    if frame.moduleFrames.auras then
-                        frame.moduleFrames.auras:Hide()
-                    end
-                end
+            if self.frames[i] then
+                RegisterUnitWatch(self.frames[i])
+                self.frames[i]:Hide()
             end
         end
     end
@@ -608,20 +618,23 @@ function GladiusMidnight:SetupEventCallbacks()
 end
 
 function GladiusMidnight:OnEnable()
-    -- Register events with combat-safe checks
-    -- If in combat, will defer until combat ends via PLAYER_REGEN_ENABLED
-    if not self:RegisterAllEvents() then
-        -- We're in combat - set up a temporary frame to wait for combat end
-        local waitFrame = CreateFrame("Frame")
-        waitFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-        waitFrame:SetScript("OnEvent", function(f)
-            f:UnregisterAllEvents()
-            f:SetScript("OnEvent", nil)
-            self:RegisterAllEvents()
-            self:Print("Events registered after combat")
-        end)
-    end
+    -- Arena events
+    self:RegisterEvent("ARENA_OPPONENT_UPDATE")
+    self:RegisterEvent("ARENA_PREP_OPPONENT_SPECIALIZATIONS")
+    self:RegisterEvent("PLAYER_ENTERING_WORLD")
+    self:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 
+    -- Unit events
+    self:RegisterEvent("UNIT_HEALTH")
+    self:RegisterEvent("UNIT_MAXHEALTH")
+    self:RegisterEvent("UNIT_POWER_UPDATE")
+    self:RegisterEvent("UNIT_MAXPOWER")
+    self:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    self:RegisterEvent("UNIT_NAME_UPDATE")
+    self:RegisterEvent("PLAYER_TARGET_CHANGED")
+    self:RegisterEvent("UNIT_TARGET")
+
+    -- Enable modules
     for name, module in pairs(self.modules) do
         if module.OnEnable then
             module:OnEnable(self)
@@ -1236,6 +1249,50 @@ function GladiusMidnight:UNIT_SPELLCAST_SUCCEEDED(_, unit, castGUID, spellID)
     if racialModule and self:IsModuleEnabled("racial") then
         racialModule:OnSpellCast(self.frames[index], spellID)
     end
+
+    local interruptModule = self:GetModule("interrupt")
+    if interruptModule and self:IsModuleEnabled("interrupt") then
+        interruptModule:OnSpellCast(self.frames[index], spellID)
+    end
+
+    local drModule = self:GetModule("drTracker")
+    if drModule and self:IsModuleEnabled("drTracker") then
+        drModule:OnSpellCast(self.frames[index], spellID)
+    end
+end
+
+function GladiusMidnight:UNIT_NAME_UPDATE(_, unit)
+    if self.testMode then return end
+
+    local index = tonumber(unit:match("arena(%d)"))
+    if index and self.frames[index] and self.frames[index]:IsShown() then
+        local module = self:GetModule("name")
+        if module and self:IsModuleEnabled("name") then
+            module:UpdateUnit(self.frames[index])
+        end
+    end
+end
+
+function GladiusMidnight:PLAYER_TARGET_CHANGED()
+    if self.testMode then return end
+
+    local targetModule = self:GetModule("targetIndicator")
+    if targetModule and self:IsModuleEnabled("targetIndicator") then
+        for i = 1, 3 do
+            local frame = self.frames[i]
+            if frame and frame:IsShown() then
+                targetModule:UpdateUnit(frame)
+            end
+        end
+    end
+end
+
+function GladiusMidnight:UNIT_TARGET(_, unit)
+    if self.testMode then return end
+
+    if unit == "player" then
+        self:PLAYER_TARGET_CHANGED()
+    end
 end
 
 function GladiusMidnight:UNIT_AURA(_, unit, updateInfo)
@@ -1430,7 +1487,11 @@ function GladiusMidnight:SlashCommand(input)
         self:UpdateAllFrames()
         self:Print("Einstellungen zurückgesetzt")
     elseif input == "config" or input == "" then
-        LibStub("AceConfigDialog-3.0"):Open(addonName)
+        if self.OpenConfig then
+            self:OpenConfig()
+        else
+            LibStub("AceConfigDialog-3.0"):Open(addonName)
+        end
     else
         self:Print("Befehle:")
         self:Print("  |cFF00FF00/gladius|r - Einstellungen öffnen")

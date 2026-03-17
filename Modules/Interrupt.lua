@@ -87,8 +87,7 @@ function Interrupt:Update(frame, testData)
 end
 
 function Interrupt:OnSpellCast(frame, spellID)
-    -- In Midnight 12.0, spellID may be "secret" for arena opponents
-    if not spellID or type(spellID) ~= "number" then return end
+    if not spellID then return end
 
     local cooldownDuration = addon.Data.InterruptSpells[spellID]
     if not cooldownDuration then return end

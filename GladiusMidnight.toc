@@ -20,13 +20,15 @@ Core.lua
 
 # Modules
 Modules\ClassIcon.lua
+Modules\Name.lua
+Modules\SpecIcon.lua
+Modules\Interrupt.lua
+Modules\DRTracker.lua
 Modules\Health.lua
 Modules\Power.lua
 Modules\Trinket.lua
 Modules\Racial.lua
-Modules\DRTracker.lua
-Modules\CastBar.lua
-Modules\Auras.lua
+Modules\TargetIndicator.lua
 
 # Options (must be last)
 Options.lua

@@ -50,21 +50,19 @@ end
 local options = {
     name = "Gladius Midnight",
     type = "group",
+    childGroups = "tab",
     args = {
-        -- Header
-        header = {
-            order = 0,
-            type = "description",
-            name = "|cFF00FF00Gladius Midnight|r - Arena Frames für WoW Midnight 12.0\n\n",
-            fontSize = "medium",
-        },
-
-        -- General Settings
+        -- General Tab
         general = {
             order = 1,
             type = "group",
             name = "Allgemein",
             args = {
+                header = {
+                    order = 0,
+                    type = "header",
+                    name = "Allgemeine Optionen",
+                },
                 enabled = {
                     order = 1,
                     type = "toggle",
@@ -122,542 +120,550 @@ local options = {
                         GladiusMidnight:UpdateAllFrames()
                     end,
                 },
+                spacer = {
+                    order = 10,
+                    type = "description",
+                    name = " ",
+                },
             },
         },
 
-        -- Size & Position
-        size = {
+        -- Frames Tab
+        frames = {
             order = 2,
             type = "group",
-            name = "Größe & Position",
+            name = "Frames",
             args = {
-                scale = {
+                size = {
                     order = 1,
-                    type = "range",
-                    name = "Skalierung",
-                    min = 0.5, max = 2.0, step = 0.05,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.scale end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.scale = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                frameWidth = {
-                    order = 2,
-                    type = "range",
-                    name = "Breite",
-                    min = 100, max = 400, step = 5,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.frameWidth end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.frameWidth = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                frameHeight = {
-                    order = 3,
-                    type = "range",
-                    name = "Höhe",
-                    min = 30, max = 100, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.frameHeight end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.frameHeight = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                spacing = {
-                    order = 4,
-                    type = "range",
-                    name = "Abstand zwischen Frames",
-                    min = 0, max = 30, step = 1,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.spacing end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.spacing = val
-                        GladiusMidnight:PositionFrames()
-                    end,
-                },
-                growDirection = {
-                    order = 5,
-                    type = "select",
-                    name = "Wachstumsrichtung",
-                    values = {
-                        ["DOWN"] = "Nach unten",
-                        ["UP"] = "Nach oben",
-                        ["LEFT"] = "Nach links",
-                        ["RIGHT"] = "Nach rechts",
+                    type = "group",
+                    name = "Frame-Größe",
+                    inline = true,
+                    args = {
+                        scale = {
+                            order = 1,
+                            type = "range",
+                            name = "Skalierung",
+                            min = 0.5, max = 2.0, step = 0.05,
+                            get = function() return GladiusMidnight.db.profile.scale end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.scale = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "full",
+                        },
+                        frameWidth = {
+                            order = 2,
+                            type = "range",
+                            name = "Breite",
+                            min = 100, max = 400, step = 5,
+                            get = function() return GladiusMidnight.db.profile.frameWidth end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.frameWidth = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        frameHeight = {
+                            order = 3,
+                            type = "range",
+                            name = "Höhe",
+                            min = 30, max = 100, step = 2,
+                            get = function() return GladiusMidnight.db.profile.frameHeight end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.frameHeight = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
                     },
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.growDirection end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.growDirection = val
-                        GladiusMidnight:PositionFrames()
-                    end,
                 },
-                spacer = { order = 6, type = "description", name = "\n|cFFFFFF00Position (oder /gladius unlock zum Verschieben)|r\n" },
-                posX = {
-                    order = 7,
-                    type = "range",
-                    name = "X Position",
-                    min = -1000, max = 1000, step = 5,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.posX end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.posX = val
-                        GladiusMidnight:PositionFrames()
-                    end,
-                },
-                posY = {
-                    order = 8,
-                    type = "range",
-                    name = "Y Position",
-                    min = -800, max = 800, step = 5,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.posY end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.posY = val
-                        GladiusMidnight:PositionFrames()
-                    end,
+                layout = {
+                    order = 2,
+                    type = "group",
+                    name = "Layout",
+                    inline = true,
+                    args = {
+                        growDirection = {
+                            order = 1,
+                            type = "select",
+                            name = "Wachstumsrichtung",
+                            values = {
+                                ["DOWN"] = "Nach unten",
+                                ["UP"] = "Nach oben",
+                                ["LEFT"] = "Nach links",
+                                ["RIGHT"] = "Nach rechts",
+                            },
+                            get = function() return GladiusMidnight.db.profile.growDirection end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.growDirection = val
+                                GladiusMidnight:PositionFrames()
+                            end,
+                            width = "normal",
+                        },
+                        spacing = {
+                            order = 2,
+                            type = "range",
+                            name = "Abstand",
+                            min = 0, max = 30, step = 1,
+                            get = function() return GladiusMidnight.db.profile.spacing end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.spacing = val
+                                GladiusMidnight:PositionFrames()
+                            end,
+                            width = "normal",
+                        },
+                        posX = {
+                            order = 3,
+                            type = "range",
+                            name = "X Position",
+                            min = -1000, max = 1000, step = 5,
+                            get = function() return GladiusMidnight.db.profile.posX end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.posX = val
+                                GladiusMidnight:PositionFrames()
+                            end,
+                            width = "normal",
+                        },
+                        posY = {
+                            order = 4,
+                            type = "range",
+                            name = "Y Position",
+                            min = -800, max = 800, step = 5,
+                            get = function() return GladiusMidnight.db.profile.posY end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.posY = val
+                                GladiusMidnight:PositionFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
                 },
             },
         },
 
-        -- Module Toggles
-        modules = {
+        -- Module Tab
+        modulesTab = {
             order = 3,
             type = "group",
             name = "Module",
             args = {
-                desc = {
-                    order = 0,
-                    type = "description",
-                    name = "Aktiviere oder deaktiviere einzelne Module.\n\n",
-                },
-                classIcon = {
+                modules = {
                     order = 1,
-                    type = "toggle",
-                    name = "Klassen Icon",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.classIcon end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.classIcon = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                health = {
-                    order = 2,
-                    type = "toggle",
-                    name = "Lebensanzeige",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.health end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.health = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                power = {
-                    order = 3,
-                    type = "toggle",
-                    name = "Ressourcenanzeige",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.power end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.power = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                trinket = {
-                    order = 4,
-                    type = "toggle",
-                    name = "Trinket Tracker",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.trinket end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.trinket = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                racial = {
-                    order = 5,
-                    type = "toggle",
-                    name = "Racial Tracker",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.racial end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.racial = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                drTracker = {
-                    order = 6,
-                    type = "toggle",
-                    name = "DR Tracker",
-                    desc = "Zeigt Diminishing Returns für CC-Effekte",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.drTracker end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.drTracker = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                castBar = {
-                    order = 7,
-                    type = "toggle",
-                    name = "Cast Bar",
-                    desc = "Zeigt Zauberleiste des Gegners",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.castBar end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.castBar = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                auras = {
-                    order = 8,
-                    type = "toggle",
-                    name = "Auras / CC Anzeige",
-                    desc = "Zeigt wichtige Buffs/Debuffs und aktuelle CCs",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.modules.auras end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.modules.auras = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
+                    type = "group",
+                    name = "Aktive Module",
+                    inline = true,
+                    args = {
+                        classIcon = {
+                            order = 1,
+                            type = "toggle",
+                            name = "Klassen-Icon",
+                            get = function() return GladiusMidnight.db.profile.modules.classIcon end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.classIcon = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        name = {
+                            order = 2,
+                            type = "toggle",
+                            name = "Namen",
+                            get = function() return GladiusMidnight.db.profile.modules.name end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.name = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        health = {
+                            order = 3,
+                            type = "toggle",
+                            name = "Lebensanzeige",
+                            get = function() return GladiusMidnight.db.profile.modules.health end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.health = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        power = {
+                            order = 4,
+                            type = "toggle",
+                            name = "Ressourcen",
+                            get = function() return GladiusMidnight.db.profile.modules.power end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.power = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        trinket = {
+                            order = 5,
+                            type = "toggle",
+                            name = "Trinket Tracker",
+                            get = function() return GladiusMidnight.db.profile.modules.trinket end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.trinket = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        racial = {
+                            order = 6,
+                            type = "toggle",
+                            name = "Racial Tracker",
+                            get = function() return GladiusMidnight.db.profile.modules.racial end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.racial = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        specIcon = {
+                            order = 7,
+                            type = "toggle",
+                            name = "Spezialisierung",
+                            get = function() return GladiusMidnight.db.profile.modules.specIcon end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.specIcon = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        targetIndicator = {
+                            order = 8,
+                            type = "toggle",
+                            name = "Zielmarkierung",
+                            get = function() return GladiusMidnight.db.profile.modules.targetIndicator end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.targetIndicator = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        interrupt = {
+                            order = 9,
+                            type = "toggle",
+                            name = "Interrupt",
+                            get = function() return GladiusMidnight.db.profile.modules.interrupt end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.interrupt = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        drTracker = {
+                            order = 10,
+                            type = "toggle",
+                            name = "DR Tracker",
+                            get = function() return GladiusMidnight.db.profile.modules.drTracker end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.modules.drTracker = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                    },
                 },
             },
         },
 
-        -- Visual Settings
-        visualSettings = {
+        -- Appearance Tab
+        appearance = {
             order = 4,
             type = "group",
-            name = "Visuelle Effekte",
+            name = "Aussehen",
             args = {
-                targetHighlight = {
+                classIconSettings = {
                     order = 1,
-                    type = "toggle",
-                    name = "Target Highlight",
-                    desc = "Zeigt einen Rahmen um das aktuelle Ziel",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.targetHighlight end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.targetHighlight = val
-                        GladiusMidnight:UpdateTargetHighlight()
-                    end,
+                    type = "group",
+                    name = "Klassen-Icon",
+                    inline = true,
+                    args = {
+                        size = {
+                            order = 1,
+                            type = "range",
+                            name = "Größe",
+                            min = 20, max = 80, step = 2,
+                            get = function() return GladiusMidnight.db.profile.classIcon.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.classIcon.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        position = {
+                            order = 2,
+                            type = "select",
+                            name = "Position",
+                            values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
+                            get = function() return GladiusMidnight.db.profile.classIcon.position end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.classIcon.position = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
                 },
-                immunityGlow = {
+                nameSettings = {
                     order = 2,
-                    type = "toggle",
-                    name = "Immunity Glow",
-                    desc = "Goldener Glow wenn Gegner immun ist (Ice Block, Bubble, etc.)",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.immunityGlow end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.immunityGlow = val
-                    end,
+                    type = "group",
+                    name = "Namensanzeige",
+                    inline = true,
+                    args = {
+                        fontSize = {
+                            order = 1,
+                            type = "range",
+                            name = "Schriftgröße",
+                            min = 8, max = 18, step = 1,
+                            get = function() return GladiusMidnight.db.profile.name.fontSize end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.name.fontSize = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        showArenaId = {
+                            order = 2,
+                            type = "toggle",
+                            name = "Arena-ID anzeigen",
+                            get = function() return GladiusMidnight.db.profile.name.showArenaId end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.name.showArenaId = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        colorByClass = {
+                            order = 3,
+                            type = "toggle",
+                            name = "Klassenfarbe",
+                            get = function() return GladiusMidnight.db.profile.name.colorByClass end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.name.colorByClass = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                    },
                 },
-                hideBlizzardFrames = {
+                healthSettings = {
                     order = 3,
-                    type = "toggle",
-                    name = "Blizzard Frames verstecken",
-                    desc = "Versteckt die Standard-Arena-Frames von Blizzard",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.hideBlizzardFrames end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.hideBlizzardFrames = val
-                        GladiusMidnight:HideBlizzardFrames()
-                    end,
+                    type = "group",
+                    name = "Lebensanzeige",
+                    inline = true,
+                    args = {
+                        height = {
+                            order = 1,
+                            type = "range",
+                            name = "Höhe",
+                            min = 10, max = 50, step = 2,
+                            get = function() return GladiusMidnight.db.profile.health.height end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.health.height = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        showText = {
+                            order = 2,
+                            type = "toggle",
+                            name = "Text anzeigen",
+                            get = function() return GladiusMidnight.db.profile.health.showText end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.health.showText = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                        colorByClass = {
+                            order = 3,
+                            type = "toggle",
+                            name = "Klassenfarbe",
+                            get = function() return GladiusMidnight.db.profile.health.colorByClass end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.health.colorByClass = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                    },
                 },
-            },
-        },
-
-        -- Class Icon Settings
-        classIconSettings = {
-            order = 5,
-            type = "group",
-            name = "Klassen/Spec Icon",
-            args = {
-                size = {
-                    order = 1,
-                    type = "range",
-                    name = "Größe",
-                    min = 20, max = 80, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.classIcon.size end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.classIcon.size = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                showSpec = {
-                    order = 2,
-                    type = "toggle",
-                    name = "Spec Icon anzeigen",
-                    desc = "Zeigt Spezialisierungs-Icon statt Klassen-Icon",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.classIcon.showSpec end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.classIcon.showSpec = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                position = {
-                    order = 3,
-                    type = "select",
-                    name = "Position",
-                    values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.classIcon.position end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.classIcon.position = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-            },
-        },
-
-        -- Health Settings
-        healthSettings = {
-            order = 6,
-            type = "group",
-            name = "Lebensanzeige",
-            args = {
-                height = {
-                    order = 1,
-                    type = "range",
-                    name = "Höhe",
-                    min = 10, max = 50, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.health.height end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.health.height = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                showText = {
-                    order = 2,
-                    type = "toggle",
-                    name = "Prozent anzeigen",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.health.showText end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.health.showText = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                showName = {
-                    order = 3,
-                    type = "toggle",
-                    name = "Spielername anzeigen",
-                    desc = "Zeigt den Spielernamen auf der Lebensleiste",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.health.showName end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.health.showName = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                colorByClass = {
+                powerSettings = {
                     order = 4,
-                    type = "toggle",
-                    name = "Klassenfarbe",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.health.colorByClass end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.health.colorByClass = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
+                    type = "group",
+                    name = "Ressourcen",
+                    inline = true,
+                    args = {
+                        height = {
+                            order = 1,
+                            type = "range",
+                            name = "Höhe",
+                            min = 4, max = 20, step = 1,
+                            get = function() return GladiusMidnight.db.profile.power.height end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.power.height = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        showText = {
+                            order = 2,
+                            type = "toggle",
+                            name = "Text anzeigen",
+                            get = function() return GladiusMidnight.db.profile.power.showText end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.power.showText = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                    },
                 },
-            },
-        },
-
-        -- Power Settings
-        powerSettings = {
-            order = 7,
-            type = "group",
-            name = "Ressourcen",
-            args = {
-                height = {
-                    order = 1,
-                    type = "range",
-                    name = "Höhe",
-                    min = 4, max = 20, step = 1,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.power.height end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.power.height = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                showText = {
-                    order = 2,
-                    type = "toggle",
-                    name = "Prozent anzeigen",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.power.showText end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.power.showText = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-            },
-        },
-
-        -- Trinket/Racial Settings
-        cooldownSettings = {
-            order = 8,
-            type = "group",
-            name = "Trinket & Racial",
-            args = {
-                trinketSize = {
-                    order = 1,
-                    type = "range",
-                    name = "Trinket Icon Größe",
-                    min = 16, max = 50, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.trinket.size end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.trinket.size = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                trinketPosition = {
-                    order = 2,
-                    type = "select",
-                    name = "Trinket Position",
-                    values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.trinket.position end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.trinket.position = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                spacer = { order = 3, type = "description", name = "\n" },
-                racialSize = {
-                    order = 4,
-                    type = "range",
-                    name = "Racial Icon Größe",
-                    min = 16, max = 50, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.racial.size end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.racial.size = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                racialPosition = {
+                trinketSettings = {
                     order = 5,
-                    type = "select",
-                    name = "Racial Position",
-                    values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.racial.position end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.racial.position = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
+                    type = "group",
+                    name = "Trinket / Racial",
+                    inline = true,
+                    args = {
+                        trinketSize = {
+                            order = 1,
+                            type = "range",
+                            name = "Trinket Größe",
+                            min = 16, max = 50, step = 2,
+                            get = function() return GladiusMidnight.db.profile.trinket.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.trinket.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        racialSize = {
+                            order = 2,
+                            type = "range",
+                            name = "Racial Größe",
+                            min = 16, max = 50, step = 2,
+                            get = function() return GladiusMidnight.db.profile.racial.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.racial.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
                 },
-            },
-        },
-
-        -- DR Tracker Settings
-        drTrackerSettings = {
-            order = 9,
-            type = "group",
-            name = "DR Tracker",
-            args = {
-                iconSize = {
-                    order = 1,
-                    type = "range",
-                    name = "Icon Größe",
-                    min = 16, max = 40, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.drTracker.iconSize end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.drTracker.iconSize = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
+                specSettings = {
+                    order = 6,
+                    type = "group",
+                    name = "Spezialisierung",
+                    inline = true,
+                    args = {
+                        size = {
+                            order = 1,
+                            type = "range",
+                            name = "Icon Größe",
+                            min = 16, max = 40, step = 1,
+                            get = function() return GladiusMidnight.db.profile.specIcon.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.specIcon.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        position = {
+                            order = 2,
+                            type = "select",
+                            name = "Position",
+                            values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
+                            get = function() return GladiusMidnight.db.profile.specIcon.position end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.specIcon.position = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
                 },
-                showTimer = {
-                    order = 2,
-                    type = "toggle",
-                    name = "Timer anzeigen",
-                    desc = "Zeigt die verbleibende DR-Zeit an",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.drTracker.showTimer end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.drTracker.showTimer = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
+                targetIndicatorSettings = {
+                    order = 7,
+                    type = "group",
+                    name = "Zielmarkierung",
+                    inline = true,
+                    args = {
+                        enabledInTest = {
+                            order = 1,
+                            type = "toggle",
+                            name = "Im Testmodus anzeigen",
+                            get = function() return GladiusMidnight.db.profile.targetIndicator.enabledInTest end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.targetIndicator.enabledInTest = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                        },
+                    },
                 },
-            },
-        },
-
-        -- Cast Bar Settings
-        castBarSettings = {
-            order = 10,
-            type = "group",
-            name = "Cast Bar",
-            args = {
-                height = {
-                    order = 1,
-                    type = "range",
-                    name = "Höhe",
-                    min = 10, max = 30, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.castBar.height end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.castBar.height = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
+                interruptSettings = {
+                    order = 8,
+                    type = "group",
+                    name = "Interrupt",
+                    inline = true,
+                    args = {
+                        size = {
+                            order = 1,
+                            type = "range",
+                            name = "Icon Größe",
+                            min = 16, max = 40, step = 1,
+                            get = function() return GladiusMidnight.db.profile.interrupt.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.interrupt.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        position = {
+                            order = 2,
+                            type = "select",
+                            name = "Position",
+                            values = { ["LEFT"] = "Links", ["RIGHT"] = "Rechts" },
+                            get = function() return GladiusMidnight.db.profile.interrupt.position end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.interrupt.position = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
                 },
-                showIcon = {
-                    order = 2,
-                    type = "toggle",
-                    name = "Spell Icon anzeigen",
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.castBar.showIcon end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.castBar.showIcon = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-            },
-        },
-
-        -- Auras Settings
-        aurasSettings = {
-            order = 11,
-            type = "group",
-            name = "Auras / CC",
-            args = {
-                iconSize = {
-                    order = 1,
-                    type = "range",
-                    name = "Icon Größe",
-                    min = 16, max = 50, step = 2,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.auras.iconSize end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.auras.iconSize = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
-                },
-                maxAuras = {
-                    order = 2,
-                    type = "range",
-                    name = "Max. Auras",
-                    desc = "Maximale Anzahl angezeigter Auras",
-                    min = 1, max = 8, step = 1,
-                    width = "full",
-                    get = function() return GladiusMidnight.db.profile.auras.maxAuras end,
-                    set = function(_, val)
-                        GladiusMidnight.db.profile.auras.maxAuras = val
-                        GladiusMidnight:UpdateAllFrames()
-                    end,
+                drTrackerSettings = {
+                    order = 9,
+                    type = "group",
+                    name = "DR Tracker",
+                    inline = true,
+                    args = {
+                        size = {
+                            order = 1,
+                            type = "range",
+                            name = "Icon Größe",
+                            min = 12, max = 28, step = 1,
+                            get = function() return GladiusMidnight.db.profile.drTracker.size end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.drTracker.size = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        spacing = {
+                            order = 2,
+                            type = "range",
+                            name = "Abstand",
+                            min = 0, max = 8, step = 1,
+                            get = function() return GladiusMidnight.db.profile.drTracker.spacing end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.drTracker.spacing = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                        position = {
+                            order = 3,
+                            type = "select",
+                            name = "Position",
+                            values = { ["BOTTOM"] = "Unten", ["TOP"] = "Oben" },
+                            get = function() return GladiusMidnight.db.profile.drTracker.position end,
+                            set = function(_, val)
+                                GladiusMidnight.db.profile.drTracker.position = val
+                                GladiusMidnight:UpdateAllFrames()
+                            end,
+                            width = "normal",
+                        },
+                    },
                 },
             },
         },
@@ -704,52 +710,40 @@ function GladiusMidnight:SetupOptions()
     -- Register options table
     AceConfig:RegisterOptionsTable(addonName, options)
 
-    -- Create standalone options frame
-    AceConfigDialog:SetDefaultSize(addonName, 450, 550)
-
-    -- Create minimap button
-    CreateMinimapButton()
+    AceConfigDialog:SetDefaultSize(addonName, 600, 540)
 end
 
--- ============================================================================
--- Update Slash Command
--- ============================================================================
+function GladiusMidnight:StyleConfigFrame(frame)
+    if not frame or frame._gmStyled then return end
 
-local origSlashCommand = GladiusMidnight.SlashCommand
-function GladiusMidnight:SlashCommand(input)
-    input = (input or ""):trim():lower()
+    frame._gmStyled = true
+    frame:SetBackdrop({
+        bgFile = "Interface\\Buttons\\WHITE8X8",
+        edgeFile = "Interface\\Buttons\\WHITE8X8",
+        edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 },
+    })
+    frame:SetBackdropColor(0.06, 0.07, 0.08, 0.98)
+    frame:SetBackdropBorderColor(0.9, 0.7, 0.2, 0.9)
 
-    if input == "test" then
-        self:ToggleTest()
-    elseif input == "lock" then
-        self.db.profile.locked = true
-        self:Print("Frames |cFF00FF00fixiert|r")
-    elseif input == "unlock" then
-        self.db.profile.locked = false
-        self:Print("Frames |cFFFF0000entsperrt|r - zum Verschieben ziehen")
-    elseif input == "reset" then
-        self.db:ResetProfile()
-        self:UpdateAllFrames()
-        self:Print("Einstellungen zurückgesetzt")
-    elseif input == "minimap" then
-        self.db.profile.minimap.hide = not self.db.profile.minimap.hide
-        if self.db.profile.minimap.hide then
-            LDBIcon:Hide("GladiusMidnight")
-            self:Print("Minimap Icon |cFFFF0000versteckt|r")
-        else
-            LDBIcon:Show("GladiusMidnight")
-            self:Print("Minimap Icon |cFF00FF00sichtbar|r")
-        end
-    elseif input == "" or input == "config" or input == "options" then
-        self:ToggleOptions()
-    else
-        self:Print("Befehle:")
-        self:Print("  |cFF00FF00/gladius|r - Einstellungen öffnen")
-        self:Print("  |cFF00FF00/gladius test|r - Test-Modus")
-        self:Print("  |cFF00FF00/gladius lock|r - Frames fixieren")
-        self:Print("  |cFF00FF00/gladius unlock|r - Frames entsperren")
-        self:Print("  |cFF00FF00/gladius minimap|r - Minimap Icon toggle")
-        self:Print("  |cFF00FF00/gladius reset|r - Zurücksetzen")
+    if not frame.GuildWarsAccent then
+        local accent = frame:CreateTexture(nil, "BORDER")
+        accent:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
+        accent:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
+        accent:SetHeight(3)
+        accent:SetColorTexture(0.9, 0.7, 0.2, 0.9)
+        frame.GuildWarsAccent = accent
+    end
+
+    if frame.TitleText then
+        frame.TitleText:SetTextColor(0.95, 0.82, 0.32)
+    end
+end
+
+function GladiusMidnight:OpenConfig()
+    AceConfigDialog:Open(addonName)
+    if AceConfigDialog.OpenFrames and AceConfigDialog.OpenFrames[addonName] then
+        self:StyleConfigFrame(AceConfigDialog.OpenFrames[addonName])
     end
 end
 
